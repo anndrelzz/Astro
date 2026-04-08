@@ -1,31 +1,166 @@
-# GEAR - SaaS de Gestão para Estéticas Automotivas
+# ASTRO — Plataforma SaaS de Gestão para Estéticas Automotivas
 
-O GEAR é uma plataforma SaaS (Software as a Service) Multi-tenant projetada para modernizar e profissionalizar o gerenciamento de agendamentos em centros de estética automotiva. O sistema oferece uma solução completa B2B2C, permitindo que empresas cadastrem suas unidades e ofereçam portais exclusivos para seus clientes finais.
+> Sistema multi-tenant com agendamento online, pagamento via PIX e notificações automáticas.
 
-## Proposta do Projeto
-Diferente de sistemas de agenda genéricos, o GEAR foca na precisão operacional. A plataforma resolve conflitos de horários e a falta de dados estruturados através de um fluxo de agendamento inteligente e travas de segurança obrigatórias.
+---
 
-### Principais Funcionalidades
+## Sobre o Projeto
 
-* Multi-tenancy Dinâmico: Cada estética possui seu próprio subdomínio ou slug exclusivo (ex: estimacar.gear.app), com isolamento total de dados entre inquilinos.
-* Agendamento Inteligente: Realiza o bloqueio automático de slots na agenda baseado na duração real de cada serviço, evitando sobreposição de horários.
-* Customização de Identidade (Aba Aparência): Administradores podem realizar o upload da logo (Base64) e definir uma cor secundária dinâmica, mantendo a base visual profissional em tons de preto e cinza.
-* Funil de Segurança: O agendamento é liberado apenas após a verificação de e-mail e o cadastro obrigatório de um veículo (modelo, categoria, placa e cor).
-* Dashboard Administrativo: Visão consolidada de métricas de produtividade, faturamento e histórico de agendamentos.
+O **Astro** é uma plataforma SaaS desenvolvida para digitalizar a gestão de estéticas automotivas. O agendamento de serviços nesse segmento ainda é feito predominantemente via WhatsApp, ligações telefônicas ou anotações em cadernos físicos — resultando em conflitos de horário, perda de clientes e falta de controle financeiro.
+
+O Astro resolve esse problema oferecendo uma plataforma completa onde cada estética possui sua própria URL personalizada, identidade visual configurável e um sistema de agendamento autônomo que o cliente consegue usar sem depender do atendente.
+
+---
+
+## Público-Alvo
+
+| Perfil | Descrição |
+|---|---|
+| **Dono da Estética (Admin)** | Empreendedor com pouco tempo para administração. Acessa o painel para configurar serviços, horários, visualizar financeiro e personalizar a identidade visual. |
+| **Cliente Final** | Proprietário de veículo que acessa o site público da estética para visualizar serviços, preços e realizar agendamentos. Principal canal de acesso: smartphone. |
+| **Desenvolvedor SaaS** | Responsável pela manutenção e evolução da plataforma. Acesso total à infraestrutura, banco de dados e deploys. |
+
+---
+
+## Funcionalidades Principais
+
+- Cadastro de estéticas com URL personalizada (`astro.com.br/nome-da-estetica`)
+- Agendamento online com seleção de veículo, serviço, data e horário
+- Precificação automática por segmento de veículo (hatch, sedan, SUV, pickup, van)
+- Pagamento via PIX com QR Code dinâmico e confirmação automática via webhook
+- Notificações automáticas por e-mail e WhatsApp (confirmação, lembrete 24h, cancelamento)
+- Painel administrativo com dashboard financeiro e relatórios exportáveis
+- Personalização de identidade visual por estética (logo, cores)
+- Histórico de agendamentos e avaliações pós-serviço
+- Isolamento total de dados entre estéticas via Row-Level Security (RLS)
+
+---
 
 ## Stack Tecnológica
 
-* Frontend: Next.js (React) com Tailwind CSS.
-* Backend: Node.js com TypeScript via Next.js API Routes (Arquitetura Serverless).
-* Banco de Dados: PostgreSQL com Prisma ORM (Persistência Relacional).
-* Comunicação: Resend para e-mails transacionais de verificação e status.
-* Infraestrutura: Deploy automatizado na Vercel com pipeline de CI/CD via GitHub Actions.
-
-## Conformidade e Engenharia
-O projeto foi desenvolvido sob as diretrizes do The Portfolio Playbook, atendendo aos seguintes critérios:
-* LGPD Compliance: Implementação de direito ao esquecimento, consentimento explícito e transparência de dados.
-* Qualidade de Software: Cobertura de testes automatizados (TDD), análise estática com SonarCloud e monitoramento de performance (NewRelic ou Datadog).
-* Arquitetura: Separação clara de responsabilidades seguindo padrões de mercado para aplicações escaláveis.
+| Camada | Tecnologia |
+|---|---|
+| Frontend + Backend | Next.js 14 (App Router + SSR) |
+| Linguagem | TypeScript |
+| Banco de Dados | PostgreSQL + RLS (multi-tenancy) |
+| ORM | Prisma |
+| Estilização | Tailwind CSS |
+| Autenticação | JWT + bcrypt |
+| Pagamentos | Mercado Pago / Efipay (PIX) |
+| E-mail | Resend |
+| WhatsApp | Z-API / Evolution API |
+| Validação | Zod |
+| Testes | Vitest (unitários) + Playwright (E2E) |
+| Qualidade de Código | SonarCloud |
+| Monitoramento | Azure Monitor |
+| CI/CD | GitHub Actions |
+| Hospedagem | Azure App Service + Azure Database for PostgreSQL + Azure Blob Storage |
 
 ---
-Projeto desenvolvido como parte do Portfólio de Engenharia de Software - Católica SC.
+
+## Arquitetura
+
+O sistema utiliza arquitetura **multi-tenant com Row-Level Security (RLS)** no PostgreSQL. Cada estética cadastrada é um tenant isolado — nenhum dado de uma estética é acessível por outra.
+
+```
+Internet
+    │
+    ▼
+Azure App Service
+(Next.js — Frontend + API)
+    │
+    ├──── Azure Database for PostgreSQL (RLS)
+    │         clientes, agendamentos, veículos, serviços...
+    │
+    └──── Azure Blob Storage
+              logos e imagens das estéticas
+```
+
+---
+
+## Modelo de Dados
+
+O banco é composto por 13 tabelas, todas com `tenant_id` para isolamento via RLS:
+
+| Tabela | Responsabilidade |
+|---|---|
+| `tenants` | Estéticas cadastradas — slug, nome, capacidade, tema |
+| `admins` | Donos das estéticas com credenciais |
+| `clientes` | Clientes de cada estética com dados pessoais e LGPD |
+| `veiculos` | Veículos com marca, modelo, placa, cor e segmento |
+| `servicos` | Serviços com título, descrição e duração |
+| `servico_precos` | Tabela de preço por segmento de veículo |
+| `horarios_funcionamento` | Grade semanal de atendimento por tenant |
+| `bloqueios_agenda` | Períodos bloqueados (feriados, férias) |
+| `agendamentos` | Núcleo do sistema — liga cliente, veículo e serviço |
+| `pagamentos` | Registros PIX (QR code, txid) e presencial |
+| `avaliacoes` | Nota (1-5) e comentário pós-serviço |
+| `notificacoes_log` | Log de notificações por canal e status |
+| `audit_log` | Ações críticas com dados anteriores em JSONB |
+
+---
+
+## Fluxo de Agendamento
+
+```
+1. Cliente acessa a URL da estética
+2. Faz login ou cria conta (verificação de e-mail)
+3. Cadastra veículo (marca, modelo, placa, segmento)
+4. Seleciona serviço — preço calculado automaticamente pelo segmento
+5. Escolhe data no calendário (apenas dias com vagas disponíveis)
+6. Seleciona horário disponível
+7. Confirma e paga via PIX ou presencialmente
+8. Recebe confirmação por WhatsApp
+```
+
+---
+
+## Ciclo de Vida do Agendamento
+
+| Status | Evento | Ação |
+|---|---|---|
+| `pendente` | Cliente confirma | Gera cobrança PIX ou aguarda pagamento presencial |
+| `confirmado` | Webhook PIX recebido | Envia notificação ao cliente |
+| `em_andamento` | Data/hora chegou | Admin inicia o serviço |
+| `concluido` | Admin finaliza | Envia solicitação de avaliação |
+| `cancelado` | Cliente (>2h) ou admin cancela | Notifica a outra parte; libera slot |
+
+---
+
+## Regras de Negócio
+
+- O preço é **congelado** no momento da confirmação do agendamento
+- Cliente só agenda após cadastrar ao menos um veículo
+- Cancelamento pelo cliente exige mínimo de **2 horas** de antecedência
+- QR Code PIX expira em **30 minutos**
+- A placa do veículo é única **por tenant**
+- Admin pode cancelar qualquer agendamento a qualquer momento
+
+---
+
+## KPIs
+
+| Indicador | Meta |
+|---|---|
+| Tempo de carregamento de páginas | < 2 segundos em 4G |
+| Consulta de slots disponíveis | < 300ms |
+| Isolamento entre tenants | 0 vazamentos em 100% dos testes |
+| Disponibilidade | Uptime ≥ 99,5% |
+| Tenants simultâneos | 100+ estéticas sem degradação |
+| Confirmação de pagamento PIX | < 10 segundos via webhook |
+
+---
+
+## Informações Acadêmicas
+
+| | |
+|---|---|
+| **Curso** | Engenharia de Software |
+| **Instituição** | Católica SC |
+| **Autor** | André Luiz da Silva Estevão |
+| **Orientador** | Diogo Vinícius Winck |
+| **Ano** | 2026 |
+
+---
+
+*Astro — RFC v1.0 | Engenharia de Software | Católica SC | 2026*
