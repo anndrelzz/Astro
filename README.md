@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Astro.svg" width="180" alt="Astro Logo">
+  <img src="logo.png" width="320" alt="Astro Logo">
 </p>
 
 # ASTRO — Plataforma SaaS de Gestão para Estéticas Automotivas
@@ -43,12 +43,7 @@ O Astro resolve esse problema oferecendo uma plataforma completa onde cada esté
 ## Stack Tecnológica
 
 <p align="center">
-  <img src="https://skillicons.dev/icons?i=nextjs,ts,postgres,prisma,tailwind" /><br/>
-  <img src="https://skillicons.dev/icons?i=vitest,playwright,azure,githubactions" /><br/>
-  <a href="https://zod.dev"><img src="https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white" alt="Zod"/></a>
-  <a href="https://resend.com"><img src="https://img.shields.io/badge/Resend-000000?style=for-the-badge&logo=resend&logoColor=white" alt="Resend"/></a>
-  <a href="https://sonarcloud.io"><img src="https://img.shields.io/badge/SonarCloud-F3702A?style=for-the-badge&logo=sonarcloud&logoColor=white" alt="SonarCloud"/></a>
-  <a href="https://www.mercadopago.com.br"><img src="https://img.shields.io/badge/Mercado%20Pago-00B1EA?style=for-the-badge&logo=mercadopago&logoColor=white" alt="Mercado Pago"/></a>
+  <img src="https://skillicons.dev/icons?i=nextjs,ts,tailwind,postgres,vitest,playwright,azure,githubactions" />
 </p>
 
 | Camada | Tecnologia |
