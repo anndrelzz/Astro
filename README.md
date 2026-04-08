@@ -43,7 +43,7 @@ O Astro resolve esse problema oferecendo uma plataforma completa onde cada esté
 ## Stack Tecnológica
 
 <p align="center">
-  <img src="https://skillicons.dev/icons?i=nextjs,ts,tailwind,postgres,vitest,playwright,azure,githubactions" />
+  <img src="https://skillicons.dev/icons?i=nextjs,ts,tailwind,postgres,azure,githubactions" />
 </p>
 
 | Camada | Tecnologia |
