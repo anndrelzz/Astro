@@ -1,0 +1,176 @@
+// Schema do Astro — SaaS de gestao para esteticas automotivas
+// Modelo de dados conforme RFC v1.0, secao 5.2 (Figura 9 — Diagrama ER)
+//
+// Nota de arquitetura (M1): Row-Level Security (RLS) sera habilitado via
+// migration SQL depois que o fluxo de agendamento estiver validado em dev.
+// Ate la, o isolamento por tenant e garantido apenas pela aplicacao
+// (todo find/where deve filtrar por tenantId explicitamente).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CLIENTE
+}
+
+enum SegmentoVeiculo {
+  HATCH
+  SEDAN
+  SUV
+  PICKUP
+  VAN
+}
+
+enum StatusAgendamento {
+  PENDENTE_PAGAMENTO
+  PIX_PENDENTE
+  CONFIRMADO
+  CANCELADO
+  CONCLUIDO
+}
+
+enum FormaPagamento {
+  PIX
+  LOCAL
+}
+
+enum TipoNotificacao {
+  CONFIRMACAO_AGENDAMENTO
+  LEMBRETE_24H
+  LEMBRETE_2H
+  CONFIRMACAO_CANCELAMENTO
+}
+
+enum StatusNotificacao {
+  PENDENTE
+  ENVIADA
+  FALHA
+}
+
+/// Cada estetica cadastrada e um tenant isolado (RN07).
+/// slug e unico e imutavel apos o cadastro (RN09).
+model Tenant {
+  id                      String   @id @default(uuid())
+  nome                    String
+  slug                    String   @unique
+  logoUrl                 String?
+  corPrimaria             String?
+  telefone                String?
+  pixChaveCopiaCola       String? // RF17 — se nulo, opcao PIX nao e exibida ao cliente (RN10)
+  cancelamentoHorasLimite Int      @default(2) // RF18 — antecedencia minima para cancelamento pelo cliente
+  criadoEm                DateTime @default(now())
+
+  usuarios     Usuario[]
+  servicos     Servico[]
+  agendamentos Agendamento[]
+
+  @@map("tenant")
+}
+
+/// Concentra clientes e admins. telegram_chat_id/telegram_link_token
+/// suportam a vinculacao opcional de notificacoes (RN12).
+model Usuario {
+  id                String   @id @default(uuid())
+  tenantId          String
+  nome              String
+  email             String
+  senhaHash         String
+  telefone          String?
+  role              Role     @default(CLIENTE)
+  telegramChatId    String? // RNF11 — uso exclusivo para notificacoes
+  telegramLinkToken String?
+  criadoEm          DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  veiculos     Veiculo[]
+  agendamentos Agendamento[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("usuario")
+}
+
+/// Cadastro obrigatorio antes do primeiro agendamento (RN04, UC02).
+model Veiculo {
+  id        String          @id @default(uuid())
+  usuarioId String
+  marca     String
+  modelo    String
+  placa     String
+  ano       Int
+  cor       String
+  segmento  SegmentoVeiculo
+
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id])
+  agendamentos Agendamento[]
+
+  @@index([usuarioId])
+  @@map("veiculo")
+}
+
+/// Preco por segmento de veiculo, calculado automaticamente no agendamento
+/// e nunca alterado manualmente pelo cliente (RN01, RF01, RF04).
+model Servico {
+  id          String  @id @default(uuid())
+  tenantId    String
+  nome        String
+  duracaoMin  Int
+  precoHatch  Decimal @db.Decimal(10, 2)
+  precoSedan  Decimal @db.Decimal(10, 2)
+  precoSuv    Decimal @db.Decimal(10, 2)
+  precoPickup Decimal @db.Decimal(10, 2)
+  precoVan    Decimal @db.Decimal(10, 2)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  agendamentos Agendamento[]
+
+  @@index([tenantId])
+  @@map("servico")
+}
+
+/// Entidade transacional central (RN05, RN06). O horario e bloqueado
+/// imediatamente na confirmacao, independente da forma de pagamento.
+model Agendamento {
+  id             String            @id @default(uuid())
+  tenantId       String
+  usuarioId      String
+  veiculoId      String
+  servicoId      String
+  dataHora       DateTime
+  status         StatusAgendamento @default(PENDENTE_PAGAMENTO)
+  formaPagamento FormaPagamento
+  valor          Decimal           @db.Decimal(10, 2)
+  criadoEm       DateTime          @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id])
+  veiculo      Veiculo       @relation(fields: [veiculoId], references: [id])
+  servico      Servico       @relation(fields: [servicoId], references: [id])
+  notificacoes Notificacao[]
+
+  @@index([tenantId])
+  @@index([tenantId, dataHora])
+  @@map("agendamento")
+}
+
+/// Log de envio (RNF08 / 6.4) — nunca armazena o conteudo da mensagem.
+model Notificacao {
+  id            String            @id @default(uuid())
+  agendamentoId String
+  tipo          TipoNotificacao
+  status        StatusNotificacao @default(PENDENTE)
+  enviadoEm     DateTime?
+  tentativas    Int               @default(0)
+
+  agendamento Agendamento @relation(fields: [agendamentoId], references: [id])
+
+  @@index([agendamentoId])
+  @@map("notificacao")
+}
