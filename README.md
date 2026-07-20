@@ -64,7 +64,7 @@ Excluído conscientemente para viabilizar a entrega no prazo do TCC — não com
 
 | Camada | Tecnologia | Justificativa |
 |---|---|---|
-| Frontend | Next.js 14 + Tailwind CSS | SSR, App Router e responsividade nativa |
+| Frontend | Next.js 16 + Tailwind CSS v4 | SSR, App Router e responsividade nativa |
 | Backend | Next.js API Routes | Monorepo simplificado, deploy único na Azure |
 | ORM | Prisma ORM | Type-safe, migrations e suporte a RLS no PostgreSQL |
 | Banco de dados | PostgreSQL (Azure) | RLS para isolamento multi-tenant nativo |
