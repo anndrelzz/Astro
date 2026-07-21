@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { dispararNotificacao } from "@/lib/notificacoes";
 import { prisma } from "@/lib/prisma";
 
 // UC06, RN11 — cliente so cancela fora da janela configurada pelo Admin;
@@ -54,6 +55,9 @@ export async function POST(
     where: { id },
     data: { status: "CANCELADO" },
   });
+
+  // Gatilho 4 (secao 3.4) — disparada imediatamente apos o cancelamento.
+  await dispararNotificacao(id, "CONFIRMACAO_CANCELAMENTO");
 
   return NextResponse.json({ ok: true });
 }

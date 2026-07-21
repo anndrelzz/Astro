@@ -45,6 +45,12 @@ export default async function TenantPage({
             >
               Meus agendamentos
             </Link>
+            <Link
+              href={`/${slug}/perfil`}
+              className="font-medium text-zinc-900 underline dark:text-zinc-50"
+            >
+              Perfil
+            </Link>
             {session?.user.role === "ADMIN" && (
               <Link
                 href={`/${slug}/admin/agendamentos`}

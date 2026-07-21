@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { dispararNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { prisma } from "@/lib/prisma";
 import { calcularSlotsDisponiveis } from "@/lib/slots";
@@ -72,6 +73,9 @@ export async function POST(request: Request) {
       valor: calcularPreco(servico, veiculo.segmento),
     },
   });
+
+  // RF08, Gatilho 1 (secao 3.4) — disparada imediatamente apos confirmacao.
+  await dispararNotificacao(agendamento.id, "CONFIRMACAO_AGENDAMENTO");
 
   return NextResponse.json(
     { id: agendamento.id, status: agendamento.status, pixChaveCopiaCola: tenant.pixChaveCopiaCola },
