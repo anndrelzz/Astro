@@ -19,10 +19,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Informe inicio e fim" }, { status: 400 });
   }
 
+  const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+  if (!DATA_REGEX.test(inicio) || !DATA_REGEX.test(fim)) {
+    return NextResponse.json(
+      { error: "Data invalida - use o formato AAAA-MM-DD" },
+      { status: 400 }
+    );
+  }
+
   const [anoI, mesI, diaI] = inicio.split("-").map(Number);
   const [anoF, mesF, diaF] = fim.split("-").map(Number);
   const dataInicio = new Date(anoI, mesI - 1, diaI, 0, 0, 0);
   const dataFim = new Date(anoF, mesF - 1, diaF, 23, 59, 59);
+
+  if (Number.isNaN(dataInicio.getTime()) || Number.isNaN(dataFim.getTime())) {
+    return NextResponse.json({ error: "Data invalida" }, { status: 400 });
+  }
+  if (dataInicio > dataFim) {
+    return NextResponse.json(
+      { error: "Data inicial nao pode ser depois da data final" },
+      { status: 400 }
+    );
+  }
 
   const where = {
     tenantId: session.user.tenantId,

@@ -22,13 +22,22 @@ export function FinanceiroDashboard() {
   const [inicio, setInicio] = useState(primeiroDiaDoMes());
   const [fim, setFim] = useState(formatarISO(new Date()));
   const [dados, setDados] = useState<Resultado | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
     setCarregando(true);
+    setErro(null);
     fetch(`/api/financeiro?inicio=${inicio}&fim=${fim}`)
-      .then((r) => r.json())
-      .then(setDados)
+      .then(async (r) => {
+        const json = await r.json();
+        if (!r.ok) {
+          setErro(json.error ?? "Nao foi possivel carregar.");
+          setDados(null);
+          return;
+        }
+        setDados(json);
+      })
       .finally(() => setCarregando(false));
   }, [inicio, fim]);
 
@@ -60,8 +69,9 @@ export function FinanceiroDashboard() {
       </div>
 
       {carregando && <p className="text-sm text-zinc-500">Carregando...</p>}
+      {erro && !carregando && <p className="text-sm text-red-600">{erro}</p>}
 
-      {dados && !carregando && (
+      {dados && !carregando && !erro && (
         <>
           <div className="flex gap-6">
             <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
