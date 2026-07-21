@@ -19,15 +19,18 @@
   --foreground: #171717;
 }
 
-/* Fundo padrao do documento = navy (app dark-first). Cada tela ajusta via
-   <ThemeColor> para a cor cor certa preencher ate as bordas do celular. */
+/* Fundo padrao do documento = navy (app dark-first). Cada tela ajusta html+body
+   via <ThemeColor> para a cor certa preencher ate as bordas do celular. */
 html {
   background-color: #0b1120;
 }
 
 body {
+  background-color: #0b1120;
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  /* Preenche a altura visivel real do mobile (evita faixa branca em cima/baixo). */
+  min-height: 100dvh;
   /* Impede rolagem horizontal acidental no mobile (defensivo). Os carrosseis
      internos (segmentos, cards) tem seu proprio overflow-x-auto. */
   overflow-x: hidden;

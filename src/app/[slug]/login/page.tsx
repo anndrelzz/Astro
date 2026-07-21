@@ -81,7 +81,7 @@ export default function LoginPage() {
   const eLogin = modo === "login";
 
   return (
-    <div className="astro-dark flex min-h-screen flex-col px-6 pb-8 pt-[calc(env(safe-area-inset-top)+2rem)]">
+    <div className="astro-dark flex min-h-dvh flex-col px-6 pb-8 pt-[calc(env(safe-area-inset-top)+2rem)]">
       <ThemeColor color="#0b1120" />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         {/* Cabecalho */}

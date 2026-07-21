@@ -78,7 +78,7 @@ export function PagamentoForm({
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-dvh bg-white">
       <ThemeColor color="#0b1120" />
       {/* Cabecalho escuro com total */}
       <div className="astro-dark px-5 pb-12 pt-[calc(env(safe-area-inset-top)+1.5rem)]">

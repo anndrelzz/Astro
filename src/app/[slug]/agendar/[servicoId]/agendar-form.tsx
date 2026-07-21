@@ -84,7 +84,7 @@ export function AgendarForm({
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-dvh bg-white">
       <ThemeColor color="#0b1120" />
       {/* Cabecalho escuro */}
       <div className="astro-dark px-5 pb-16 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
