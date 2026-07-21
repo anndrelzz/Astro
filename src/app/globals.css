@@ -22,6 +22,9 @@
 body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  /* Impede rolagem horizontal acidental no mobile (defensivo). Os carrosseis
+     internos (segmentos, cards) tem seu proprio overflow-x-auto. */
+  overflow-x: hidden;
 }
 
 /* Fundo escuro texturizado com listras diagonais + brilho superior,
