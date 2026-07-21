@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { lerJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 import { horariosSchema } from "@/lib/validations/tenant";
 
@@ -17,7 +18,10 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Nao autorizado" }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await lerJson(request);
+  if (body === null) {
+    return NextResponse.json({ error: "Corpo invalido" }, { status: 400 });
+  }
   const parsed = horariosSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(

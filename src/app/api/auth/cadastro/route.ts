@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { lerJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 
 const cadastroSchema = z.object({
@@ -19,7 +20,10 @@ const cadastroSchema = z.object({
 // UC01 — cliente cria conta informando nome completo, e-mail, telefone e
 // senha. Necessario para acessar os servicos e realizar agendamentos (RN02).
 export async function POST(request: Request) {
-  const body = await request.json();
+  const body = await lerJson(request);
+  if (body === null) {
+    return NextResponse.json({ error: "Corpo invalido" }, { status: 400 });
+  }
   const parsed = cadastroSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
