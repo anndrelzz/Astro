@@ -8,6 +8,7 @@ type Config = {
   cancelamentoHorasLimite: number;
   capacidadeSimultanea: number;
   intervaloMinutos: number;
+  corPrimaria: string;
 };
 
 type HorarioDia = {
@@ -21,18 +22,51 @@ type HorarioDia = {
 export function ConfiguracoesAdmin({
   configInicial,
   horariosIniciais,
+  logoUrlInicial,
 }: {
   configInicial: Config;
   horariosIniciais: HorarioDia[];
+  logoUrlInicial: string | null;
 }) {
   const router = useRouter();
   const [config, setConfig] = useState(configInicial);
   const [horarios, setHorarios] = useState(horariosIniciais);
+  const [logoUrl, setLogoUrl] = useState(logoUrlInicial);
   const [erroConfig, setErroConfig] = useState<string | null>(null);
   const [erroHorarios, setErroHorarios] = useState<string | null>(null);
+  const [erroLogo, setErroLogo] = useState<string | null>(null);
   const [salvandoConfig, setSalvandoConfig] = useState(false);
   const [salvandoHorarios, setSalvandoHorarios] = useState(false);
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
   const [sucesso, setSucesso] = useState<string | null>(null);
+
+  async function enviarLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    if (!arquivo) return;
+
+    setErroLogo(null);
+    setEnviandoLogo(true);
+
+    const formData = new FormData();
+    formData.append("logo", arquivo);
+
+    const resposta = await fetch("/api/tenant/logo", {
+      method: "POST",
+      body: formData,
+    });
+
+    setEnviandoLogo(false);
+
+    if (!resposta.ok) {
+      const json = await resposta.json().catch(() => null);
+      setErroLogo(json?.error ?? "Nao foi possivel enviar o logo.");
+      return;
+    }
+
+    const json = await resposta.json();
+    setLogoUrl(json.logoUrl);
+    router.refresh();
+  }
 
   async function salvarConfig(e: React.FormEvent) {
     e.preventDefault();
@@ -96,6 +130,55 @@ export function ConfiguracoesAdmin({
   return (
     <div className="mt-6 space-y-8">
       {sucesso && <p className="text-sm text-green-600">{sucesso}</p>}
+
+      <div className="max-w-md space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <h2 className="font-medium text-zinc-900 dark:text-zinc-50">
+          Identidade visual (RF13)
+        </h2>
+        {erroLogo && <p className="text-sm text-red-600">{erroLogo}</p>}
+
+        <div className="flex items-center gap-4">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt="Logo da estetica"
+              className="h-16 w-16 rounded object-contain"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded border border-dashed border-zinc-300 text-xs text-zinc-500 dark:border-zinc-700">
+              Sem logo
+            </div>
+          )}
+          <div>
+            <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+              Enviar logo (PNG, JPG, WEBP ou SVG - max. 2MB)
+            </label>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              onChange={enviarLogo}
+              disabled={enviandoLogo}
+              className="mt-1 text-sm"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+            Cor primaria
+          </label>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="color"
+              value={config.corPrimaria}
+              onChange={(e) => setConfig({ ...config, corPrimaria: e.target.value })}
+              className="h-9 w-14 rounded border border-zinc-300 dark:border-zinc-700"
+            />
+            <span className="text-sm text-zinc-500">{config.corPrimaria}</span>
+          </div>
+        </div>
+      </div>
 
       <form
         onSubmit={salvarConfig}

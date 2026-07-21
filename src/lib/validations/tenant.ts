@@ -1,11 +1,14 @@
 import { z } from "zod";
 
-// RF17, RF18, RN06 — configuracoes gerais da estetica.
+const corHexRegex = /^#([0-9a-fA-F]{6})$/;
+
+// RF17, RF18, RN06, RF13 — configuracoes gerais da estetica.
 export const tenantConfigSchema = z.object({
   pixChaveCopiaCola: z.string().trim().nullable(),
   cancelamentoHorasLimite: z.coerce.number().int().min(0, "Valor invalido"),
   capacidadeSimultanea: z.coerce.number().int().min(1, "Minimo de 1"),
   intervaloMinutos: z.coerce.number().int().min(5, "Minimo de 5 minutos"),
+  corPrimaria: z.string().regex(corHexRegex, "Cor invalida - use o formato #RRGGBB"),
 });
 
 const horaRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;

@@ -66,8 +66,10 @@ export default async function AdminConfiguracoesPage({
           cancelamentoHorasLimite: tenant.cancelamentoHorasLimite,
           capacidadeSimultanea: tenant.capacidadeSimultanea,
           intervaloMinutos: tenant.intervaloMinutos,
+          corPrimaria: tenant.corPrimaria ?? "#0f172a",
         }}
         horariosIniciais={horariosPorDia}
+        logoUrlInicial={tenant.logoUrl}
       />
     </div>
   );
