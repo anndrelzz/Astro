@@ -24,6 +24,10 @@ export default async function TenantPage({
   // Isolamento por tenant a nivel de aplicacao (RLS ainda nao habilitado, ver M1).
   const logadoNesteTenant = session?.user.tenantId === tenant.id;
 
+  const veiculos = logadoNesteTenant
+    ? await prisma.veiculo.findMany({ where: { usuarioId: session!.user.id } })
+    : [];
+
   return (
     <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
       <div className="flex items-center justify-between">
@@ -57,6 +61,37 @@ export default async function TenantPage({
           <li className="text-zinc-500">Nenhum servico cadastrado ainda.</li>
         )}
       </ul>
+
+      {logadoNesteTenant && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+              Meus veiculos
+            </h2>
+            <Link
+              href={`/${slug}/veiculos/novo`}
+              className="text-sm font-medium text-zinc-900 underline dark:text-zinc-50"
+            >
+              Cadastrar veiculo
+            </Link>
+          </div>
+          <ul className="mt-3 space-y-2">
+            {veiculos.map((veiculo) => (
+              <li
+                key={veiculo.id}
+                className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+              >
+                {veiculo.marca} {veiculo.modelo} ({veiculo.placa}) — {veiculo.segmento}
+              </li>
+            ))}
+            {veiculos.length === 0 && (
+              <li className="text-sm text-zinc-500">
+                Nenhum veiculo cadastrado ainda (RN04).
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

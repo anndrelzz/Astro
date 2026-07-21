@@ -7,6 +7,7 @@ const links = [
   { href: "/estetica-teste", label: "Pagina do tenant de teste" },
   { href: "/estetica-teste/login", label: "Login do tenant de teste" },
   { href: "/estetica-teste/agendar", label: "Rota protegida (testa redirect p/ login)" },
+  { href: "/estetica-teste/veiculos/novo", label: "Cadastrar veiculo (UC02)" },
   { href: "/qualquer-coisa", label: "Slug inexistente (testa 404)" },
 ];
 
