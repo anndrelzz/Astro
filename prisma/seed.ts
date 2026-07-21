@@ -17,6 +17,8 @@ async function main() {
       telefone: "47999990000",
       pixChaveCopiaCola: "00020126360014BR.GOV.BCB.PIX0114+47999990000",
       cancelamentoHorasLimite: 4,
+      capacidadeSimultanea: 2,
+      intervaloMinutos: 60,
       servicos: {
         create: [
           {
@@ -40,6 +42,21 @@ async function main() {
         ],
       },
     },
+  });
+
+  // Grade de horarios (RF02): seg-sex 08:00-18:00, sabado 08:00-12:00
+  const diasUteis = [1, 2, 3, 4, 5];
+  for (const diaSemana of diasUteis) {
+    await prisma.horarioFuncionamento.upsert({
+      where: { tenantId_diaSemana: { tenantId: tenant.id, diaSemana } },
+      update: {},
+      create: { tenantId: tenant.id, diaSemana, horaInicioMin: 8 * 60, horaFimMin: 18 * 60 },
+    });
+  }
+  await prisma.horarioFuncionamento.upsert({
+    where: { tenantId_diaSemana: { tenantId: tenant.id, diaSemana: 6 } },
+    update: {},
+    create: { tenantId: tenant.id, diaSemana: 6, horaInicioMin: 8 * 60, horaFimMin: 12 * 60 },
   });
 
   // Admin da estetica (RF02, RF17) — login: admin@teste.com / senha123

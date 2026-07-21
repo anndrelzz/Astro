@@ -52,25 +52,23 @@ export default async function AgendarPage({
         {veiculos.map((veiculo) => {
           const preco = calcularPreco(servico, veiculo.segmento);
           return (
-            <li
-              key={veiculo.id}
-              className="flex items-center justify-between rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-            >
-              <span>
-                {veiculo.marca} {veiculo.modelo} ({veiculo.placa}) —{" "}
-                {veiculo.segmento}
-              </span>
-              <span className="font-semibold">
-                R$ {preco.toFixed(2).replace(".", ",")}
-              </span>
+            <li key={veiculo.id}>
+              <Link
+                href={`/${slug}/agendar/${servicoId}/${veiculo.id}`}
+                className="flex items-center justify-between rounded-lg border border-zinc-200 p-4 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900"
+              >
+                <span>
+                  {veiculo.marca} {veiculo.modelo} ({veiculo.placa}) —{" "}
+                  {veiculo.segmento}
+                </span>
+                <span className="font-semibold">
+                  R$ {preco.toFixed(2).replace(".", ",")}
+                </span>
+              </Link>
             </li>
           );
         })}
       </ul>
-
-      <p className="mt-6 text-sm text-zinc-500">
-        Selecao de data e horario disponivel entra na proxima etapa (RF02).
-      </p>
 
       <Link
         href={`/${slug}`}

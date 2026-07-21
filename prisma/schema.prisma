@@ -65,13 +65,31 @@ model Tenant {
   telefone                String?
   pixChaveCopiaCola       String? // RF17 — se nulo, opcao PIX nao e exibida ao cliente (RN10)
   cancelamentoHorasLimite Int      @default(2) // RF18 — antecedencia minima para cancelamento pelo cliente
+  capacidadeSimultanea    Int      @default(1) // RN06 — configurada pelo Admin, numero de atendimentos ao mesmo tempo
+  intervaloMinutos        Int      @default(60) // RF02 — granularidade dos horarios oferecidos
   criadoEm                DateTime @default(now())
 
   usuarios     Usuario[]
   servicos     Servico[]
   agendamentos Agendamento[]
+  horarios     HorarioFuncionamento[]
 
   @@map("tenant")
+}
+
+/// Grade semanal recorrente de funcionamento (RF02). Um intervalo por dia
+/// da semana; ausencia de registro para um dia = estetica fechada nesse dia.
+model HorarioFuncionamento {
+  id            String @id @default(uuid())
+  tenantId      String
+  diaSemana     Int // 0 = domingo ... 6 = sabado (Date.getDay())
+  horaInicioMin Int // minutos desde meia-noite, ex: 480 = 08:00
+  horaFimMin    Int
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, diaSemana])
+  @@map("horario_funcionamento")
 }
 
 /// Concentra clientes e admins. telegram_chat_id/telegram_link_token
