@@ -1,11 +1,17 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LayoutDashboard } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Logo } from "@/components/ui/astro";
+import { BottomNav } from "@/components/ui/bottom-nav";
+import { HomeServicos } from "./home-servicos";
+import type { SegmentoVeiculo } from "@/generated/prisma/enums";
 
 // RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
-// Pagina inicial do tenant: lista de servicos com preco por segmento (RF01, RF04).
+// Home do cliente conforme mockup (tela 06): saudacao, card da estetica,
+// selecao de segmento e cards de servico com preco por segmento (RF01, RF04).
 export default async function TenantPage({
   params,
 }: {
@@ -15,126 +21,105 @@ export default async function TenantPage({
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
-    include: { servicos: true },
+    include: { servicos: { orderBy: { nome: "asc" } } },
   });
-
   if (!tenant) notFound();
 
   const session = await getServerSession(authOptions);
-  // Isolamento por tenant a nivel de aplicacao (RLS ainda nao habilitado, ver M1).
-  const logadoNesteTenant = session?.user.tenantId === tenant.id;
+  const logado = session?.user.tenantId === tenant.id;
 
-  const veiculos = logadoNesteTenant
+  const veiculos = logado
     ? await prisma.veiculo.findMany({ where: { usuarioId: session!.user.id } })
     : [];
 
+  const servicos = tenant.servicos.map((s) => ({
+    id: s.id,
+    nome: s.nome,
+    duracaoMin: s.duracaoMin,
+    precos: {
+      HATCH: Number(s.precoHatch),
+      SEDAN: Number(s.precoSedan),
+      SUV: Number(s.precoSuv),
+      PICKUP: Number(s.precoPickup),
+      VAN: Number(s.precoVan),
+    } as Record<SegmentoVeiculo, number>,
+  }));
+
+  const segmentoInicial: SegmentoVeiculo = veiculos[0]?.segmento ?? "SUV";
+  const primeiroNome = session?.user.name?.split(" ")[0] ?? "";
+  const iniciais = tenant.nome
+    .split(" ")
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {tenant.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={tenant.logoUrl}
-              alt={`Logo ${tenant.nome}`}
-              className="h-10 w-10 rounded object-contain"
-            />
-          )}
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {tenant.nome}
-          </h1>
-        </div>
-        {logadoNesteTenant ? (
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-zinc-600 dark:text-zinc-400">
-              Logado como {session?.user.name} ({session?.user.role})
-            </span>
-            <Link
-              href={`/${slug}/historico`}
-              className="font-medium text-zinc-900 underline dark:text-zinc-50"
-            >
-              Meus agendamentos
-            </Link>
-            <Link
-              href={`/${slug}/perfil`}
-              className="font-medium text-zinc-900 underline dark:text-zinc-50"
-            >
-              Perfil
-            </Link>
-            {session?.user.role === "ADMIN" && (
-              <Link
-                href={`/${slug}/admin/agendamentos`}
-                className="font-medium text-zinc-900 underline dark:text-zinc-50"
-              >
-                Painel Admin
-              </Link>
-            )}
+    <div className="min-h-screen bg-[#f6f8fb] pb-28">
+      {/* Cabecalho */}
+      <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-6">
+        {logado ? (
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-astro-bg text-sm font-semibold text-white">
+              {primeiroNome[0]?.toUpperCase() ?? "U"}
+            </div>
+            <div className="leading-tight">
+              <p className="text-xs text-zinc-400">Olá,</p>
+              <p className="font-semibold text-zinc-900">{primeiroNome}</p>
+            </div>
           </div>
         ) : (
           <Link
             href={`/${slug}/login`}
-            className="text-sm font-medium text-zinc-900 underline dark:text-zinc-50"
+            className="rounded-full bg-astro-blue px-4 py-2 text-sm font-semibold text-white"
           >
             Entrar
           </Link>
         )}
-      </div>
 
-      <ul className="mt-6 space-y-3">
-        {tenant.servicos.map((servico) => (
-          <li
-            key={servico.id}
-            className="flex items-center justify-between rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-          >
-            <span>
-              {servico.nome} — {servico.duracaoMin} min
-            </span>
-            {logadoNesteTenant && (
-              <Link
-                href={`/${slug}/agendar/${servico.id}`}
-                style={{ backgroundColor: tenant.corPrimaria ?? "#18181b" }}
-                className="rounded px-3 py-1 text-sm text-white"
-              >
-                Agendar
-              </Link>
-            )}
-          </li>
-        ))}
-        {tenant.servicos.length === 0 && (
-          <li className="text-zinc-500">Nenhum servico cadastrado ainda.</li>
-        )}
-      </ul>
-
-      {logadoNesteTenant && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
-              Meus veiculos
-            </h2>
+        <div className="flex items-center gap-3">
+          {session?.user.role === "ADMIN" && (
             <Link
-              href={`/${slug}/veiculos/novo`}
-              className="text-sm font-medium text-zinc-900 underline dark:text-zinc-50"
+              href={`/${slug}/admin/agendamentos`}
+              className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600"
             >
-              Cadastrar veiculo
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Painel
             </Link>
-          </div>
-          <ul className="mt-3 space-y-2">
-            {veiculos.map((veiculo) => (
-              <li
-                key={veiculo.id}
-                className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
-              >
-                {veiculo.marca} {veiculo.modelo} ({veiculo.placa}) — {veiculo.segmento}
-              </li>
-            ))}
-            {veiculos.length === 0 && (
-              <li className="text-sm text-zinc-500">
-                Nenhum veiculo cadastrado ainda (RN04).
-              </li>
-            )}
-          </ul>
+          )}
+          <Logo className="text-base text-zinc-900" />
         </div>
-      )}
+      </header>
+
+      <main className="mx-auto max-w-md px-5">
+        {/* Card da estetica */}
+        <div className="astro-dark mt-5 flex items-center justify-between rounded-2xl px-5 py-6">
+          <h1 className="text-xl font-bold text-white">{tenant.nome}</h1>
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
+            {tenant.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={tenant.logoUrl}
+                alt={`Logo ${tenant.nome}`}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-sm font-semibold tracking-wide text-white">
+                {iniciais}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <HomeServicos
+          slug={slug}
+          servicos={servicos}
+          segmentoInicial={segmentoInicial}
+          logado={logado}
+        />
+      </main>
+
+      {logado && <BottomNav slug={slug} />}
     </div>
   );
 }
