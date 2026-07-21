@@ -10,8 +10,8 @@ import { calcularSlotsDisponiveis } from "@/lib/slots";
 const agendamentoSchema = z.object({
   servicoId: z.string().uuid(),
   veiculoId: z.string().uuid(),
-  data: z.string(), // YYYY-MM-DD
-  hora: z.string(), // HH:mm
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data invalida"),
+  hora: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Horario invalido"),
   formaPagamento: z.enum(["PIX", "LOCAL"]),
 });
 
