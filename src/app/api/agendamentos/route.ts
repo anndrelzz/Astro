@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { lerJson } from "@/lib/api-helpers";
 import { dispararNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await lerJson(request);
+  if (body === null) {
+    return NextResponse.json({ error: "Corpo invalido" }, { status: 400 });
+  }
   const parsed = agendamentoSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Dados invalidos" }, { status: 400 });
