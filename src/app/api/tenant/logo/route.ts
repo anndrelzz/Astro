@@ -1,16 +1,19 @@
 import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import path from "path";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// SVG deliberadamente fora da lista: e um formato XML que pode conter
+// <script> e handlers (onload, etc.) executados pelo navegador quando o
+// arquivo e aberto diretamente pela URL - risco real de XSS armazenado
+// (confirmado em teste manual antes desta correcao).
 const TIPOS_ACEITOS: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
-  "image/svg+xml": "svg",
 };
 const TAMANHO_MAXIMO = 2 * 1024 * 1024; // 2MB
 
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
   const extensao = TIPOS_ACEITOS[arquivo.type];
   if (!extensao) {
     return NextResponse.json(
-      { error: "Formato invalido - use PNG, JPG, WEBP ou SVG" },
+      { error: "Formato invalido - use PNG, JPG ou WEBP" },
       { status: 400 }
     );
   }
@@ -49,6 +52,11 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  const tenantAtual = await prisma.tenant.findUnique({
+    where: { id: session.user.tenantId },
+    select: { logoUrl: true },
+  });
 
   const nomeArquivo = `${session.user.tenantId}-${randomUUID()}.${extensao}`;
   const diretorio = path.join(process.cwd(), "public", "uploads", "logos");
@@ -62,6 +70,12 @@ export async function POST(request: Request) {
     where: { id: session.user.tenantId },
     data: { logoUrl },
   });
+
+  // Remove o logo antigo para nao acumular arquivos orfaos no disco.
+  if (tenantAtual?.logoUrl?.startsWith("/uploads/logos/")) {
+    const caminhoAntigo = path.join(process.cwd(), "public", tenantAtual.logoUrl);
+    await unlink(caminhoAntigo).catch(() => {});
+  }
 
   return NextResponse.json({ logoUrl });
 }

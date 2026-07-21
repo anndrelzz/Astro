@@ -152,11 +152,11 @@ export function ConfiguracoesAdmin({
           )}
           <div>
             <label className="block text-sm text-zinc-600 dark:text-zinc-400">
-              Enviar logo (PNG, JPG, WEBP ou SVG - max. 2MB)
+              Enviar logo (PNG, JPG ou WEBP - max. 2MB)
             </label>
             <input
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              accept="image/png,image/jpeg,image/webp"
               onChange={enviarLogo}
               disabled={enviandoLogo}
               className="mt-1 text-sm"
