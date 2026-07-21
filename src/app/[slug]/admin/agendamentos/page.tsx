@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AcoesAgendamento } from "./acoes-agendamento";
+import { AdminNav } from "../admin-nav";
 
 // RF11, UC10 — painel administrativo com visao geral dos agendamentos.
 export default async function AdminAgendamentosPage({
@@ -31,6 +32,7 @@ export default async function AdminAgendamentosPage({
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
+      <AdminNav slug={slug} />
       <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
         Painel — Agendamentos
       </h1>
