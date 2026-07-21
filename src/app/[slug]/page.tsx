@@ -35,9 +35,25 @@ export default async function TenantPage({
           {tenant.nome}
         </h1>
         {logadoNesteTenant ? (
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            Logado como {session?.user.name} ({session?.user.role})
-          </span>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-zinc-600 dark:text-zinc-400">
+              Logado como {session?.user.name} ({session?.user.role})
+            </span>
+            <Link
+              href={`/${slug}/historico`}
+              className="font-medium text-zinc-900 underline dark:text-zinc-50"
+            >
+              Meus agendamentos
+            </Link>
+            {session?.user.role === "ADMIN" && (
+              <Link
+                href={`/${slug}/admin/agendamentos`}
+                className="font-medium text-zinc-900 underline dark:text-zinc-50"
+              >
+                Painel Admin
+              </Link>
+            )}
+          </div>
         ) : (
           <Link
             href={`/${slug}/login`}
