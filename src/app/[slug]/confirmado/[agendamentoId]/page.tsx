@@ -52,7 +52,7 @@ export default async function ConfirmadoPage({
     `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`;
 
   return (
-    <div className="astro-dark relative min-h-[100dvh] overflow-hidden px-5 pb-10 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
+    <div className="astro-dark relative min-h-screen overflow-hidden px-5 pb-10 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
       <ThemeColor color="#0b1120" />
       {/* Estrelas decorativas */}
       <div className="pointer-events-none absolute inset-0 opacity-40">

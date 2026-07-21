@@ -56,7 +56,7 @@ export default async function TenantPage({
     .toUpperCase();
 
   return (
-    <div className="min-h-[100dvh] bg-[#f6f8fb] pb-28">
+    <div className="min-h-screen bg-[#f6f8fb] pb-28">
       <ThemeColor color="#f6f8fb" />
       {/* Cabecalho */}
       <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
