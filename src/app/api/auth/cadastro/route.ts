@@ -7,7 +7,12 @@ const cadastroSchema = z.object({
   tenantSlug: z.string().min(1),
   nome: z.string().min(1, "Informe o nome completo"),
   email: z.string().email("E-mail invalido"),
-  telefone: z.string().min(8, "Telefone invalido"),
+  telefone: z
+    .string()
+    .transform((v) => v.replace(/\D/g, ""))
+    .refine((v) => v.length === 10 || v.length === 11, {
+      message: "Telefone invalido - informe DDD + numero (10 ou 11 digitos)",
+    }),
   senha: z.string().min(6, "Senha deve ter ao menos 6 caracteres"),
 });
 
