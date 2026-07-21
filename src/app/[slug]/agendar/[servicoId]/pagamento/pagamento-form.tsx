@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Diamond, Wallet, Check } from "lucide-react";
 import Link from "next/link";
+import { ThemeColor } from "@/components/ui/theme-color";
 
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const MESES_ABR = [
@@ -77,9 +78,10 @@ export function PagamentoForm({
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-[100dvh] bg-white">
+      <ThemeColor color="#0b1120" />
       {/* Cabecalho escuro com total */}
-      <div className="astro-dark px-5 pb-12 pt-6">
+      <div className="astro-dark px-5 pb-12 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         <div className="mx-auto max-w-md">
           <div className="flex items-center justify-between">
             <Link
@@ -179,7 +181,7 @@ export function PagamentoForm({
       </div>
 
       {/* Botao fixo */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-zinc-100 bg-white/95 px-5 py-4 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 border-t border-zinc-100 bg-white/95 px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur">
         <div className="mx-auto max-w-md">
           <button
             onClick={confirmar}

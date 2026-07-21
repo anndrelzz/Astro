@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Logo } from "@/components/ui/astro";
 import { BottomNav } from "@/components/ui/bottom-nav";
+import { ThemeColor } from "@/components/ui/theme-color";
 import { HomeServicos } from "./home-servicos";
 import type { SegmentoVeiculo } from "@/generated/prisma/enums";
 
@@ -55,9 +56,10 @@ export default async function TenantPage({
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#f6f8fb] pb-28">
+    <div className="min-h-[100dvh] bg-[#f6f8fb] pb-28">
+      <ThemeColor color="#f6f8fb" />
       {/* Cabecalho */}
-      <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-6">
+      <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         {logado ? (
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-astro-bg text-sm font-semibold text-white">

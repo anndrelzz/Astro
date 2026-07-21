@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ThemeColor } from "@/components/ui/theme-color";
 
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const MESES = [
@@ -51,7 +52,8 @@ export default async function ConfirmadoPage({
     `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`;
 
   return (
-    <div className="astro-dark relative min-h-screen overflow-hidden px-5 py-10">
+    <div className="astro-dark relative min-h-[100dvh] overflow-hidden px-5 pb-10 pt-[calc(env(safe-area-inset-top)+2.5rem)]">
+      <ThemeColor color="#0b1120" />
       {/* Estrelas decorativas */}
       <div className="pointer-events-none absolute inset-0 opacity-40">
         <span className="absolute left-[20%] top-[22%] text-white/40">✦</span>

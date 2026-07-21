@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { ThemeColor } from "@/components/ui/theme-color";
 
 type Veiculo = {
   id: string;
@@ -83,9 +84,10 @@ export function AgendarForm({
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-[100dvh] bg-white">
+      <ThemeColor color="#0b1120" />
       {/* Cabecalho escuro */}
-      <div className="astro-dark px-5 pb-16 pt-6">
+      <div className="astro-dark px-5 pb-16 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         <div className="mx-auto max-w-md">
           <Link
             href={`/${slug}`}
@@ -238,7 +240,7 @@ export function AgendarForm({
       </div>
 
       {/* Botao fixo */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-zinc-100 bg-white/95 px-5 py-4 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 border-t border-zinc-100 bg-white/95 px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur">
         <div className="mx-auto max-w-md">
           <button
             onClick={confirmar}

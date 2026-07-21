@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CopiarPix } from "./copiar-pix";
+import { ThemeColor } from "@/components/ui/theme-color";
 
 // Tela 11 — PIX Copia e Cola. QR gerado a partir da propria chave (sem
 // gateway). Confirmacao e MANUAL pelo Admin (RFC RN05) — por isso o status
@@ -41,9 +42,10 @@ export default async function PixPage({
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-[100dvh] bg-white">
+      <ThemeColor color="#0b1120" />
       {/* Cabecalho escuro */}
-      <div className="astro-dark px-5 pb-16 pt-6">
+      <div className="astro-dark px-5 pb-16 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         <div className="mx-auto flex max-w-md items-center justify-between">
           <Link
             href={`/${slug}`}

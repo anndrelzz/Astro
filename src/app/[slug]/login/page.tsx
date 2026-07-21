@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { Logo, Field, FieldLabel, PrimaryButton } from "@/components/ui/astro";
+import { ThemeColor } from "@/components/ui/theme-color";
 
 // RN02, UC01, UC03 — ao acessar a URL da estetica sem sessao, o sistema
 // exibe login ou cadastro. Apos cadastro, login automatico e retorno ao
@@ -80,7 +81,8 @@ export default function LoginPage() {
   const eLogin = modo === "login";
 
   return (
-    <div className="astro-dark flex min-h-screen flex-col px-6 py-8">
+    <div className="astro-dark flex min-h-[100dvh] flex-col px-6 pb-8 pt-[calc(env(safe-area-inset-top)+2rem)]">
+      <ThemeColor color="#0b1120" />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         {/* Cabecalho */}
         <div className="flex items-center justify-between">
