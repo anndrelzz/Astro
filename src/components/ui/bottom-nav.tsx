@@ -16,7 +16,7 @@ export function BottomNav({ slug }: { slug: string }) {
   ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-5">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
       <div className="flex items-center gap-1 rounded-full border border-black/5 bg-white/90 p-2 shadow-xl shadow-black/10 backdrop-blur">
         {itens.map((item) => {
           const ativo = item.exato

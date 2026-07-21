@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { ThemeColor } from "@/components/ui/theme-color";
 
 const SEGMENTOS = [
   { value: "HATCH", label: "Hatch" },
@@ -61,9 +62,10 @@ export default function NovoVeiculoPage() {
     "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-astro-blue focus:outline-none";
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-[100dvh] bg-white">
+      <ThemeColor color="#0b1120" />
       {/* Cabecalho escuro */}
-      <div className="astro-dark px-5 pb-10 pt-6">
+      <div className="astro-dark px-5 pb-10 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
         <div className="mx-auto flex max-w-md items-center justify-between">
           <Link
             href={callbackUrl}

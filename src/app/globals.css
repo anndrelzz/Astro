@@ -19,12 +19,20 @@
   --foreground: #171717;
 }
 
+/* Fundo padrao do documento = navy (app dark-first). Cada tela ajusta via
+   <ThemeColor> para a cor cor certa preencher ate as bordas do celular. */
+html {
+  background-color: #0b1120;
+}
+
 body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   /* Impede rolagem horizontal acidental no mobile (defensivo). Os carrosseis
      internos (segmentos, cards) tem seu proprio overflow-x-auto. */
   overflow-x: hidden;
+  /* Evita o "efeito elastico" mostrar faixa de cor diferente nas bordas. */
+  overscroll-behavior: none;
 }
 
 /* Fundo escuro texturizado com listras diagonais + brilho superior,
