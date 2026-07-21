@@ -16,6 +16,11 @@ export default async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Protege as rotas de agendamento, historico e admin de cada tenant.
-  matcher: ["/:slug/agendar/:path*", "/:slug/historico/:path*", "/:slug/admin/:path*"],
+  // Protege as rotas de agendamento, veiculos, historico e admin de cada tenant.
+  matcher: [
+    "/:slug/agendar/:path*",
+    "/:slug/veiculos/:path*",
+    "/:slug/historico/:path*",
+    "/:slug/admin/:path*",
+  ],
 };
