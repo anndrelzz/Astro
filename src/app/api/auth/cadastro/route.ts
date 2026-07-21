@@ -7,7 +7,10 @@ import { prisma } from "@/lib/prisma";
 const cadastroSchema = z.object({
   tenantSlug: z.string().min(1),
   nome: z.string().min(1, "Informe o nome completo"),
-  email: z.string().email("E-mail invalido"),
+  email: z
+    .string()
+    .email("E-mail invalido")
+    .transform((v) => v.toLowerCase()),
   telefone: z
     .string()
     .transform((v) => v.replace(/\D/g, ""))

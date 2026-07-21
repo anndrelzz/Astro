@@ -51,8 +51,14 @@ export const authOptions: NextAuthOptions = {
         if (!tenant) return null;
 
         // RN02/RN03 — acesso aos servicos exige autenticacao dentro do tenant correto.
+        // E-mail e tratado sem diferenciar maiusculas/minusculas.
         const usuario = await prisma.usuario.findUnique({
-          where: { tenantId_email: { tenantId: tenant.id, email: credentials.email } },
+          where: {
+            tenantId_email: {
+              tenantId: tenant.id,
+              email: credentials.email.toLowerCase(),
+            },
+          },
         });
         if (!usuario) return null;
 
