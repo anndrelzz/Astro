@@ -37,6 +37,34 @@ export function FieldLabel({ children }: { children: ReactNode }) {
   return <label className="astro-label block">{children}</label>;
 }
 
+// Cabecalho escuro com botao voltar e titulo centralizado (telas 08, 10, 11).
+export function ScreenHeader({
+  href,
+  title,
+  children,
+}: {
+  href: string;
+  title: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="astro-dark px-5 pb-8 pt-6">
+      <div className="mx-auto flex max-w-md items-center justify-between">
+        <Link
+          href={href}
+          aria-label="Voltar"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <h1 className="font-semibold text-white">{title}</h1>
+        <span className="h-11 w-11" />
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // Campo com icone a esquerda e slot opcional a direita (ex: mostrar senha).
 export function Field({
   icon,
