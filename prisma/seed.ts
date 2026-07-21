@@ -7,18 +7,22 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // Estetica de teste — RN09: URL publica em astro.app/[slug]
+  const configuracoesTenant = {
+    corPrimaria: "#0f172a",
+    telefone: "47999990000",
+    pixChaveCopiaCola: "00020126360014BR.GOV.BCB.PIX0114+47999990000",
+    cancelamentoHorasLimite: 4,
+    capacidadeSimultanea: 2,
+    intervaloMinutos: 60,
+  };
+
   const tenant = await prisma.tenant.upsert({
     where: { slug: "estetica-teste" },
-    update: {},
+    update: configuracoesTenant,
     create: {
+      ...configuracoesTenant,
       nome: "Estetica do Rafael",
       slug: "estetica-teste",
-      corPrimaria: "#0f172a",
-      telefone: "47999990000",
-      pixChaveCopiaCola: "00020126360014BR.GOV.BCB.PIX0114+47999990000",
-      cancelamentoHorasLimite: 4,
-      capacidadeSimultanea: 2,
-      intervaloMinutos: 60,
       servicos: {
         create: [
           {
