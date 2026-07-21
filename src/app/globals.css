@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Paleta Astro (extraida dos mockups) */
+  --color-astro-bg: #0b1120;
+  --color-astro-surface: #141c2f;
+  --color-astro-surface-2: #1b2540;
+  --color-astro-border: #26304a;
+  --color-astro-blue: #2563eb;
+  --color-astro-blue-bright: #3b82f6;
+  --color-astro-muted: #8a97b1;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Fundo escuro texturizado com listras diagonais + brilho superior,
+   usado nas telas do cliente (mobile-first). */
+.astro-dark {
+  background-color: #0b1120;
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.028) 0px,
+      rgba(255, 255, 255, 0.028) 2px,
+      transparent 2px,
+      transparent 22px
+    ),
+    radial-gradient(140% 100% at 50% -10%, #22335a 0%, #0b1120 55%);
+  color: #f8fafc;
+}
+
+/* Label tecnica em maiuscula espacada (estilo mono dos mockups). */
+.astro-label {
+  font-family: var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  color: var(--color-astro-muted);
 }
