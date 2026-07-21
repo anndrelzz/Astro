@@ -6,10 +6,19 @@ import { enviarTelegram } from "@/lib/notificacoes/telegram";
 // "START" apos abrir t.me/<bot>?start=TOKEN. Associa o chat_id a conta
 // correspondente e invalida o token imediatamente.
 export async function POST(request: Request) {
-  const update = await request.json();
+  let update: unknown;
+  try {
+    update = await request.json();
+  } catch {
+    // Endpoint publico (chamado pelo Telegram) - corpo invalido nao deve
+    // derrubar o servidor, so nao ha nada a fazer.
+    return NextResponse.json({ ok: true });
+  }
 
-  const texto: string | undefined = update?.message?.text;
-  const chatId: number | undefined = update?.message?.chat?.id;
+  const mensagem = (update as { message?: { text?: string; chat?: { id?: number } } })
+    ?.message;
+  const texto = mensagem?.text;
+  const chatId = mensagem?.chat?.id;
 
   if (!texto?.startsWith("/start ") || !chatId) {
     return NextResponse.json({ ok: true });
