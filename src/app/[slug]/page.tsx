@@ -52,9 +52,19 @@ export default async function TenantPage({
         {tenant.servicos.map((servico) => (
           <li
             key={servico.id}
-            className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+            className="flex items-center justify-between rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
           >
-            {servico.nome} — {servico.duracaoMin} min
+            <span>
+              {servico.nome} — {servico.duracaoMin} min
+            </span>
+            {logadoNesteTenant && (
+              <Link
+                href={`/${slug}/agendar/${servico.id}`}
+                className="rounded bg-zinc-900 px-3 py-1 text-sm text-white dark:bg-zinc-50 dark:text-black"
+              >
+                Agendar
+              </Link>
+            )}
           </li>
         ))}
         {tenant.servicos.length === 0 && (
