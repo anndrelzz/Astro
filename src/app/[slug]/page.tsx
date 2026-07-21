@@ -31,9 +31,19 @@ export default async function TenantPage({
   return (
     <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {tenant.nome}
-        </h1>
+        <div className="flex items-center gap-3">
+          {tenant.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={tenant.logoUrl}
+              alt={`Logo ${tenant.nome}`}
+              className="h-10 w-10 rounded object-contain"
+            />
+          )}
+          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+            {tenant.nome}
+          </h1>
+        </div>
         {logadoNesteTenant ? (
           <div className="flex items-center gap-4 text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">
@@ -82,7 +92,8 @@ export default async function TenantPage({
             {logadoNesteTenant && (
               <Link
                 href={`/${slug}/agendar/${servico.id}`}
-                className="rounded bg-zinc-900 px-3 py-1 text-sm text-white dark:bg-zinc-50 dark:text-black"
+                style={{ backgroundColor: tenant.corPrimaria ?? "#18181b" }}
+                className="rounded px-3 py-1 text-sm text-white"
               >
                 Agendar
               </Link>
