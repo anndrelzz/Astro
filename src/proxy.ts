@@ -27,6 +27,8 @@ export const config = {
   matcher: [
     "/:slug/agendar/:path*",
     "/:slug/veiculos/:path*",
+    "/:slug/pagamento/:path*",
+    "/:slug/confirmado/:path*",
     "/:slug/historico/:path*",
     "/:slug/perfil/:path*",
     "/:slug/admin/:path*",
