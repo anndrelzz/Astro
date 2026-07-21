@@ -4,6 +4,7 @@ export function AdminNav({ slug }: { slug: string }) {
   const links = [
     { href: `/${slug}/admin/agendamentos`, label: "Agendamentos" },
     { href: `/${slug}/admin/servicos`, label: "Servicos" },
+    { href: `/${slug}/admin/financeiro`, label: "Financeiro" },
     { href: `/${slug}/admin/configuracoes`, label: "Configuracoes" },
   ];
 
