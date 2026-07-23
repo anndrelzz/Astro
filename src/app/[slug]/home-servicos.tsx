@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Plus, Clock } from "lucide-react";
+import { Plus, Clock, Car, ArrowRight } from "lucide-react";
 import type { SegmentoVeiculo } from "@/generated/prisma/enums";
 
 type Servico = {
@@ -37,13 +37,24 @@ export function HomeServicos({
   servicos,
   segmentoInicial,
   logado,
+  temVeiculo,
 }: {
   slug: string;
   servicos: Servico[];
   segmentoInicial: SegmentoVeiculo;
   logado: boolean;
+  temVeiculo: boolean;
 }) {
   const [segmento, setSegmento] = useState<SegmentoVeiculo>(segmentoInicial);
+  // RN04 — logado sem veiculo cai no modal "sem veiculo" (tela 07) ao agendar.
+  const [semVeiculo, setSemVeiculo] = useState(false);
+
+  // Destino do agendamento conforme estado do usuario.
+  function hrefAgendar(servicoId: string) {
+    return logado
+      ? `/${slug}/agendar/${servicoId}`
+      : `/${slug}/login?callbackUrl=/${slug}/agendar/${servicoId}`;
+  }
 
   return (
     <div className="mt-6">
@@ -108,17 +119,23 @@ export function HomeServicos({
                     {formatarPreco(servico.precos[segmento])}
                   </p>
                 </div>
-                <Link
-                  href={
-                    logado
-                      ? `/${slug}/agendar/${servico.id}`
-                      : `/${slug}/login?callbackUrl=/${slug}/agendar/${servico.id}`
-                  }
-                  aria-label={`Agendar ${servico.nome}`}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-astro-blue text-white shadow-lg shadow-astro-blue/30"
-                >
-                  <Plus className="h-5 w-5" />
-                </Link>
+                {logado && !temVeiculo ? (
+                  <button
+                    onClick={() => setSemVeiculo(true)}
+                    aria-label={`Agendar ${servico.nome}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-astro-blue text-white shadow-lg shadow-astro-blue/30"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                ) : (
+                  <Link
+                    href={hrefAgendar(servico.id)}
+                    aria-label={`Agendar ${servico.nome}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-astro-blue text-white shadow-lg shadow-astro-blue/30"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -128,6 +145,46 @@ export function HomeServicos({
           <p className="text-sm text-zinc-500">Nenhum serviço cadastrado ainda.</p>
         )}
       </div>
+
+      {/* Tela 07 — modal "sem veiculo" (RN04) */}
+      {semVeiculo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <button
+            aria-label="Fechar"
+            onClick={() => setSemVeiculo(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+            <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-astro-blue/10">
+              <Car className="h-6 w-6 text-astro-blue" />
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-astro-blue text-[0.7rem] font-bold text-white">
+                !
+              </span>
+            </div>
+            <h2 className="mt-4 text-lg font-bold text-zinc-900">
+              Veículo não cadastrado
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+              Você ainda não possui um veículo cadastrado. Só conseguirá
+              prosseguir para o agendamento se realizar o cadastro.
+            </p>
+
+            <Link
+              href={`/${slug}/veiculos/novo?callbackUrl=/${slug}`}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-astro-blue to-astro-blue-bright py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25"
+            >
+              Cadastrar veículo
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <button
+              onClick={() => setSemVeiculo(false)}
+              className="mt-2 w-full py-2 text-sm font-semibold text-astro-blue"
+            >
+              Agora não
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
