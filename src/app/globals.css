@@ -54,6 +54,18 @@ body {
   color: #f8fafc;
 }
 
+/* iOS Safari da um zoom automatico ao focar campos com fonte < 16px. No
+   mobile, fixamos 16px nos controles de formulario para evitar esse zoom —
+   sem recorrer a maximum-scale/user-scalable=no, que quebrariam o pinch-zoom
+   e a acessibilidade. O !important vence as utilitarias text-sm dos inputs. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Label tecnica em maiuscula espacada (estilo mono dos mockups). */
 .astro-label {
   font-family: var(--font-geist-mono), monospace;

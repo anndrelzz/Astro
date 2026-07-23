@@ -2,9 +2,10 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { VincularTelegram } from "./vincular-telegram";
+import { PerfilCliente } from "./perfil-cliente";
 
-// UC15 — cliente acessa o perfil e vincula (opcionalmente) o Telegram.
+// UC15, tela 04 do mockup — perfil do cliente: dados de contato, estatisticas
+// e lista de veiculos. A edicao (tela 05) e um modal em PerfilCliente.
 export default async function PerfilPage({
   params,
 }: {
@@ -22,20 +23,35 @@ export default async function PerfilPage({
 
   const usuario = await prisma.usuario.findUnique({
     where: { id: session.user.id },
+    include: {
+      veiculos: { orderBy: { id: "asc" } },
+      _count: { select: { agendamentos: true } },
+    },
   });
+  if (!usuario) redirect(`/${slug}/login`);
+
+  const desde = usuario.criadoEm
+    .toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
+    .replace(".", "")
+    .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Perfil
-      </h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        {usuario?.nome} — {usuario?.email}
-      </p>
-
-      <div className="mt-6">
-        <VincularTelegram jaVinculado={!!usuario?.telegramChatId} />
-      </div>
-    </div>
+    <PerfilCliente
+      slug={slug}
+      nome={usuario.nome}
+      email={usuario.email}
+      telefone={usuario.telefone ?? ""}
+      desde={desde}
+      totalAgendamentos={usuario._count.agendamentos}
+      veiculos={usuario.veiculos.map((v) => ({
+        id: v.id,
+        marca: v.marca,
+        modelo: v.modelo,
+        placa: v.placa,
+        ano: v.ano,
+        cor: v.cor,
+        segmento: v.segmento,
+      }))}
+    />
   );
 }

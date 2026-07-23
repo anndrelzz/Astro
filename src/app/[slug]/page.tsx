@@ -8,6 +8,7 @@ import { Logo } from "@/components/ui/astro";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { HomeServicos } from "./home-servicos";
+import { Hero } from "./hero";
 import type { SegmentoVeiculo } from "@/generated/prisma/enums";
 
 // RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
@@ -28,6 +29,11 @@ export default async function TenantPage({
 
   const session = await getServerSession(authOptions);
   const logado = session?.user.tenantId === tenant.id;
+
+  // Tela 01 (hero) para visitante deslogado; home (tela 06) para logado.
+  if (!logado) {
+    return <Hero slug={slug} nome={tenant.nome} />;
+  }
 
   const veiculos = logado
     ? await prisma.veiculo.findMany({ where: { usuarioId: session!.user.id } })
@@ -118,6 +124,7 @@ export default async function TenantPage({
           servicos={servicos}
           segmentoInicial={segmentoInicial}
           logado={logado}
+          temVeiculo={veiculos.length > 0}
         />
       </main>
 
