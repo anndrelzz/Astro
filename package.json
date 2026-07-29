@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:rls": "node --env-file=.env --import tsx --test tests/rls-isolamento.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
