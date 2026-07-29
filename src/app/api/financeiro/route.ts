@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 
 // RF12, UC11 — dashboard financeiro com receita por periodo e por servico.
 // So conta agendamentos com pagamento confirmado (CONFIRMADO/CONCLUIDO);
@@ -48,17 +48,24 @@ export async function GET(request: Request) {
     dataHora: { gte: dataInicio, lte: dataFim },
   };
 
-  const agregadoPorServico = await prisma.agendamento.groupBy({
-    by: ["servicoId"],
-    where,
-    _sum: { valor: true },
-    _count: { _all: true },
-  });
+  const { agregadoPorServico, servicos } = await withTenant(
+    session.user.tenantId,
+    async (tx) => {
+      const agregadoPorServico = await tx.agendamento.groupBy({
+        by: ["servicoId"],
+        where,
+        _sum: { valor: true },
+        _count: { _all: true },
+      });
 
-  const servicos = await prisma.servico.findMany({
-    where: { tenantId: session.user.tenantId },
-    select: { id: true, nome: true },
-  });
+      const servicos = await tx.servico.findMany({
+        where: { tenantId: session.user.tenantId },
+        select: { id: true, nome: true },
+      });
+
+      return { agregadoPorServico, servicos };
+    }
+  );
   const nomePorServico = Object.fromEntries(servicos.map((s) => [s.id, s.nome]));
 
   const porServico = agregadoPorServico

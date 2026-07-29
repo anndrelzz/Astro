@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { veiculoSchema } from "@/lib/validations/veiculo";
 
 // UC02 — cadastro de veiculo, obrigatorio antes do primeiro agendamento (RN04).
@@ -24,12 +24,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const veiculo = await prisma.veiculo.create({
-    data: {
-      ...parsed.data,
-      usuarioId: session.user.id,
-    },
-  });
+  const veiculo = await withTenant(session.user.tenantId, (tx) =>
+    tx.veiculo.create({
+      data: {
+        ...parsed.data,
+        tenantId: session.user.tenantId,
+        usuarioId: session.user.id,
+      },
+    })
+  );
 
   return NextResponse.json(veiculo, { status: 201 });
 }
@@ -41,10 +44,12 @@ export async function GET() {
     return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
   }
 
-  const veiculos = await prisma.veiculo.findMany({
-    where: { usuarioId: session.user.id },
-    orderBy: { id: "asc" },
-  });
+  const veiculos = await withTenant(session.user.tenantId, (tx) =>
+    tx.veiculo.findMany({
+      where: { usuarioId: session.user.id },
+      orderBy: { id: "asc" },
+    })
+  );
 
   return NextResponse.json(veiculos);
 }

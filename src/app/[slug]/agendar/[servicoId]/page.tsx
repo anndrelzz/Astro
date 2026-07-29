@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { calcularPreco } from "@/lib/precificacao";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { AgendarForm } from "./agendar-form";
 
 // UC03, tela 09 — escolha de data/horario/veiculo. RN04: sem veiculo
@@ -22,14 +23,16 @@ export default async function AgendarPage({
     redirect(`/${slug}/login?callbackUrl=/${slug}/agendar/${servicoId}`);
   }
 
-  const servico = await prisma.servico.findFirst({
-    where: { id: servicoId, tenantId: tenant.id },
+  const { servico, veiculos } = await withTenant(tenant.id, async (tx) => {
+    const servico = await tx.servico.findFirst({
+      where: { id: servicoId, tenantId: tenant.id },
+    });
+    const veiculos = await tx.veiculo.findMany({
+      where: { usuarioId: session.user.id },
+    });
+    return { servico, veiculos };
   });
   if (!servico) notFound();
-
-  const veiculos = await prisma.veiculo.findMany({
-    where: { usuarioId: session.user.id },
-  });
 
   // RN04 — precisa de ao menos um veiculo para agendar.
   if (veiculos.length === 0) {

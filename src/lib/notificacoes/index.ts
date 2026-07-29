@@ -1,5 +1,5 @@
 import type { TipoNotificacao } from "@/generated/prisma/enums";
-import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { enviarEmail } from "./email";
 import { enviarTelegram } from "./telegram";
 
@@ -30,18 +30,21 @@ function montarMensagem(
 
 // Fluxo de Notificacoes (secao 3.4 do RFC) — fila simples com registro de
 // tentativas. E-mail sempre disparado (RN13); Telegram apenas se vinculado.
+// Recebe o client de transacao ja contextualizado por withTenant (RLS) do
+// chamador — nunca importa o `prisma` global.
 export async function dispararNotificacao(
+  tx: Prisma.TransactionClient,
   agendamentoId: string,
   tipo: TipoNotificacao
 ) {
-  const agendamento = await prisma.agendamento.findUnique({
+  const agendamento = await tx.agendamento.findUnique({
     where: { id: agendamentoId },
     include: { usuario: true, servico: true },
   });
   if (!agendamento) return;
 
-  const notificacao = await prisma.notificacao.create({
-    data: { agendamentoId, tipo, status: "PENDENTE" },
+  const notificacao = await tx.notificacao.create({
+    data: { tenantId: agendamento.tenantId, agendamentoId, tipo, status: "PENDENTE" },
   });
 
   const texto = montarMensagem(tipo, agendamento.servico.nome, agendamento.dataHora);
@@ -53,7 +56,7 @@ export async function dispararNotificacao(
     await enviarTelegram(agendamento.usuario.telegramChatId, texto);
   }
 
-  await prisma.notificacao.update({
+  await tx.notificacao.update({
     where: { id: notificacao.id },
     data: {
       status: resultadoEmail.enviado ? "ENVIADA" : "FALHA",
