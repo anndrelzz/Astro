@@ -1,10 +1,16 @@
 // Schema do Astro — SaaS de gestao para esteticas automotivas
 // Modelo de dados conforme RFC v1.0, secao 5.2 (Figura 9 — Diagrama ER)
 //
-// Nota de arquitetura (M1): Row-Level Security (RLS) sera habilitado via
-// migration SQL depois que o fluxo de agendamento estiver validado em dev.
-// Ate la, o isolamento por tenant e garantido apenas pela aplicacao
-// (todo find/where deve filtrar por tenantId explicitamente).
+// Nota de arquitetura (M1, RNF06): Row-Level Security esta ativo no banco
+// (migration 20260723_rls) para usuario, veiculo, servico, agendamento,
+// horario_funcionamento e notificacao. As policies filtram por
+// current_setting('app.tenant_id') — o codigo da aplicacao DEVE rodar
+// toda leitura/escrita nessas tabelas atraves de withTenant()
+// (src/lib/tenant-db.ts), que abre uma transacao e seta essa GUC via
+// SET LOCAL. O filtro explicito por tenantId no codigo continua sendo
+// exigido como segunda camada de defesa — RLS nao substitui isso.
+// Tenant fica de fora do RLS: e o diretorio publico consultado por
+// slug antes de existir sessao (login/cadastro).
 
 generator client {
   provider = "prisma-client"
@@ -70,9 +76,11 @@ model Tenant {
   criadoEm                DateTime @default(now())
 
   usuarios     Usuario[]
+  veiculos     Veiculo[]
   servicos     Servico[]
   agendamentos Agendamento[]
   horarios     HorarioFuncionamento[]
+  notificacoes Notificacao[]
 
   @@map("tenant")
 }
@@ -118,6 +126,7 @@ model Usuario {
 /// Cadastro obrigatorio antes do primeiro agendamento (RN04, UC02).
 model Veiculo {
   id        String          @id @default(uuid())
+  tenantId  String
   usuarioId String
   marca     String
   modelo    String
@@ -126,10 +135,12 @@ model Veiculo {
   cor       String
   segmento  SegmentoVeiculo
 
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
   usuario      Usuario       @relation(fields: [usuarioId], references: [id])
   agendamentos Agendamento[]
 
   @@index([usuarioId])
+  @@index([tenantId])
   @@map("veiculo")
 }
 
@@ -181,14 +192,17 @@ model Agendamento {
 /// Log de envio (RNF08 / 6.4) — nunca armazena o conteudo da mensagem.
 model Notificacao {
   id            String            @id @default(uuid())
+  tenantId      String
   agendamentoId String
   tipo          TipoNotificacao
   status        StatusNotificacao @default(PENDENTE)
   enviadoEm     DateTime?
   tentativas    Int               @default(0)
 
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
   agendamento Agendamento @relation(fields: [agendamentoId], references: [id])
 
   @@index([agendamentoId])
+  @@index([tenantId])
   @@map("notificacao")
 }
