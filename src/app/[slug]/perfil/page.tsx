@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { PerfilCliente } from "./perfil-cliente";
 
 // UC15, tela 04 do mockup — perfil do cliente: dados de contato, estatisticas
@@ -21,13 +22,15 @@ export default async function PerfilPage({
     redirect(`/${slug}/login`);
   }
 
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: session.user.id },
-    include: {
-      veiculos: { orderBy: { id: "asc" } },
-      _count: { select: { agendamentos: true } },
-    },
-  });
+  const usuario = await withTenant(tenant.id, (tx) =>
+    tx.usuario.findUnique({
+      where: { id: session.user.id },
+      include: {
+        veiculos: { orderBy: { id: "asc" } },
+        _count: { select: { agendamentos: true } },
+      },
+    })
+  );
   if (!usuario) redirect(`/${slug}/login`);
 
   const desde = usuario.criadoEm

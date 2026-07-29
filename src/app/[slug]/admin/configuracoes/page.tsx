@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { ConfiguracoesAdmin } from "./configuracoes-admin";
 import { AdminNav } from "../admin-nav";
 
@@ -29,10 +30,7 @@ export default async function AdminConfiguracoesPage({
 }) {
   const { slug } = await params;
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug },
-    include: { horarios: true },
-  });
+  const tenant = await prisma.tenant.findUnique({ where: { slug } });
   if (!tenant) notFound();
 
   const session = await getServerSession(authOptions);
@@ -43,8 +41,12 @@ export default async function AdminConfiguracoesPage({
     redirect(`/${slug}`);
   }
 
+  const horarios = await withTenant(tenant.id, (tx) =>
+    tx.horarioFuncionamento.findMany({ where: { tenantId: tenant.id } })
+  );
+
   const horariosPorDia = NOMES_DIAS.map((nome, diaSemana) => {
-    const existente = tenant.horarios.find((h) => h.diaSemana === diaSemana);
+    const existente = horarios.find((h) => h.diaSemana === diaSemana);
     return {
       diaSemana,
       nome,

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { LayoutDashboard } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { Logo } from "@/components/ui/astro";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
@@ -21,10 +22,7 @@ export default async function TenantPage({
 }) {
   const { slug } = await params;
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug },
-    include: { servicos: { orderBy: { nome: "asc" } } },
-  });
+  const tenant = await prisma.tenant.findUnique({ where: { slug } });
   if (!tenant) notFound();
 
   const session = await getServerSession(authOptions);
@@ -35,11 +33,18 @@ export default async function TenantPage({
     return <Hero slug={slug} nome={tenant.nome} />;
   }
 
-  const veiculos = logado
-    ? await prisma.veiculo.findMany({ where: { usuarioId: session!.user.id } })
-    : [];
+  const { servicosTenant, veiculos } = await withTenant(tenant.id, async (tx) => {
+    const servicosTenant = await tx.servico.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { nome: "asc" },
+    });
+    const veiculos = await tx.veiculo.findMany({
+      where: { usuarioId: session!.user.id },
+    });
+    return { servicosTenant, veiculos };
+  });
 
-  const servicos = tenant.servicos.map((s) => ({
+  const servicos = servicosTenant.map((s) => ({
     id: s.id,
     nome: s.nome,
     duracaoMin: s.duracaoMin,

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { lerJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 
 const cadastroSchema = z.object({
   tenantSlug: z.string().min(1),
@@ -41,27 +42,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Estetica nao encontrada" }, { status: 404 });
   }
 
-  const existente = await prisma.usuario.findUnique({
-    where: { tenantId_email: { tenantId: tenant.id, email } },
-  });
-  if (existente) {
-    return NextResponse.json(
-      { error: "Ja existe uma conta com esse e-mail nesta estetica" },
-      { status: 409 }
-    );
-  }
-
   const senhaHash = await bcrypt.hash(senha, 10);
-  await prisma.usuario.create({
-    data: {
-      tenantId: tenant.id,
-      nome,
-      email,
-      telefone,
-      senhaHash,
-      role: "CLIENTE",
-    },
+
+  const resultado = await withTenant(tenant.id, async (tx) => {
+    const existente = await tx.usuario.findUnique({
+      where: { tenantId_email: { tenantId: tenant.id, email } },
+    });
+    if (existente) {
+      return { error: "Ja existe uma conta com esse e-mail nesta estetica" } as const;
+    }
+
+    await tx.usuario.create({
+      data: {
+        tenantId: tenant.id,
+        nome,
+        email,
+        telefone,
+        senhaHash,
+        role: "CLIENTE",
+      },
+    });
+    return { ok: true } as const;
   });
+
+  if ("error" in resultado) {
+    return NextResponse.json({ error: resultado.error }, { status: 409 });
+  }
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

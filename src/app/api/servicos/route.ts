@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { servicoSchema } from "@/lib/validations/servico";
 
 // UC08, RF01 — Admin cadastra servicos com preco por segmento de veiculo.
@@ -24,9 +24,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const servico = await prisma.servico.create({
-    data: { ...parsed.data, tenantId: session.user.tenantId },
-  });
+  const servico = await withTenant(session.user.tenantId, (tx) =>
+    tx.servico.create({
+      data: { ...parsed.data, tenantId: session.user.tenantId },
+    })
+  );
 
   return NextResponse.json(servico, { status: 201 });
 }

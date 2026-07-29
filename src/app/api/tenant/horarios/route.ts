@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { horariosSchema } from "@/lib/validations/tenant";
 
 function paraMinutos(hora: string) {
@@ -32,25 +32,27 @@ export async function PUT(request: Request) {
 
   const tenantId = session.user.tenantId;
 
-  await prisma.$transaction(
-    parsed.data.map((dia) =>
-      dia.ativo
-        ? prisma.horarioFuncionamento.upsert({
-            where: { tenantId_diaSemana: { tenantId, diaSemana: dia.diaSemana } },
-            update: {
-              horaInicioMin: paraMinutos(dia.horaInicio),
-              horaFimMin: paraMinutos(dia.horaFim),
-            },
-            create: {
-              tenantId,
-              diaSemana: dia.diaSemana,
-              horaInicioMin: paraMinutos(dia.horaInicio),
-              horaFimMin: paraMinutos(dia.horaFim),
-            },
-          })
-        : prisma.horarioFuncionamento.deleteMany({
-            where: { tenantId, diaSemana: dia.diaSemana },
-          })
+  await withTenant(tenantId, (tx) =>
+    Promise.all(
+      parsed.data.map((dia) =>
+        dia.ativo
+          ? tx.horarioFuncionamento.upsert({
+              where: { tenantId_diaSemana: { tenantId, diaSemana: dia.diaSemana } },
+              update: {
+                horaInicioMin: paraMinutos(dia.horaInicio),
+                horaFimMin: paraMinutos(dia.horaFim),
+              },
+              create: {
+                tenantId,
+                diaSemana: dia.diaSemana,
+                horaInicioMin: paraMinutos(dia.horaInicio),
+                horaFimMin: paraMinutos(dia.horaFim),
+              },
+            })
+          : tx.horarioFuncionamento.deleteMany({
+              where: { tenantId, diaSemana: dia.diaSemana },
+            })
+      )
     )
   );
 

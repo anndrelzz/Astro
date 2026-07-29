@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { calcularSlotsDisponiveis } from "@/lib/slots";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 
 const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -36,10 +37,7 @@ export async function GET(request: Request) {
   }
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  const servico = await prisma.servico.findFirst({
-    where: { id: servicoId, tenantId },
-  });
-  if (!tenant || !servico) {
+  if (!tenant) {
     return NextResponse.json({ error: "Nao encontrado" }, { status: 404 });
   }
 
@@ -49,7 +47,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Data invalida" }, { status: 400 });
   }
 
-  const slots = await calcularSlotsDisponiveis(tenant, servico, dataConsulta);
+  const resultado = await withTenant(tenantId, async (tx) => {
+    const servico = await tx.servico.findFirst({
+      where: { id: servicoId, tenantId },
+    });
+    if (!servico) {
+      return { error: "Nao encontrado" } as const;
+    }
 
-  return NextResponse.json({ slots });
+    const slots = await calcularSlotsDisponiveis(tx, tenant, servico, dataConsulta);
+    return { slots } as const;
+  });
+
+  if ("error" in resultado) {
+    return NextResponse.json({ error: resultado.error }, { status: 404 });
+  }
+
+  return NextResponse.json(resultado);
 }

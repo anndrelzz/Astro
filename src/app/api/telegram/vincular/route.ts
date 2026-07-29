@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 
 // UC15, RN12 — gera um TOKEN temporario associado a conta do cliente,
 // usado no link t.me/<bot>?start=TOKEN. Invalidado apos a vinculacao.
@@ -13,10 +13,12 @@ export async function POST() {
   }
 
   const token = randomUUID();
-  await prisma.usuario.update({
-    where: { id: session.user.id },
-    data: { telegramLinkToken: token },
-  });
+  await withTenant(session.user.tenantId, (tx) =>
+    tx.usuario.update({
+      where: { id: session.user.id },
+      data: { telegramLinkToken: token },
+    })
+  );
 
   const botUsername = process.env.TELEGRAM_BOT_USERNAME || "AstroBot";
   const link = `https://t.me/${botUsername}?start=${token}`;

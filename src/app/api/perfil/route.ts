@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 
 // Tela 05 (Editar perfil) — o cliente atualiza os proprios dados de contato.
 // E-mail nao e alterado aqui: e a credencial de login (unique por tenant) e
@@ -36,10 +36,12 @@ export async function PATCH(request: Request) {
     );
   }
 
-  await prisma.usuario.update({
-    where: { id: session.user.id },
-    data: { nome: parsed.data.nome, telefone: parsed.data.telefone },
-  });
+  await withTenant(session.user.tenantId, (tx) =>
+    tx.usuario.update({
+      where: { id: session.user.id },
+      data: { nome: parsed.data.nome, telefone: parsed.data.telefone },
+    })
+  );
 
   return NextResponse.json({ ok: true });
 }
