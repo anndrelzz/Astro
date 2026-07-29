@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { ServicosAdmin } from "./servicos-admin";
 import { AdminNav } from "../admin-nav";
 
@@ -24,10 +25,12 @@ export default async function AdminServicosPage({
     redirect(`/${slug}`);
   }
 
-  const servicos = await prisma.servico.findMany({
-    where: { tenantId: tenant.id },
-    orderBy: { nome: "asc" },
-  });
+  const servicos = await withTenant(tenant.id, (tx) =>
+    tx.servico.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { nome: "asc" },
+    })
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">

@@ -1,17 +1,18 @@
-import type { Servico, Tenant } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
+import type { Prisma, Servico, Tenant } from "@/generated/prisma/client";
 
 // RF02, RN06, RNF02 — calcula os slots de horario disponiveis para um dia,
 // respeitando a grade de funcionamento, o intervalo configurado e a
-// capacidade simultanea do tenant.
+// capacidade simultanea do tenant. Recebe o client de transacao ja
+// contextualizado por withTenant (RLS) — nunca importa o `prisma` global.
 export async function calcularSlotsDisponiveis(
+  tx: Prisma.TransactionClient,
   tenant: Tenant,
   servico: Servico,
   data: Date
 ) {
   const diaSemana = data.getDay();
 
-  const horario = await prisma.horarioFuncionamento.findUnique({
+  const horario = await tx.horarioFuncionamento.findUnique({
     where: { tenantId_diaSemana: { tenantId: tenant.id, diaSemana } },
   });
   if (!horario) return [];
@@ -21,7 +22,7 @@ export async function calcularSlotsDisponiveis(
   const fimDia = new Date(data);
   fimDia.setHours(23, 59, 59, 999);
 
-  const agendamentosDoDia = await prisma.agendamento.findMany({
+  const agendamentosDoDia = await tx.agendamento.findMany({
     where: {
       tenantId: tenant.id,
       dataHora: { gte: inicioDia, lte: fimDia },

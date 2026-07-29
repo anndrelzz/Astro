@@ -23,30 +23,46 @@ async function main() {
       ...configuracoesTenant,
       nome: "Estetica do Rafael",
       slug: "estetica-teste",
-      servicos: {
-        create: [
-          {
-            nome: "Lavagem Completa",
-            duracaoMin: 60,
-            precoHatch: 60,
-            precoSedan: 70,
-            precoSuv: 90,
-            precoPickup: 100,
-            precoVan: 120,
-          },
-          {
-            nome: "Polimento Técnico",
-            duracaoMin: 180,
-            precoHatch: 350,
-            precoSedan: 400,
-            precoSuv: 500,
-            precoPickup: 550,
-            precoVan: 650,
-          },
-        ],
-      },
     },
   });
+
+  // RLS (migration 20260723_rls) exige app.tenant_id na sessao para
+  // escrever em usuario/veiculo/servico/agendamento/horario_funcionamento/
+  // notificacao. Este script usa uma conexao unica e sequencial (sem
+  // pool concorrente), entao SET de sessao (nao SET LOCAL) e seguro aqui.
+  await prisma.$executeRawUnsafe(
+    `SELECT set_config('app.tenant_id', $1, false)`,
+    tenant.id
+  );
+
+  const servicosSeed = [
+    {
+      nome: "Lavagem Completa",
+      duracaoMin: 60,
+      precoHatch: 60,
+      precoSedan: 70,
+      precoSuv: 90,
+      precoPickup: 100,
+      precoVan: 120,
+    },
+    {
+      nome: "Polimento Técnico",
+      duracaoMin: 180,
+      precoHatch: 350,
+      precoSedan: 400,
+      precoSuv: 500,
+      precoPickup: 550,
+      precoVan: 650,
+    },
+  ];
+  for (const servico of servicosSeed) {
+    const existente = await prisma.servico.findFirst({
+      where: { tenantId: tenant.id, nome: servico.nome },
+    });
+    if (!existente) {
+      await prisma.servico.create({ data: { ...servico, tenantId: tenant.id } });
+    }
+  }
 
   // Grade de horarios (RF02): seg-sex 08:00-18:00, sabado 08:00-12:00
   const diasUteis = [1, 2, 3, 4, 5];

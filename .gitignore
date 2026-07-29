@@ -46,3 +46,8 @@ next-env.d.ts
 # uploads de usuario (logos) - storage local so em dev, ver RF13
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# configuracao local de ferramentas de desenvolvimento (por maquina, nao do
+# projeto). O settings.local.json guarda comandos autorizados, incluindo
+# strings com senha do banco local - nunca pode ir para o repositorio publico.
+.claude/settings.local.json

@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { dispararNotificacao } from "@/lib/notificacoes";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 
 // UC06, RN11 — cliente so cancela fora da janela configurada pelo Admin;
 // Admin cancela qualquer agendamento sem restricao.
@@ -17,47 +17,50 @@ export async function POST(
 
   const { id } = await params;
 
-  const agendamento = await prisma.agendamento.findFirst({
-    where: { id, tenantId: session.user.tenantId },
-    include: { tenant: true },
-  });
-  if (!agendamento) {
-    return NextResponse.json({ error: "Nao encontrado" }, { status: 404 });
-  }
-
-  if (agendamento.status === "CANCELADO" || agendamento.status === "CONCLUIDO") {
-    return NextResponse.json(
-      { error: "Agendamento ja finalizado" },
-      { status: 400 }
-    );
-  }
-
-  if (session.user.role === "CLIENTE") {
-    if (agendamento.usuarioId !== session.user.id) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 403 });
+  const resultado = await withTenant(session.user.tenantId, async (tx) => {
+    const agendamento = await tx.agendamento.findFirst({
+      where: { id, tenantId: session.user.tenantId },
+      include: { tenant: true },
+    });
+    if (!agendamento) {
+      return { error: "Nao encontrado", status: 404 } as const;
     }
 
-    const horasAteAgendamento =
-      (agendamento.dataHora.getTime() - Date.now()) / (1000 * 60 * 60);
+    if (agendamento.status === "CANCELADO" || agendamento.status === "CONCLUIDO") {
+      return { error: "Agendamento ja finalizado", status: 400 } as const;
+    }
 
-    if (horasAteAgendamento < agendamento.tenant.cancelamentoHorasLimite) {
-      return NextResponse.json(
-        {
+    if (session.user.role === "CLIENTE") {
+      if (agendamento.usuarioId !== session.user.id) {
+        return { error: "Nao autorizado", status: 403 } as const;
+      }
+
+      const horasAteAgendamento =
+        (agendamento.dataHora.getTime() - Date.now()) / (1000 * 60 * 60);
+
+      if (horasAteAgendamento < agendamento.tenant.cancelamentoHorasLimite) {
+        return {
           error:
             "Fora do prazo para cancelamento online. Entre em contato com a estetica diretamente.",
-        },
-        { status: 403 }
-      );
+          status: 403,
+        } as const;
+      }
     }
-  }
 
-  await prisma.agendamento.update({
-    where: { id },
-    data: { status: "CANCELADO" },
+    await tx.agendamento.update({
+      where: { id },
+      data: { status: "CANCELADO" },
+    });
+
+    // Gatilho 4 (secao 3.4) — disparada imediatamente apos o cancelamento.
+    await dispararNotificacao(tx, id, "CONFIRMACAO_CANCELAMENTO");
+
+    return { ok: true } as const;
   });
 
-  // Gatilho 4 (secao 3.4) — disparada imediatamente apos o cancelamento.
-  await dispararNotificacao(id, "CONFIRMACAO_CANCELAMENTO");
+  if ("error" in resultado) {
+    return NextResponse.json({ error: resultado.error }, { status: resultado.status });
+  }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(resultado);
 }
