@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 
 // RFC 6.2 — payload do JWT inclui tenant_id, user_id e role, permitindo
 // que o middleware valide permissoes sem consulta adicional ao banco.
@@ -52,14 +53,16 @@ export const authOptions: NextAuthOptions = {
 
         // RN02/RN03 — acesso aos servicos exige autenticacao dentro do tenant correto.
         // E-mail e tratado sem diferenciar maiusculas/minusculas.
-        const usuario = await prisma.usuario.findUnique({
-          where: {
-            tenantId_email: {
-              tenantId: tenant.id,
-              email: credentials.email.toLowerCase(),
+        const usuario = await withTenant(tenant.id, (tx) =>
+          tx.usuario.findUnique({
+            where: {
+              tenantId_email: {
+                tenantId: tenant.id,
+                email: credentials.email.toLowerCase(),
+              },
             },
-          },
-        });
+          })
+        );
         if (!usuario) return null;
 
         const senhaValida = await bcrypt.compare(credentials.password, usuario.senhaHash);

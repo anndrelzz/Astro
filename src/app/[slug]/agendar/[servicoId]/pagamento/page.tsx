@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { calcularPreco } from "@/lib/precificacao";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { PagamentoForm } from "./pagamento-form";
 
 // Tela 10 — escolha da forma de pagamento. Recebe veiculo/data/hora via
@@ -29,11 +30,14 @@ export default async function PagamentoPage({
     redirect(`/${slug}/agendar/${servicoId}`);
   }
 
-  const servico = await prisma.servico.findFirst({
-    where: { id: servicoId, tenantId: tenant.id },
-  });
-  const veiculo = await prisma.veiculo.findFirst({
-    where: { id: veiculoId, usuarioId: session.user.id },
+  const { servico, veiculo } = await withTenant(tenant.id, async (tx) => {
+    const servico = await tx.servico.findFirst({
+      where: { id: servicoId, tenantId: tenant.id },
+    });
+    const veiculo = await tx.veiculo.findFirst({
+      where: { id: veiculoId, usuarioId: session.user.id },
+    });
+    return { servico, veiculo };
   });
   if (!servico || !veiculo) notFound();
 

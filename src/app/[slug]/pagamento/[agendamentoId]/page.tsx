@@ -1,16 +1,17 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import QRCode from "qrcode";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { CopiarPix } from "./copiar-pix";
 import { ThemeColor } from "@/components/ui/theme-color";
 
-// Tela 11 — PIX Copia e Cola. QR gerado a partir da propria chave (sem
-// gateway). Confirmacao e MANUAL pelo Admin (RFC RN05) — por isso o status
-// exibido e "aguardando confirmacao do estabelecimento".
+// Tela 11 — PIX Copia e Cola (RN10, UC04, UC13: apenas a chave copia-e-cola,
+// sem QR nem gateway). Confirmacao e MANUAL pelo Admin (RN05) — por isso o
+// status exibido e "aguardando confirmacao do estabelecimento", sem prazo de
+// expiracao (nao ha gateway real para expirar algo).
 export default async function PixPage({
   params,
 }: {
@@ -26,13 +27,14 @@ export default async function PixPage({
     redirect(`/${slug}/login`);
   }
 
-  const agendamento = await prisma.agendamento.findFirst({
-    where: { id: agendamentoId, tenantId: tenant.id, usuarioId: session.user.id },
-  });
+  const agendamento = await withTenant(tenant.id, (tx) =>
+    tx.agendamento.findFirst({
+      where: { id: agendamentoId, tenantId: tenant.id, usuarioId: session.user.id },
+    })
+  );
   if (!agendamento || !tenant.pixChaveCopiaCola) notFound();
 
   const chave = tenant.pixChaveCopiaCola;
-  const qrDataUrl = await QRCode.toDataURL(chave, { margin: 1, width: 320 });
   const valorFmt = Number(agendamento.valor).toFixed(2).replace(".", ",");
   const iniciais = tenant.nome
     .split(" ")
@@ -71,7 +73,7 @@ export default async function PixPage({
           </span>
         </div>
 
-        {/* QR */}
+        {/* Valor + status */}
         <div className="mt-4 rounded-2xl border border-zinc-100 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -83,20 +85,13 @@ export default async function PixPage({
               PIX pendente
             </span>
           </div>
-
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={qrDataUrl}
-            alt="QR Code PIX"
-            className="mx-auto mt-4 h-56 w-56 rounded-xl"
-          />
           <p className="mt-3 text-center text-sm text-zinc-500">
-            Abra o app do seu banco e escaneie o código acima.
+            Copie o código Copia e Cola abaixo e pague no app do seu banco.
           </p>
         </div>
 
         {/* Copia e cola */}
-        <p className="mt-6 astro-label">Ou copie o código</p>
+        <p className="mt-6 astro-label">Código Copia e Cola</p>
         <CopiarPix codigo={chave} />
 
         {/* Status manual (fiel ao RFC) */}

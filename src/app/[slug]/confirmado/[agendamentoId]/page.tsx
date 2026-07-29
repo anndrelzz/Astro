@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { ThemeColor } from "@/components/ui/theme-color";
 
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -40,10 +41,12 @@ export default async function ConfirmadoPage({
     redirect(`/${slug}/login`);
   }
 
-  const agendamento = await prisma.agendamento.findFirst({
-    where: { id: agendamentoId, tenantId: tenant.id, usuarioId: session.user.id },
-    include: { servico: true, veiculo: true },
-  });
+  const agendamento = await withTenant(tenant.id, (tx) =>
+    tx.agendamento.findFirst({
+      where: { id: agendamentoId, tenantId: tenant.id, usuarioId: session.user.id },
+      include: { servico: true, veiculo: true },
+    })
+  );
   if (!agendamento) notFound();
 
   const d = agendamento.dataHora;

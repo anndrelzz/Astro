@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { AcoesAgendamento } from "./acoes-agendamento";
 import { AdminNav } from "../admin-nav";
 
@@ -24,11 +25,13 @@ export default async function AdminAgendamentosPage({
     redirect(`/${slug}`);
   }
 
-  const agendamentos = await prisma.agendamento.findMany({
-    where: { tenantId: tenant.id },
-    include: { usuario: true, veiculo: true, servico: true },
-    orderBy: { dataHora: "asc" },
-  });
+  const agendamentos = await withTenant(tenant.id, (tx) =>
+    tx.agendamento.findMany({
+      where: { tenantId: tenant.id },
+      include: { usuario: true, veiculo: true, servico: true },
+      orderBy: { dataHora: "asc" },
+    })
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">

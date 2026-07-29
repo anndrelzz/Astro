@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
-import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { servicoSchema } from "@/lib/validations/servico";
 
 // UC08 — edicao e remocao de servico, restrito ao Admin da propria estetica.
@@ -16,12 +16,6 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const servico = await prisma.servico.findFirst({
-    where: { id, tenantId: session.user.tenantId },
-  });
-  if (!servico) {
-    return NextResponse.json({ error: "Nao encontrado" }, { status: 404 });
-  }
 
   const body = await lerJson(request);
   if (body === null) {
@@ -35,12 +29,27 @@ export async function PATCH(
     );
   }
 
-  const atualizado = await prisma.servico.update({
-    where: { id },
-    data: parsed.data,
+  const resultado = await withTenant(session.user.tenantId, async (tx) => {
+    const servico = await tx.servico.findFirst({
+      where: { id, tenantId: session.user.tenantId },
+    });
+    if (!servico) {
+      return { error: "Nao encontrado", status: 404 } as const;
+    }
+
+    const atualizado = await tx.servico.update({
+      where: { id },
+      data: parsed.data,
+    });
+
+    return { atualizado } as const;
   });
 
-  return NextResponse.json(atualizado);
+  if ("error" in resultado) {
+    return NextResponse.json({ error: resultado.error }, { status: resultado.status });
+  }
+
+  return NextResponse.json(resultado.atualizado);
 }
 
 export async function DELETE(
@@ -53,23 +62,32 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const servico = await prisma.servico.findFirst({
-    where: { id, tenantId: session.user.tenantId },
+
+  const resultado = await withTenant(session.user.tenantId, async (tx) => {
+    const servico = await tx.servico.findFirst({
+      where: { id, tenantId: session.user.tenantId },
+    });
+    if (!servico) {
+      return { error: "Nao encontrado", status: 404 } as const;
+    }
+
+    const agendamentosVinculados = await tx.agendamento.count({
+      where: { servicoId: id },
+    });
+    if (agendamentosVinculados > 0) {
+      return {
+        error: "Servico possui agendamentos vinculados e nao pode ser removido",
+        status: 409,
+      } as const;
+    }
+
+    await tx.servico.delete({ where: { id } });
+    return { ok: true } as const;
   });
-  if (!servico) {
-    return NextResponse.json({ error: "Nao encontrado" }, { status: 404 });
+
+  if ("error" in resultado) {
+    return NextResponse.json({ error: resultado.error }, { status: resultado.status });
   }
 
-  const agendamentosVinculados = await prisma.agendamento.count({
-    where: { servicoId: id },
-  });
-  if (agendamentosVinculados > 0) {
-    return NextResponse.json(
-      { error: "Servico possui agendamentos vinculados e nao pode ser removido" },
-      { status: 409 }
-    );
-  }
-
-  await prisma.servico.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(resultado);
 }

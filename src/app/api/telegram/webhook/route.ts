@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { withTelegramTokenLookup, withTenant } from "@/lib/tenant-db";
 import { enviarTelegram } from "@/lib/notificacoes/telegram";
 
 // UC15, RN12 — recebe o update do Telegram quando o cliente toca em
@@ -25,19 +25,26 @@ export async function POST(request: Request) {
   }
 
   const token = texto.replace("/start ", "").trim();
+  if (!token) {
+    return NextResponse.json({ ok: true });
+  }
 
-  const usuario = await prisma.usuario.findFirst({
-    where: { telegramLinkToken: token },
-  });
+  const usuario = await withTelegramTokenLookup(token, (tx) =>
+    tx.usuario.findFirst({
+      where: { telegramLinkToken: token },
+    })
+  );
 
   if (!usuario) {
     return NextResponse.json({ ok: true });
   }
 
-  await prisma.usuario.update({
-    where: { id: usuario.id },
-    data: { telegramChatId: String(chatId), telegramLinkToken: null },
-  });
+  await withTenant(usuario.tenantId, (tx) =>
+    tx.usuario.update({
+      where: { id: usuario.id },
+      data: { telegramChatId: String(chatId), telegramLinkToken: null },
+    })
+  );
 
   await enviarTelegram(String(chatId), "Conta vinculada com sucesso!");
 
