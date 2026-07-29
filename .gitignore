@@ -51,3 +51,6 @@ next-env.d.ts
 # projeto). O settings.local.json guarda comandos autorizados, incluindo
 # strings com senha do banco local - nunca pode ir para o repositorio publico.
 .claude/settings.local.json
+
+# material de estudo pessoal, nao documentacao do projeto
+MAPA-DO-PROJETO.md
