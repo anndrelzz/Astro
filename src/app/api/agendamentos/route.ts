@@ -38,8 +38,11 @@ export async function POST(request: Request) {
     const tenant = await tx.tenant.findUnique({
       where: { id: session.user.tenantId },
     });
+    // RN14 — servico pausado nao pode receber agendamento novo. Agendamentos
+    // ja existentes continuam validos: pausar tira da vitrine, nao cancela o
+    // que foi vendido.
     const servico = await tx.servico.findFirst({
-      where: { id: servicoId, tenantId: session.user.tenantId },
+      where: { id: servicoId, tenantId: session.user.tenantId, ativo: true },
     });
     const veiculo = await tx.veiculo.findFirst({
       where: { id: veiculoId, usuarioId: session.user.id },
