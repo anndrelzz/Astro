@@ -58,9 +58,13 @@ export function Modal({
         if (e.target === ref.current) onFechar();
       }}
       aria-labelledby="titulo-modal"
-      className="max-h-[90dvh] w-[min(34rem,92vw)] overflow-visible rounded-2xl border border-admin-border bg-admin-surface p-0 text-slate-100 backdrop:bg-black/70 backdrop:backdrop-blur-sm"
+      // m-auto e obrigatorio aqui: o <dialog> nativo se centraliza sozinho com
+      // margin:auto, mas o reset do Tailwind zera a margem de todo elemento
+      // (`*, ::before, ::after { margin: 0 }`) e o modal cai no canto superior
+      // esquerdo. Sem esta classe, a centralizacao do navegador nao acontece.
+      className="m-auto max-h-[85dvh] w-[min(34rem,92vw)] rounded-2xl border border-admin-border bg-admin-surface p-0 text-slate-100 shadow-2xl shadow-black/60 backdrop:bg-black/70 backdrop:backdrop-blur-sm"
     >
-      <div className="flex max-h-[90dvh] flex-col">
+      <div className="flex max-h-[85dvh] flex-col">
         <header className="flex items-start justify-between gap-4 border-b border-admin-border px-5 py-4">
           <div className="min-w-0">
             {subtitulo && <p className="astro-label">{subtitulo}</p>}
