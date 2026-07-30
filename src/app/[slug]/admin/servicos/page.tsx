@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { ServicosAdmin } from "./servicos-admin";
-import { AdminHeader } from "../admin-header";
 
 // UC08, RF01 — Admin gerencia servicos e precos por segmento de veiculo.
 export default async function AdminServicosPage({
@@ -25,31 +24,50 @@ export default async function AdminServicosPage({
     redirect(`/${slug}`);
   }
 
-  const servicos = await withTenant(tenant.id, (tx) =>
-    tx.servico.findMany({
+  const agora = new Date();
+  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+
+  const { servicos, vendasPorServico } = await withTenant(tenant.id, async (tx) => {
+    const servicos = await tx.servico.findMany({
       where: { tenantId: tenant.id },
-      orderBy: { nome: "asc" },
-    })
-  );
+      orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+    });
+
+    // Quantas vezes cada servico foi vendido no mes corrente. Cancelados nao
+    // contam — a coluna serve para o Admin ver o que esta girando.
+    const vendas = await tx.agendamento.groupBy({
+      by: ["servicoId"],
+      where: {
+        tenantId: tenant.id,
+        status: { not: "CANCELADO" },
+        dataHora: { gte: inicioMes },
+      },
+      _count: { _all: true },
+    });
+
+    return {
+      servicos,
+      vendasPorServico: Object.fromEntries(
+        vendas.map((v) => [v.servicoId, v._count._all])
+      ) as Record<string, number>,
+    };
+  });
 
   return (
-    <>
-      <AdminHeader
-        trilha={`Catalogo · ${servicos.length} servico${servicos.length === 1 ? "" : "s"}`}
-        titulo="Servicos"
-      />
-      <ServicosAdmin
-        servicosIniciais={servicos.map((s) => ({
-          id: s.id,
-          nome: s.nome,
-          duracaoMin: s.duracaoMin,
-          precoHatch: Number(s.precoHatch),
-          precoSedan: Number(s.precoSedan),
-          precoSuv: Number(s.precoSuv),
-          precoPickup: Number(s.precoPickup),
-          precoVan: Number(s.precoVan),
-        }))}
-      />
-    </>
+    <ServicosAdmin
+      servicosIniciais={servicos.map((s) => ({
+        id: s.id,
+        nome: s.nome,
+        descricao: s.descricao,
+        ativo: s.ativo,
+        duracaoMin: s.duracaoMin,
+        precoHatch: Number(s.precoHatch),
+        precoSedan: Number(s.precoSedan),
+        precoSuv: Number(s.precoSuv),
+        precoPickup: Number(s.precoPickup),
+        precoVan: Number(s.precoVan),
+        vendasNoMes: vendasPorServico[s.id] ?? 0,
+      }))}
+    />
   );
 }
