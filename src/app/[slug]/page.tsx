@@ -34,8 +34,10 @@ export default async function TenantPage({
   }
 
   const { servicosTenant, veiculos } = await withTenant(tenant.id, async (tx) => {
+    // RN14 — a vitrine mostra apenas servicos ativos. Pausado sai daqui, mas
+    // continua existindo para os agendamentos que ja o referenciam.
     const servicosTenant = await tx.servico.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id, ativo: true },
       orderBy: { nome: "asc" },
     });
     const veiculos = await tx.veiculo.findMany({
@@ -47,6 +49,7 @@ export default async function TenantPage({
   const servicos = servicosTenant.map((s) => ({
     id: s.id,
     nome: s.nome,
+    descricao: s.descricao,
     duracaoMin: s.duracaoMin,
     precos: {
       HATCH: Number(s.precoHatch),

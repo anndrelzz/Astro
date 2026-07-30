@@ -24,8 +24,9 @@ export default async function AgendarPage({
   }
 
   const { servico, veiculos } = await withTenant(tenant.id, async (tx) => {
+    // RN14 — servico pausado nao aparece nem pode ser agendado
     const servico = await tx.servico.findFirst({
-      where: { id: servicoId, tenantId: tenant.id },
+      where: { id: servicoId, tenantId: tenant.id, ativo: true },
     });
     const veiculos = await tx.veiculo.findMany({
       where: { usuarioId: session.user.id },

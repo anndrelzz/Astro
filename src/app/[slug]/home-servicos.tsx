@@ -8,6 +8,7 @@ import type { SegmentoVeiculo } from "@/generated/prisma/enums";
 type Servico = {
   id: string;
   nome: string;
+  descricao: string | null;
   duracaoMin: number;
   precos: Record<SegmentoVeiculo, number>;
 };
@@ -110,6 +111,11 @@ export function HomeServicos({
 
             <div className="flex flex-1 flex-col p-4">
               <h3 className="font-semibold text-zinc-900">{servico.nome}</h3>
+              {servico.descricao && (
+                <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500">
+                  {servico.descricao}
+                </p>
+              )}
               <div className="mt-3 flex items-end justify-between">
                 <div>
                   <p className="text-[0.65rem] uppercase tracking-wide text-zinc-400">
