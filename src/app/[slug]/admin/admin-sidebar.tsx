@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   ChevronDown,
+  LayoutGrid,
   LogOut,
   Settings,
   Sparkles,
@@ -46,10 +47,12 @@ export function AdminSidebar({
   const pathname = usePathname();
   const base = `/${slug}/admin`;
 
-  // O mockup preve 7 itens. Aqui aparecem as 4 telas que ja existem —
-  // Dashboard, Grade de horarios e Identidade visual entram no menu quando
-  // forem construidas. Link para tela inexistente e 404, nao vale a aparencia.
+  // O mockup preve 7 itens. Grade de horarios e Identidade visual entram no
+  // menu quando forem construidas como telas proprias — hoje ainda vivem
+  // dentro de Configuracoes. Link para tela inexistente e 404, nao vale a
+  // aparencia.
   const operacao: Item[] = [
+    { href: base, label: "Dashboard", icone: LayoutGrid, exato: true },
     {
       href: `${base}/agendamentos`,
       label: "Agendamentos",
@@ -147,6 +150,7 @@ export function AdminMobileNav({
   const base = `/${slug}/admin`;
 
   const itens: Item[] = [
+    { href: base, label: "Dashboard", icone: LayoutGrid, exato: true },
     { href: `${base}/agendamentos`, label: "Agendamentos", icone: CalendarDays, contador: pixPendentes },
     { href: `${base}/servicos`, label: "Servicos", icone: Sparkles },
     { href: `${base}/financeiro`, label: "Financeiro", icone: Wallet },
