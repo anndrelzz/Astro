@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, Info } from "lucide-react";
+import { Check, Clock, Info } from "lucide-react";
+import { AdminHeader } from "../admin-header";
 
 // UC09, RF02 — grade semanal de funcionamento (tela "Grade de horarios" do
 // mockup do admin). Um dia desligado significa estetica fechada: a rota
@@ -79,21 +80,27 @@ export function HorariosAdmin({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-astro-muted">
-          {diasAbertos === 0
-            ? "Nenhum dia de funcionamento definido."
-            : `${diasAbertos} de 7 dias abertos.`}
-        </p>
-        <button
-          onClick={salvar}
-          disabled={salvando}
-          className="flex items-center gap-2 rounded-lg bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50"
-        >
-          <Check className="h-4 w-4" />
-          {salvando ? "Salvando..." : "Salvar grade"}
-        </button>
-      </div>
+      {/* O botao de salvar mora na barra do topo, como no mockup */}
+      <AdminHeader
+        trilha="Operacao · Semana padrao"
+        titulo="Grade de horarios"
+        acao={
+          <button
+            onClick={salvar}
+            disabled={salvando}
+            className="flex items-center gap-2 rounded-lg bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50"
+          >
+            <Check className="h-4 w-4" />
+            {salvando ? "Salvando..." : "Salvar grade"}
+          </button>
+        }
+      />
+
+      <p className="text-sm text-astro-muted">
+        {diasAbertos === 0
+          ? "Nenhum dia de funcionamento definido."
+          : `${diasAbertos} de 7 dias abertos.`}
+      </p>
 
       {erro && (
         <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
@@ -140,30 +147,18 @@ export function HorariosAdmin({
               </label>
 
               <div className="flex flex-wrap items-center gap-4">
-                <div>
-                  <p className="astro-label">Abre</p>
-                  <input
-                    type="time"
-                    value={dia.horaInicio}
-                    disabled={!dia.ativo}
-                    onChange={(e) =>
-                      atualizarDia(dia.diaSemana, "horaInicio", e.target.value)
-                    }
-                    className="mt-1 rounded-lg border border-admin-border bg-admin-bg px-3 py-2 font-mono text-sm text-slate-100 disabled:opacity-40"
-                  />
-                </div>
-                <div>
-                  <p className="astro-label">Fecha</p>
-                  <input
-                    type="time"
-                    value={dia.horaFim}
-                    disabled={!dia.ativo}
-                    onChange={(e) =>
-                      atualizarDia(dia.diaSemana, "horaFim", e.target.value)
-                    }
-                    className="mt-1 rounded-lg border border-admin-border bg-admin-bg px-3 py-2 font-mono text-sm text-slate-100 disabled:opacity-40"
-                  />
-                </div>
+                <CampoHora
+                  rotulo="Abre"
+                  valor={dia.horaInicio}
+                  ativo={dia.ativo}
+                  onChange={(v) => atualizarDia(dia.diaSemana, "horaInicio", v)}
+                />
+                <CampoHora
+                  rotulo="Fecha"
+                  valor={dia.horaFim}
+                  ativo={dia.ativo}
+                  onChange={(v) => atualizarDia(dia.diaSemana, "horaFim", v)}
+                />
               </div>
 
               <span className="ml-auto font-mono text-xs text-astro-muted">
@@ -193,6 +188,38 @@ export function HorariosAdmin({
           Alterar →
         </a>
       </section>
+    </div>
+  );
+}
+
+// Campo de hora com o icone de relogio dentro, como no mockup. Dia desligado
+// deixa o campo esmaecido e travado.
+function CampoHora({
+  rotulo,
+  valor,
+  ativo,
+  onChange,
+}: {
+  rotulo: string;
+  valor: string;
+  ativo: boolean;
+  onChange: (valor: string) => void;
+}) {
+  return (
+    <div>
+      <p className="astro-label">{rotulo}</p>
+      <div
+        className={`mt-1 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2 ${ativo ? "" : "opacity-40"}`}
+      >
+        <Clock className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
+        <input
+          type="time"
+          value={valor}
+          disabled={!ativo}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-24 bg-transparent font-mono text-sm text-slate-100 outline-none disabled:cursor-not-allowed"
+        />
+      </div>
     </div>
   );
 }
