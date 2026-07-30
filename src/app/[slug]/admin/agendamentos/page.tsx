@@ -71,7 +71,9 @@ export default async function AdminAgendamentosPage({
     tx.agendamento.findMany({
       where: { tenantId: tenant.id, ...(dataHora ? { dataHora } : {}) },
       include: { usuario: true, veiculo: true, servico: true },
-      orderBy: { dataHora: "desc" },
+      // Crescente: do primeiro horario do dia para o ultimo, na ordem em que a
+      // estetica atende. E como o Admin le a propria agenda.
+      orderBy: { dataHora: "asc" },
     })
   );
 
