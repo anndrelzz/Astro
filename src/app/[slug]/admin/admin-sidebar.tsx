@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   ChevronDown,
+  Clock,
   LayoutGrid,
   LogOut,
   Settings,
@@ -47,10 +48,9 @@ export function AdminSidebar({
   const pathname = usePathname();
   const base = `/${slug}/admin`;
 
-  // O mockup preve 7 itens. Grade de horarios e Identidade visual entram no
-  // menu quando forem construidas como telas proprias — hoje ainda vivem
-  // dentro de Configuracoes. Link para tela inexistente e 404, nao vale a
-  // aparencia.
+  // O mockup preve 7 itens. Identidade visual entra no menu quando for
+  // construida como tela propria — hoje ainda vive dentro de Configuracoes.
+  // Link para tela inexistente e 404, nao vale a aparencia.
   const operacao: Item[] = [
     { href: base, label: "Dashboard", icone: LayoutGrid, exato: true },
     {
@@ -60,6 +60,7 @@ export function AdminSidebar({
       contador: pixPendentes,
     },
     { href: `${base}/servicos`, label: "Servicos", icone: Sparkles },
+    { href: `${base}/horarios`, label: "Grade de horarios", icone: Clock },
     { href: `${base}/financeiro`, label: "Financeiro", icone: Wallet },
   ];
 
@@ -153,6 +154,7 @@ export function AdminMobileNav({
     { href: base, label: "Dashboard", icone: LayoutGrid, exato: true },
     { href: `${base}/agendamentos`, label: "Agendamentos", icone: CalendarDays, contador: pixPendentes },
     { href: `${base}/servicos`, label: "Servicos", icone: Sparkles },
+    { href: `${base}/horarios`, label: "Grade", icone: Clock },
     { href: `${base}/financeiro`, label: "Financeiro", icone: Wallet },
     { href: `${base}/configuracoes`, label: "Configuracoes", icone: Settings },
   ];
