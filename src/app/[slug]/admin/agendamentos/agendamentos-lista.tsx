@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Ban,
@@ -123,7 +123,7 @@ function formatarDuracao(min: number) {
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return m ? `${h}h ${m}` : `${h}h 00`;
+  return m ? `${h}h ${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
 function formatarTelefone(t: string) {
@@ -143,7 +143,6 @@ export function AgendamentosLista({
   periodo: Periodo;
 }) {
   const router = useRouter();
-  const campoBusca = useRef<HTMLInputElement>(null);
 
   const [aba, setAba] = useState<"todos" | StatusAgendamento>("todos");
   const [busca, setBusca] = useState("");
@@ -216,7 +215,6 @@ export function AgendamentosLista({
         <div className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-lg border border-admin-border bg-admin-surface px-3 py-2.5">
           <Search className="h-4 w-4 shrink-0 text-astro-muted" />
           <input
-            ref={campoBusca}
             value={busca}
             onChange={(e) => {
               setBusca(e.target.value);
@@ -281,22 +279,26 @@ export function AgendamentosLista({
         </p>
       )}
 
-      {/* Tabela */}
+      {/* Tabela com celulas reais, para o navegador alinhar as colunas com o
+          cabecalho. Antes cada linha era uma celula unica com um flex dentro:
+          Valor e Status desalinhavam conforme o tamanho do badge de cada
+          status, e o valor "flutuava" de linha para linha. */}
       <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-surface">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[52rem] text-sm">
+          <table className="w-full min-w-[58rem] table-fixed text-sm">
             <thead>
               <tr className="border-b border-admin-border">
-                {["Horario", "Cliente", "Veiculo", "Servico", "Valor", "Status", ""].map(
-                  (c, i) => (
-                    <th
-                      key={c || i}
-                      className={`astro-label px-4 py-3 ${i === 4 ? "text-right" : "text-left"}`}
-                    >
-                      {c}
-                    </th>
-                  )
-                )}
+                <th className="astro-label w-24 px-4 py-3 text-left">Horario</th>
+                <th className="astro-label w-60 px-4 py-3 text-left">Cliente</th>
+                <th className="astro-label hidden w-52 px-4 py-3 text-left md:table-cell">
+                  Veiculo
+                </th>
+                <th className="astro-label hidden px-4 py-3 text-left lg:table-cell">
+                  Servico
+                </th>
+                <th className="astro-label w-32 px-4 py-3 text-right">Valor</th>
+                <th className="astro-label w-52 px-6 py-3 text-left">Status</th>
+                <th className="w-12 px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -311,27 +313,30 @@ export function AgendamentosLista({
                   item.status !== "CANCELADO" && item.status !== "CONCLUIDO";
 
                 return (
-                  <tr
-                    key={item.id}
-                    className="border-b border-admin-border/60 last:border-0"
-                  >
-                    <td colSpan={7} className="p-0">
-                      <div className="flex w-full items-center gap-4 px-4 py-3.5 transition hover:bg-white/[0.03]">
-                        {/* Horario */}
-                        <div className="w-20 shrink-0">
-                          <p className="font-mono font-bold text-white">
-                            {d.toLocaleTimeString("pt-BR", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                          <p className="font-mono text-[0.65rem] text-astro-muted">
-                            {formatarDuracao(item.duracaoMin)}
-                          </p>
-                        </div>
+                  <Fragment key={item.id}>
+                    <tr
+                      className={
+                        aberto
+                          ? "bg-white/[0.03]"
+                          : "border-b border-admin-border/60 transition hover:bg-white/[0.03]"
+                      }
+                    >
+                      {/* Horario */}
+                      <td className="px-4 py-3.5 align-middle">
+                        <p className="font-mono font-bold text-white">
+                          {d.toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        <p className="font-mono text-[0.65rem] text-astro-muted">
+                          {formatarDuracao(item.duracaoMin)}
+                        </p>
+                      </td>
 
-                        {/* Cliente */}
-                        <div className="flex w-56 shrink-0 items-center gap-3">
+                      {/* Cliente */}
+                      <td className="px-4 py-3.5 align-middle">
+                        <div className="flex items-center gap-3">
                           <span
                             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${corDoNome(item.clienteNome)}`}
                           >
@@ -346,95 +351,99 @@ export function AgendamentosLista({
                             </p>
                           </div>
                         </div>
+                      </td>
 
-                        {/* Veiculo */}
-                        <div className="hidden w-48 shrink-0 md:block">
-                          <p className="truncate text-slate-200">{item.veiculo}</p>
-                          <p className="font-mono text-[0.65rem] text-astro-muted">
-                            {item.placa}
-                          </p>
-                        </div>
-
-                        {/* Servico */}
-                        <p className="hidden min-w-0 flex-1 truncate text-slate-200 lg:block">
-                          {item.servicoNome}
+                      {/* Veiculo */}
+                      <td className="hidden px-4 py-3.5 align-middle md:table-cell">
+                        <p className="truncate text-slate-200">{item.veiculo}</p>
+                        <p className="font-mono text-[0.65rem] text-astro-muted">
+                          {item.placa}
                         </p>
+                      </td>
 
-                        {/* Valor */}
-                        <p className="ml-auto shrink-0 font-bold text-white lg:ml-0">
-                          {formatarReal(item.valor)}
-                        </p>
+                      {/* Servico */}
+                      <td className="hidden px-4 py-3.5 align-middle lg:table-cell">
+                        <p className="truncate text-slate-200">{item.servicoNome}</p>
+                      </td>
 
-                        {/* Status */}
+                      {/* Valor — largura fixa e alinhado a direita: a coluna nao
+                          se desloca conforme o tamanho do numero nem do badge */}
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right align-middle font-bold text-white">
+                        {formatarReal(item.valor)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-6 py-3.5 align-middle">
                         <span
-                          className={`hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-wider sm:inline-flex ${estilo.classe}`}
+                          className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-wider ${estilo.classe}`}
                         >
-                          <span className={`h-1.5 w-1.5 rounded-full ${estilo.ponto}`} />
+                          <span
+                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${estilo.ponto}`}
+                          />
                           {estilo.rotulo}
                         </span>
+                      </td>
 
-                        {/* Abrir acoes */}
+                      {/* Abrir acoes */}
+                      <td className="px-4 py-3.5 text-right align-middle">
                         <button
                           onClick={() => setExpandido(aberto ? null : item.id)}
                           aria-expanded={aberto}
                           aria-label={aberto ? "Fechar acoes" : "Abrir acoes"}
-                          className="shrink-0 rounded-md p-1 text-astro-muted transition hover:bg-white/5 hover:text-white"
+                          className="rounded-md p-1 text-astro-muted transition hover:bg-white/5 hover:text-white"
                         >
                           <ChevronDown
                             className={`h-4 w-4 transition ${aberto ? "rotate-180" : "-rotate-90"}`}
                           />
                         </button>
-                      </div>
+                      </td>
+                    </tr>
 
-                      {/* Acoes da linha */}
-                      {aberto && (
-                        <div className="flex flex-wrap items-center gap-3 border-t border-admin-border bg-admin-bg px-4 py-3">
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-wider sm:hidden ${estilo.classe}`}
-                          >
-                            <span className={`h-1.5 w-1.5 rounded-full ${estilo.ponto}`} />
-                            {estilo.rotulo}
-                          </span>
+                    {/* Acoes da linha */}
+                    {aberto && (
+                      <tr className="border-b border-admin-border/60">
+                        <td colSpan={7} className="bg-admin-bg px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-xs text-astro-muted lg:hidden">
+                              {item.veiculo} · {item.placa} · {item.servicoNome}
+                            </p>
 
-                          <p className="text-xs text-astro-muted md:hidden">
-                            {item.veiculo} · {item.placa} · {item.servicoNome}
-                          </p>
-
-                          <div className="ml-auto flex flex-wrap gap-2">
-                            {podeConfirmar && (
-                              <button
-                                onClick={() => agir(item.id, "confirmar-pagamento")}
-                                disabled={processando === item.id}
-                                className="flex items-center gap-2 rounded-lg bg-astro-blue px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                                {processando === item.id
-                                  ? "Confirmando..."
-                                  : item.status === "PIX_PENDENTE"
-                                    ? "Confirmar PIX"
-                                    : "Confirmar pagamento"}
-                              </button>
-                            )}
-                            {podeCancelar && (
-                              <button
-                                onClick={() => agir(item.id, "cancelar")}
-                                disabled={processando === item.id}
-                                className="flex items-center gap-2 rounded-lg border border-red-500/40 px-3.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
-                              >
-                                <Ban className="h-3.5 w-3.5" />
-                                Cancelar
-                              </button>
-                            )}
-                            {!podeConfirmar && !podeCancelar && (
-                              <span className="text-xs text-astro-muted">
-                                Nenhuma acao disponivel para este status.
-                              </span>
-                            )}
+                            <div className="ml-auto flex flex-wrap gap-2">
+                              {podeConfirmar && (
+                                <button
+                                  onClick={() => agir(item.id, "confirmar-pagamento")}
+                                  disabled={processando === item.id}
+                                  className="flex items-center gap-2 rounded-lg bg-astro-blue px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                  {processando === item.id
+                                    ? "Confirmando..."
+                                    : item.status === "PIX_PENDENTE"
+                                      ? "Confirmar PIX"
+                                      : "Confirmar pagamento"}
+                                </button>
+                              )}
+                              {podeCancelar && (
+                                <button
+                                  onClick={() => agir(item.id, "cancelar")}
+                                  disabled={processando === item.id}
+                                  className="flex items-center gap-2 rounded-lg border border-red-500/40 px-3.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+                                >
+                                  <Ban className="h-3.5 w-3.5" />
+                                  Cancelar
+                                </button>
+                              )}
+                              {!podeConfirmar && !podeCancelar && (
+                                <span className="text-xs text-astro-muted">
+                                  Nenhuma acao disponivel para este status.
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
