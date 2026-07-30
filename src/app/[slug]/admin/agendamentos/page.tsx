@@ -60,10 +60,11 @@ export default async function AdminAgendamentosPage({
     redirect(`/${slug}`);
   }
 
-  // Padrao "mes": mostra o movimento recente sem carregar o historico inteiro.
+  // Padrao "hoje": ao abrir o painel o Admin quer saber o movimento do dia,
+  // nao navegar historico. Periodos maiores estao a um clique de distancia.
   const periodo: Periodo = PERIODOS.includes(periodoBruto as Periodo)
     ? (periodoBruto as Periodo)
-    : "mes";
+    : "hoje";
 
   const dataHora = janelaDoPeriodo(periodo);
 
