@@ -12,6 +12,15 @@
   --color-astro-blue: #2563eb;
   --color-astro-blue-bright: #3b82f6;
   --color-astro-muted: #8a97b1;
+
+  /* Painel admin (mockup de desktop) — escala propria, bem mais escura que a
+     do cliente: o painel e uma ferramenta de trabalho, com muito dado na tela,
+     e o contraste alto cansa menos em uso prolongado. Separado dos tokens
+     astro-* de proposito, para nao alterar as telas do cliente. */
+  --color-admin-bg: #05070f;
+  --color-admin-surface: #0b1220;
+  --color-admin-surface-2: #131c2e;
+  --color-admin-border: #1b2438;
 }
 
 :root {

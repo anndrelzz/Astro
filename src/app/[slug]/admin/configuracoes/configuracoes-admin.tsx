@@ -121,21 +121,23 @@ export function ConfiguracoesAdmin({
     router.refresh();
   }
 
-  function atualizarDia(diaSemana: number, campo: keyof HorarioDia, valor: string | boolean) {
+  function atualizarDia(
+    diaSemana: number,
+    campo: keyof HorarioDia,
+    valor: string | boolean
+  ) {
     setHorarios((atual) =>
       atual.map((h) => (h.diaSemana === diaSemana ? { ...h, [campo]: valor } : h))
     );
   }
 
   return (
-    <div className="mt-6 space-y-8">
-      {sucesso && <p className="text-sm text-green-600">{sucesso}</p>}
+    <div className="space-y-8">
+      {sucesso && <p className="text-sm text-emerald-400">{sucesso}</p>}
 
-      <div className="max-w-md space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <h2 className="font-medium text-zinc-900 dark:text-zinc-50">
-          Identidade visual (RF13)
-        </h2>
-        {erroLogo && <p className="text-sm text-red-600">{erroLogo}</p>}
+      <div className="max-w-md space-y-3 rounded-lg border border-admin-border bg-admin-surface p-4">
+        <h2 className="font-medium text-white">Identidade visual (RF13)</h2>
+        {erroLogo && <p className="text-sm text-red-400">{erroLogo}</p>}
 
         <div className="flex items-center gap-4">
           {logoUrl ? (
@@ -146,12 +148,12 @@ export function ConfiguracoesAdmin({
               className="h-16 w-16 rounded object-contain"
             />
           ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded border border-dashed border-zinc-300 text-xs text-zinc-500 dark:border-zinc-700">
+            <div className="flex h-16 w-16 items-center justify-center rounded border border-dashed border-admin-border text-xs text-astro-muted">
               Sem logo
             </div>
           )}
           <div>
-            <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+            <label className="block text-sm text-astro-muted">
               Enviar logo (PNG, JPG ou WEBP - max. 2MB)
             </label>
             <input
@@ -159,38 +161,34 @@ export function ConfiguracoesAdmin({
               accept="image/png,image/jpeg,image/webp"
               onChange={enviarLogo}
               disabled={enviandoLogo}
-              className="mt-1 text-sm"
+              className="mt-1 text-sm text-astro-muted"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
-            Cor primaria
-          </label>
+          <label className="block text-sm text-astro-muted">Cor primaria</label>
           <div className="mt-1 flex items-center gap-2">
             <input
               type="color"
               value={config.corPrimaria}
               onChange={(e) => setConfig({ ...config, corPrimaria: e.target.value })}
-              className="h-9 w-14 rounded border border-zinc-300 dark:border-zinc-700"
+              className="h-9 w-14 rounded border border-admin-border bg-transparent"
             />
-            <span className="text-sm text-zinc-500">{config.corPrimaria}</span>
+            <span className="text-sm text-astro-muted">{config.corPrimaria}</span>
           </div>
         </div>
       </div>
 
       <form
         onSubmit={salvarConfig}
-        className="max-w-md space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+        className="max-w-md space-y-3 rounded-lg border border-admin-border bg-admin-surface p-4"
       >
-        <h2 className="font-medium text-zinc-900 dark:text-zinc-50">
-          Pagamento e cancelamento
-        </h2>
-        {erroConfig && <p className="text-sm text-red-600">{erroConfig}</p>}
+        <h2 className="font-medium text-white">Pagamento e cancelamento</h2>
+        {erroConfig && <p className="text-sm text-red-400">{erroConfig}</p>}
 
         <div>
-          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="block text-sm text-astro-muted">
             Chave PIX Copia e Cola (RF17 — vazio desativa PIX, RN10)
           </label>
           <input
@@ -198,12 +196,12 @@ export function ConfiguracoesAdmin({
             onChange={(e) =>
               setConfig({ ...config, pixChaveCopiaCola: e.target.value })
             }
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-full rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="block text-sm text-astro-muted">
             Antecedencia minima para cancelamento (horas) — RF18
           </label>
           <input
@@ -216,12 +214,12 @@ export function ConfiguracoesAdmin({
                 cancelamentoHorasLimite: Number(e.target.value),
               })
             }
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-full rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="block text-sm text-astro-muted">
             Capacidade simultanea de atendimentos — RN06
           </label>
           <input
@@ -234,12 +232,12 @@ export function ConfiguracoesAdmin({
                 capacidadeSimultanea: Number(e.target.value),
               })
             }
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-full rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="block text-sm text-astro-muted">
             Intervalo entre horarios (minutos)
           </label>
           <input
@@ -250,14 +248,14 @@ export function ConfiguracoesAdmin({
             onChange={(e) =>
               setConfig({ ...config, intervaloMinutos: Number(e.target.value) })
             }
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-full rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
           />
         </div>
 
         <button
           type="submit"
           disabled={salvandoConfig}
-          className="w-full rounded bg-zinc-900 py-2 text-sm text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-black"
+          className="w-full rounded bg-astro-blue py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {salvandoConfig ? "Salvando..." : "Salvar configuracoes"}
         </button>
@@ -265,17 +263,15 @@ export function ConfiguracoesAdmin({
 
       <form
         onSubmit={salvarHorarios}
-        className="max-w-2xl space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+        className="max-w-2xl space-y-3 rounded-lg border border-admin-border bg-admin-surface p-4"
       >
-        <h2 className="font-medium text-zinc-900 dark:text-zinc-50">
-          Grade de horarios (RF02)
-        </h2>
-        {erroHorarios && <p className="text-sm text-red-600">{erroHorarios}</p>}
+        <h2 className="font-medium text-white">Grade de horarios (RF02)</h2>
+        {erroHorarios && <p className="text-sm text-red-400">{erroHorarios}</p>}
 
         <div className="space-y-2">
           {horarios.map((dia) => (
             <div key={dia.diaSemana} className="flex items-center gap-3 text-sm">
-              <label className="flex w-32 items-center gap-2">
+              <label className="flex w-32 items-center gap-2 text-slate-200">
                 <input
                   type="checkbox"
                   checked={dia.ativo}
@@ -292,9 +288,9 @@ export function ConfiguracoesAdmin({
                 onChange={(e) =>
                   atualizarDia(dia.diaSemana, "horaInicio", e.target.value)
                 }
-                className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900"
+                className="rounded border border-admin-border bg-admin-surface-2 px-2 py-1 text-slate-100 disabled:opacity-40"
               />
-              <span>ate</span>
+              <span className="text-astro-muted">ate</span>
               <input
                 type="time"
                 value={dia.horaFim}
@@ -302,7 +298,7 @@ export function ConfiguracoesAdmin({
                 onChange={(e) =>
                   atualizarDia(dia.diaSemana, "horaFim", e.target.value)
                 }
-                className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900"
+                className="rounded border border-admin-border bg-admin-surface-2 px-2 py-1 text-slate-100 disabled:opacity-40"
               />
             </div>
           ))}
@@ -311,7 +307,7 @@ export function ConfiguracoesAdmin({
         <button
           type="submit"
           disabled={salvandoHorarios}
-          className="w-full rounded bg-zinc-900 py-2 text-sm text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-black"
+          className="w-full rounded bg-astro-blue py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {salvandoHorarios ? "Salvando..." : "Salvar grade de horarios"}
         </button>
