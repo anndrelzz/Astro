@@ -2,27 +2,11 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
 import { ConfiguracoesAdmin } from "./configuracoes-admin";
 import { AdminHeader } from "../admin-header";
 
-const NOMES_DIAS = [
-  "Domingo",
-  "Segunda",
-  "Terca",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sabado",
-];
-
-function paraHora(minutos: number) {
-  const h = String(Math.floor(minutos / 60)).padStart(2, "0");
-  const m = String(minutos % 60).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-// UC13, UC14, UC09, RF17, RF18, RF02 — configuracoes gerais da estetica.
+// UC13, UC14, RF13, RF17, RF18, RN06 — configuracoes gerais da estetica.
+// A grade de horarios (UC09/RF02) saiu daqui para tela propria.
 export default async function AdminConfiguracoesPage({
   params,
 }: {
@@ -41,21 +25,6 @@ export default async function AdminConfiguracoesPage({
     redirect(`/${slug}`);
   }
 
-  const horarios = await withTenant(tenant.id, (tx) =>
-    tx.horarioFuncionamento.findMany({ where: { tenantId: tenant.id } })
-  );
-
-  const horariosPorDia = NOMES_DIAS.map((nome, diaSemana) => {
-    const existente = horarios.find((h) => h.diaSemana === diaSemana);
-    return {
-      diaSemana,
-      nome,
-      ativo: !!existente,
-      horaInicio: existente ? paraHora(existente.horaInicioMin) : "08:00",
-      horaFim: existente ? paraHora(existente.horaFimMin) : "18:00",
-    };
-  });
-
   return (
     <>
       <AdminHeader trilha="Configuracoes · Loja" titulo="Configuracoes da estetica" />
@@ -67,7 +36,6 @@ export default async function AdminConfiguracoesPage({
           intervaloMinutos: tenant.intervaloMinutos,
           corPrimaria: tenant.corPrimaria ?? "#0f172a",
         }}
-        horariosIniciais={horariosPorDia}
         logoUrlInicial={tenant.logoUrl}
       />
     </>
