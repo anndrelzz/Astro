@@ -38,7 +38,7 @@ export function AcoesAgendamento({
         <button
           onClick={() => chamar("confirmar-pix")}
           disabled={carregando}
-          className="rounded bg-zinc-900 px-3 py-1 text-xs text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-black"
+          className="rounded bg-astro-blue px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
         >
           Confirmar pagamento PIX
         </button>
@@ -47,7 +47,7 @@ export function AcoesAgendamento({
         <button
           onClick={() => chamar("cancelar")}
           disabled={carregando}
-          className="rounded border border-zinc-300 px-3 py-1 text-xs disabled:opacity-50 dark:border-zinc-700"
+          className="rounded border border-admin-border px-3 py-1 text-xs text-slate-200 disabled:opacity-50"
         >
           Cancelar
         </button>

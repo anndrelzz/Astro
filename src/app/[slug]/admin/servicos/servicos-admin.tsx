@@ -96,7 +96,7 @@ export function ServicosAdmin({
         {servicos.map((servico) => (
           <li
             key={servico.id}
-            className="rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800"
+            className="rounded-lg border border-admin-border bg-admin-surface p-4 text-sm"
           >
             <div className="flex items-center justify-between">
               <span className="font-medium">
@@ -104,12 +104,12 @@ export function ServicosAdmin({
               </span>
               <button
                 onClick={() => remover(servico.id)}
-                className="rounded border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
+                className="rounded border border-admin-border px-3 py-1 text-xs text-slate-200"
               >
                 Remover
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap gap-3 text-zinc-600 dark:text-zinc-400">
+            <div className="mt-2 flex flex-wrap gap-3 text-astro-muted">
               {CAMPOS_PRECO.map((c) => (
                 <span key={c.chave}>
                   {c.label}: R$ {Number(servico[c.chave]).toFixed(2)}
@@ -119,15 +119,15 @@ export function ServicosAdmin({
           </li>
         ))}
         {servicos.length === 0 && (
-          <li className="text-zinc-500">Nenhum servico cadastrado ainda.</li>
+          <li className="text-astro-muted">Nenhum servico cadastrado ainda.</li>
         )}
       </ul>
 
       <form
         onSubmit={criar}
-        className="max-w-lg space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+        className="max-w-lg space-y-3 rounded-lg border border-admin-border bg-admin-surface p-4"
       >
-        <h2 className="font-medium text-zinc-900 dark:text-zinc-50">
+        <h2 className="font-medium text-white">
           Novo servico
         </h2>
         {erro && <p className="text-sm text-red-600">{erro}</p>}
@@ -136,7 +136,7 @@ export function ServicosAdmin({
           value={form.nome}
           onChange={(e) => setForm({ ...form, nome: e.target.value })}
           required
-          className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          className="w-full rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
         />
         <input
           type="number"
@@ -144,7 +144,7 @@ export function ServicosAdmin({
           value={form.duracaoMin}
           onChange={(e) => setForm({ ...form, duracaoMin: e.target.value })}
           required
-          className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          className="w-full rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
         />
         <div className="grid grid-cols-2 gap-2">
           {CAMPOS_PRECO.map((c) => (
@@ -156,14 +156,14 @@ export function ServicosAdmin({
               value={form[c.chave as keyof typeof form]}
               onChange={(e) => setForm({ ...form, [c.chave]: e.target.value })}
               required
-              className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              className="rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
             />
           ))}
         </div>
         <button
           type="submit"
           disabled={carregando}
-          className="w-full rounded bg-zinc-900 py-2 text-sm text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-black"
+          className="w-full rounded bg-astro-blue py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {carregando ? "Salvando..." : "Adicionar servico"}
         </button>

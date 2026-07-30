@@ -45,56 +45,56 @@ export function FinanceiroDashboard() {
     <div className="mt-6 space-y-6">
       <div className="flex items-end gap-3">
         <div>
-          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="block text-sm text-astro-muted">
             De
           </label>
           <input
             type="date"
             value={inicio}
             onChange={(e) => setInicio(e.target.value)}
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
           />
         </div>
         <div>
-          <label className="block text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="block text-sm text-astro-muted">
             Ate
           </label>
           <input
             type="date"
             value={fim}
             onChange={(e) => setFim(e.target.value)}
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded border border-admin-border bg-admin-surface-2 px-3 py-2 text-slate-100"
           />
         </div>
       </div>
 
-      {carregando && <p className="text-sm text-zinc-500">Carregando...</p>}
+      {carregando && <p className="text-sm text-astro-muted">Carregando...</p>}
       {erro && !carregando && <p className="text-sm text-red-600">{erro}</p>}
 
       {dados && !carregando && !erro && (
         <>
           <div className="flex gap-6">
-            <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-              <p className="text-sm text-zinc-500">Receita no periodo</p>
-              <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <div className="rounded-lg border border-admin-border bg-admin-surface p-4">
+              <p className="text-sm text-astro-muted">Receita no periodo</p>
+              <p className="text-2xl font-semibold text-white">
                 R$ {dados.receitaTotal.toFixed(2).replace(".", ",")}
               </p>
             </div>
-            <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-              <p className="text-sm text-zinc-500">Agendamentos pagos</p>
-              <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <div className="rounded-lg border border-admin-border bg-admin-surface p-4">
+              <p className="text-sm text-astro-muted">Agendamentos pagos</p>
+              <p className="text-2xl font-semibold text-white">
                 {dados.totalAgendamentos}
               </p>
             </div>
           </div>
 
           <div>
-            <h2 className="font-medium text-zinc-900 dark:text-zinc-50">
+            <h2 className="font-medium text-white">
               Receita por servico
             </h2>
             <table className="mt-2 w-full max-w-lg text-sm">
               <thead>
-                <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-800">
+                <tr className="border-b border-admin-border text-left text-astro-muted">
                   <th className="py-2">Servico</th>
                   <th className="py-2">Qtd.</th>
                   <th className="py-2">Receita</th>
@@ -104,7 +104,7 @@ export function FinanceiroDashboard() {
                 {dados.porServico.map((item) => (
                   <tr
                     key={item.servicoId}
-                    className="border-b border-zinc-100 dark:border-zinc-900"
+                    className="border-b border-admin-border"
                   >
                     <td className="py-2">{item.nome}</td>
                     <td className="py-2">{item.quantidade}</td>
@@ -115,7 +115,7 @@ export function FinanceiroDashboard() {
                 ))}
                 {dados.porServico.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="py-4 text-zinc-500">
+                    <td colSpan={3} className="py-4 text-astro-muted">
                       Nenhuma receita confirmada nesse periodo.
                     </td>
                   </tr>
