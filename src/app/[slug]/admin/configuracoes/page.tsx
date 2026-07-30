@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { ConfiguracoesAdmin } from "./configuracoes-admin";
-import { AdminNav } from "../admin-nav";
+import { AdminHeader } from "../admin-header";
 
 const NOMES_DIAS = [
   "Domingo",
@@ -57,11 +57,8 @@ export default async function AdminConfiguracoesPage({
   });
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
-      <AdminNav slug={slug} />
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Configuracoes
-      </h1>
+    <>
+      <AdminHeader trilha="Configuracoes · Loja" titulo="Configuracoes da estetica" />
       <ConfiguracoesAdmin
         configInicial={{
           pixChaveCopiaCola: tenant.pixChaveCopiaCola ?? "",
@@ -73,6 +70,6 @@ export default async function AdminConfiguracoesPage({
         horariosIniciais={horariosPorDia}
         logoUrlInicial={tenant.logoUrl}
       />
-    </div>
+    </>
   );
 }

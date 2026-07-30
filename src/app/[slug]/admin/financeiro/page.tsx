@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { AdminNav } from "../admin-nav";
+import { AdminHeader } from "../admin-header";
 import { FinanceiroDashboard } from "./financeiro-dashboard";
 
 // RF12, UC11 — dashboard financeiro do Admin.
@@ -25,12 +25,9 @@ export default async function AdminFinanceiroPage({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
-      <AdminNav slug={slug} />
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Dashboard financeiro
-      </h1>
+    <>
+      <AdminHeader trilha="Financeiro" titulo="Receita e pagamentos" />
       <FinanceiroDashboard />
-    </div>
+    </>
   );
 }

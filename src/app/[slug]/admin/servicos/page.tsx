@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { ServicosAdmin } from "./servicos-admin";
-import { AdminNav } from "../admin-nav";
+import { AdminHeader } from "../admin-header";
 
 // UC08, RF01 — Admin gerencia servicos e precos por segmento de veiculo.
 export default async function AdminServicosPage({
@@ -33,11 +33,11 @@ export default async function AdminServicosPage({
   );
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 dark:bg-black">
-      <AdminNav slug={slug} />
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Servicos
-      </h1>
+    <>
+      <AdminHeader
+        trilha={`Catalogo · ${servicos.length} servico${servicos.length === 1 ? "" : "s"}`}
+        titulo="Servicos"
+      />
       <ServicosAdmin
         servicosIniciais={servicos.map((s) => ({
           id: s.id,
@@ -50,6 +50,6 @@ export default async function AdminServicosPage({
           precoVan: Number(s.precoVan),
         }))}
       />
-    </div>
+    </>
   );
 }
