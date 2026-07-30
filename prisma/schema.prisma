@@ -147,10 +147,17 @@ model Veiculo {
 /// Preco por segmento de veiculo, calculado automaticamente no agendamento
 /// e nunca alterado manualmente pelo cliente (RN01, RF01, RF04).
 model Servico {
-  id          String  @id @default(uuid())
-  tenantId    String
-  nome        String
-  duracaoMin  Int
+  id         String  @id @default(uuid())
+  tenantId   String
+  nome       String
+  /// Exibida ao cliente no card do servico (UC08, mockup do site publico).
+  descricao  String?
+  /// RN14 — servico pausado sai da vitrine mas preserva o historico.
+  /// Necessario porque um servico com agendamento vinculado NAO pode ser
+  /// removido (apagar destruiria o registro do que ja foi vendido); sem
+  /// "pausar", ele ficaria no catalogo do cliente para sempre.
+  ativo      Boolean @default(true)
+  duracaoMin Int
   precoHatch  Decimal @db.Decimal(10, 2)
   precoSedan  Decimal @db.Decimal(10, 2)
   precoSuv    Decimal @db.Decimal(10, 2)

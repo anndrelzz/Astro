@@ -32,7 +32,7 @@ export default async function PagamentoPage({
 
   const { servico, veiculo } = await withTenant(tenant.id, async (tx) => {
     const servico = await tx.servico.findFirst({
-      where: { id: servicoId, tenantId: tenant.id },
+      where: { id: servicoId, tenantId: tenant.id, ativo: true },
     });
     const veiculo = await tx.veiculo.findFirst({
       where: { id: veiculoId, usuarioId: session.user.id },

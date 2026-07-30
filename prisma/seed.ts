@@ -38,6 +38,7 @@ async function main() {
   const servicosSeed = [
     {
       nome: "Lavagem Completa",
+      descricao: "Lavagem externa, limpeza de rodas e aplicacao de cera express",
       duracaoMin: 60,
       precoHatch: 60,
       precoSedan: 70,
@@ -47,6 +48,7 @@ async function main() {
     },
     {
       nome: "Polimento Técnico",
+      descricao: "Correcao de micro-riscos e revitalizacao da pintura",
       duracaoMin: 180,
       precoHatch: 350,
       precoSedan: 400,
