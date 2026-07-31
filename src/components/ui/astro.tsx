@@ -66,17 +66,37 @@ export function ScreenHeader({
 }
 
 // Campo com icone a esquerda e slot opcional a direita (ex: mostrar senha).
+//
+// claroNoDesktop: as telas de login e cadastro sao escuras no celular e claras
+// no desktop (telas 02 e 03 do mockup). Em vez de duplicar o componente, o
+// campo ganha a variante clara a partir de lg. Quem nao passa a flag continua
+// escuro em qualquer largura.
 export function Field({
   icon,
   right,
+  claroNoDesktop = false,
   ...props
-}: ComponentProps<"input"> & { icon: ReactNode; right?: ReactNode }) {
+}: ComponentProps<"input"> & {
+  icon: ReactNode;
+  right?: ReactNode;
+  claroNoDesktop?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-astro-border bg-astro-surface px-4 py-3 focus-within:border-astro-blue-bright/60">
-      <span className="text-astro-muted">{icon}</span>
+    <div
+      className={`flex items-center gap-3 rounded-xl border border-astro-border bg-astro-surface px-4 py-3 focus-within:border-astro-blue-bright/60 ${
+        claroNoDesktop
+          ? "lg:border-zinc-200 lg:bg-zinc-50 lg:focus-within:border-astro-blue"
+          : ""
+      }`}
+    >
+      <span className={`text-astro-muted ${claroNoDesktop ? "lg:text-zinc-400" : ""}`}>
+        {icon}
+      </span>
       <input
         {...props}
-        className="w-full bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none"
+        className={`w-full bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none ${
+          claroNoDesktop ? "lg:text-zinc-900 lg:placeholder:text-zinc-400" : ""
+        }`}
       />
       {right}
     </div>
