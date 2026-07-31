@@ -63,12 +63,26 @@ enum StatusNotificacao {
 /// Cada estetica cadastrada e um tenant isolado (RN07).
 /// slug e unico e imutavel apos o cadastro (RN09).
 model Tenant {
-  id                      String   @id @default(uuid())
-  nome                    String
-  slug                    String   @unique
-  logoUrl                 String?
-  corPrimaria             String?
-  telefone                String?
+  id          String  @id @default(uuid())
+  nome        String
+  slug        String  @unique
+  logoUrl     String?
+  corPrimaria String?
+  /// Apresentacao da estetica, exibida ao cliente no site publico (UC13).
+  descricao   String?
+
+  // Contato e localizacao — tudo exibido ao cliente. Como cada estetica tem um
+  // endereco so, sao colunas daqui e nao tabela separada: tabela propria seria
+  // o caso de filiais, que estao em Fora do Escopo (RFC 2.6).
+  telefone     String?
+  whatsapp     String?
+  emailContato String?
+  cep          String?
+  rua          String?
+  numero       String?
+  bairro       String?
+  cidade       String?
+  estado       String?
   pixChaveCopiaCola       String? // RF17 — se nulo, opcao PIX nao e exibida ao cliente (RN10)
   cancelamentoHorasLimite Int      @default(2) // RF18 — antecedencia minima para cancelamento pelo cliente
   capacidadeSimultanea    Int      @default(1) // RN06 — configurada pelo Admin, numero de atendimentos ao mesmo tempo

@@ -5,8 +5,12 @@ import { lerJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 import { tenantConfigSchema } from "@/lib/validations/tenant";
 
-// RF17, RF18, RN06 — Admin configura chave PIX, janela de cancelamento,
-// capacidade simultanea e intervalo de horarios da propria estetica.
+// UC13, UC14, RF13, RF17, RF18, RN06 — Admin configura a propria estetica:
+// dados de apresentacao, endereco, contatos, chave PIX, janela de cancelamento,
+// capacidade simultanea e intervalo de horarios.
+//
+// O slug nao e alteravel por aqui: RN09 o define como imutavel apos o cadastro,
+// e ele nem consta do schema de validacao.
 export async function PATCH(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
@@ -27,13 +31,18 @@ export async function PATCH(request: Request) {
 
   const { pixChaveCopiaCola, ...resto } = parsed.data;
 
+  // Atualizacao parcial: so entram no update os campos que vieram no corpo.
+  // Campo ausente != campo vazio — a tela salva por secao, e salvar o endereco
+  // nao pode zerar a chave PIX sem querer.
+  const dados: Record<string, unknown> = { ...resto };
+  if (pixChaveCopiaCola !== undefined) {
+    // RN10 — string vazia equivale a "sem chave configurada".
+    dados.pixChaveCopiaCola = pixChaveCopiaCola?.length ? pixChaveCopiaCola : null;
+  }
+
   const tenant = await prisma.tenant.update({
     where: { id: session.user.tenantId },
-    data: {
-      ...resto,
-      // RN10 — string vazia equivale a "sem chave configurada".
-      pixChaveCopiaCola: pixChaveCopiaCola?.length ? pixChaveCopiaCola : null,
-    },
+    data: dados,
   });
 
   return NextResponse.json(tenant);
