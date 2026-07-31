@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
@@ -60,6 +60,16 @@ export default async function TenantPage({
     } as Record<SegmentoVeiculo, number>,
   }));
 
+  // Endereco montado a partir do que estiver preenchido — estetica que so
+  // informou bairro e cidade mostra so isso, sem virgulas soltas.
+  const endereco = [
+    [tenant.rua, tenant.numero].filter(Boolean).join(", "),
+    tenant.bairro,
+    [tenant.cidade, tenant.estado].filter(Boolean).join(" - "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const segmentoInicial: SegmentoVeiculo = veiculos[0]?.segmento ?? "SUV";
   const primeiroNome = session?.user.name?.split(" ")[0] ?? "";
   const iniciais = tenant.nome
@@ -108,23 +118,74 @@ export default async function TenantPage({
       </header>
 
       <main className="mx-auto max-w-md px-5">
-        {/* Card da estetica */}
-        <div className="astro-dark mt-5 flex items-center justify-between rounded-2xl px-5 py-6">
-          <h1 className="text-xl font-bold text-white">{tenant.nome}</h1>
-          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
-            {tenant.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={tenant.logoUrl}
-                alt={`Logo ${tenant.nome}`}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <span className="text-sm font-semibold tracking-wide text-white">
-                {iniciais}
-              </span>
-            )}
+        {/* Card da estetica — descricao, endereco e contatos vem das
+            Configuracoes do Admin (UC13) */}
+        <div className="astro-dark mt-5 rounded-2xl px-5 py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-white">{tenant.nome}</h1>
+              {tenant.descricao && (
+                <p className="mt-1.5 text-sm leading-relaxed text-astro-muted">
+                  {tenant.descricao}
+                </p>
+              )}
+            </div>
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
+              {tenant.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={tenant.logoUrl}
+                  alt={`Logo ${tenant.nome}`}
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <span className="text-sm font-semibold tracking-wide text-white">
+                  {iniciais}
+                </span>
+              )}
+            </div>
           </div>
+
+          {endereco && (
+            <p className="mt-4 flex items-start gap-2 text-sm text-astro-muted">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {endereco}
+            </p>
+          )}
+
+          {(tenant.whatsapp || tenant.telefone || tenant.emailContato) && (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+              {tenant.whatsapp && (
+                <a
+                  href={`https://wa.me/55${tenant.whatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  WhatsApp
+                </a>
+              )}
+              {tenant.telefone && (
+                <a
+                  href={`tel:+55${tenant.telefone}`}
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  Ligar
+                </a>
+              )}
+              {tenant.emailContato && (
+                <a
+                  href={`mailto:${tenant.emailContato}`}
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  E-mail
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         <HomeServicos
