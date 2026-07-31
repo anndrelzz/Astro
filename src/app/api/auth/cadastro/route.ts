@@ -18,7 +18,14 @@ const cadastroSchema = z.object({
     .refine((v) => v.length === 10 || v.length === 11, {
       message: "Telefone invalido - informe DDD + numero (10 ou 11 digitos)",
     }),
-  senha: z.string().min(6, "Senha deve ter ao menos 6 caracteres"),
+  // As tres regras aparecem no medidor de forca da tela 03. Servidor e tela
+  // precisam exigir exatamente o mesmo: prometer "1 maiuscula" e aceitar uma
+  // senha sem maiuscula transforma o medidor em enfeite.
+  senha: z
+    .string()
+    .min(8, "Senha deve ter ao menos 8 caracteres")
+    .refine((s) => /\d/.test(s), "Senha deve conter ao menos 1 numero")
+    .refine((s) => /[A-Z]/.test(s), "Senha deve conter ao menos 1 letra maiuscula"),
 });
 
 // UC01 — cliente cria conta informando nome completo, e-mail, telefone e
