@@ -3,10 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ConfiguracoesAdmin } from "./configuracoes-admin";
-import { AdminHeader } from "../admin-header";
 
 // UC13, UC14, RF13, RF17, RF18, RN06 — configuracoes gerais da estetica.
-// A grade de horarios (UC09/RF02) saiu daqui para tela propria.
+// A grade de horarios (UC09/RF02) tem tela propria.
 export default async function AdminConfiguracoesPage({
   params,
 }: {
@@ -26,18 +25,26 @@ export default async function AdminConfiguracoesPage({
   }
 
   return (
-    <>
-      <AdminHeader trilha="Configuracoes · Loja" titulo="Configuracoes da estetica" />
-      <ConfiguracoesAdmin
-        configInicial={{
-          pixChaveCopiaCola: tenant.pixChaveCopiaCola ?? "",
-          cancelamentoHorasLimite: tenant.cancelamentoHorasLimite,
-          capacidadeSimultanea: tenant.capacidadeSimultanea,
-          intervaloMinutos: tenant.intervaloMinutos,
-          corPrimaria: tenant.corPrimaria ?? "#0f172a",
-        }}
-        logoUrlInicial={tenant.logoUrl}
-      />
-    </>
+    <ConfiguracoesAdmin
+      slug={tenant.slug}
+      logoUrlInicial={tenant.logoUrl}
+      configInicial={{
+        nome: tenant.nome,
+        descricao: tenant.descricao ?? "",
+        telefone: tenant.telefone ?? "",
+        whatsapp: tenant.whatsapp ?? "",
+        emailContato: tenant.emailContato ?? "",
+        cep: tenant.cep ?? "",
+        rua: tenant.rua ?? "",
+        numero: tenant.numero ?? "",
+        bairro: tenant.bairro ?? "",
+        cidade: tenant.cidade ?? "",
+        estado: tenant.estado ?? "",
+        pixChaveCopiaCola: tenant.pixChaveCopiaCola ?? "",
+        cancelamentoHorasLimite: tenant.cancelamentoHorasLimite,
+        capacidadeSimultanea: tenant.capacidadeSimultanea,
+        intervaloMinutos: tenant.intervaloMinutos,
+      }}
+    />
   );
 }
