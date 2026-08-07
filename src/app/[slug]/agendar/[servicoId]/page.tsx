@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { calcularPreco } from "@/lib/precificacao";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
+import { ClienteShell } from "../../cliente-shell";
 import { AgendarForm } from "./agendar-form";
 
 // UC03, tela 09 — escolha de data/horario/veiculo. RN04: sem veiculo
@@ -55,15 +56,21 @@ export default async function AgendarPage({
   }));
 
   return (
-    <AgendarForm
+    <ClienteShell
       slug={slug}
-      tenantId={tenant.id}
-      servico={{
-        id: servico.id,
-        nome: servico.nome,
-        duracaoMin: servico.duracaoMin,
-      }}
-      veiculos={veiculosView}
-    />
+      trilha={["Serviços", servico.nome, "Agendar"]}
+      titulo="Agendar serviço"
+    >
+      <AgendarForm
+        slug={slug}
+        tenantId={tenant.id}
+        servico={{
+          id: servico.id,
+          nome: servico.nome,
+          duracaoMin: servico.duracaoMin,
+        }}
+        veiculos={veiculosView}
+      />
+    </ClienteShell>
   );
 }
