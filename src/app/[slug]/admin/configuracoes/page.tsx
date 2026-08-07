@@ -27,7 +27,6 @@ export default async function AdminConfiguracoesPage({
   return (
     <ConfiguracoesAdmin
       slug={tenant.slug}
-      logoUrlInicial={tenant.logoUrl}
       configInicial={{
         nome: tenant.nome,
         descricao: tenant.descricao ?? "",
