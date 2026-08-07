@@ -63,8 +63,10 @@ export function HomeServicos({
         Selecione o segmento do seu veículo para ver os preços.
       </p>
 
-      {/* Seletor de segmento */}
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Seletor de segmento. No celular rola na horizontal (os 5 segmentos
+          nao cabem em 448px); no desktop ha espaco de sobra, entao a rolagem
+          sai e os chips ficam todos visiveis. */}
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible">
         {SEGMENTOS.map((s) => {
           const ativo = s.valor === segmento;
           return (
@@ -94,15 +96,18 @@ export function HomeServicos({
         </div>
       </div>
 
-      {/* Cards de servico */}
-      <div className="mt-4 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Cards de servico. No celular e um carrossel horizontal de cards de
+          224px; no desktop vira grade (tela 06 do mockup), que mostra o
+          catalogo inteiro sem rolar. As colunas acompanham a largura da tela
+          para nao esticar o card quando a estetica tem poucos servicos. */}
+      <div className="mt-4 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] lg:gap-5 lg:overflow-visible">
         {servicos.map((servico) => (
           <div
             key={servico.id}
-            className="flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm"
+            className="flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition lg:w-auto lg:shrink lg:hover:-translate-y-0.5 lg:hover:shadow-md"
           >
             {/* Imagem placeholder com badge de duracao */}
-            <div className="relative flex h-36 items-end bg-gradient-to-br from-astro-surface-2 to-astro-bg p-3">
+            <div className="relative flex h-36 items-end bg-gradient-to-br from-astro-surface-2 to-astro-bg p-3 lg:h-44">
               <span className="flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
                 <Clock className="h-3 w-3" />
                 {formatarDuracao(servico.duracaoMin)}

@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { ArrowRight, Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { Logo, Field, FieldLabel, PrimaryButton } from "@/components/ui/astro";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { SuccessScreen } from "@/components/ui/success-screen";
-import { PainelMarca } from "./painel-marca";
+import { PainelMarca, MarcaEstetica, type Estetica } from "./painel-marca";
 
 // Regras de senha exibidas ao usuario no cadastro. Precisam bater exatamente
 // com o que /api/auth/cadastro valida — texto que promete uma regra e servidor
@@ -27,7 +27,13 @@ const REGRAS_SENHA = [
 // Layout: no celular e uma coluna escura unica. A partir de lg vira a tela
 // dividida do mockup — painel de marca de um lado, formulario claro do outro,
 // com os lados invertidos entre login e cadastro.
-export function AuthForm({ modo }: { modo: "login" | "cadastro" }) {
+export function AuthForm({
+  modo,
+  estetica,
+}: {
+  modo: "login" | "cadastro";
+  estetica: Estetica;
+}) {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,7 +121,7 @@ export function AuthForm({ modo }: { modo: "login" | "cadastro" }) {
         )}
       </AnimatePresence>
 
-      <PainelMarca modo={modo} />
+      <PainelMarca modo={modo} estetica={estetica} />
 
       {/* Coluna do formulario */}
       <div
@@ -123,10 +129,19 @@ export function AuthForm({ modo }: { modo: "login" | "cadastro" }) {
           eLogin ? "" : "lg:order-1"
         }`}
       >
-        {/* Topo: no celular so a marca; no desktop a marca some no login
-            (ela ja esta no painel escuro) e aparece o atalho para a outra rota. */}
-        <div className="flex items-center justify-between">
-          <Logo className={`text-lg text-white ${eLogin ? "lg:hidden" : "lg:text-zinc-900"}`} />
+        {/* Topo. No celular mostra de quem e a pagina — a estetica em primeiro
+            plano, a marca da plataforma discreta ao lado. No desktop essa
+            identidade ja esta no painel escuro, entao aqui sobra o atalho para
+            a outra rota. */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3 lg:hidden">
+            <MarcaEstetica estetica={estetica} />
+          </div>
+          <Logo
+            className={`shrink-0 text-sm text-white/40 lg:text-lg ${
+              eLogin ? "lg:hidden" : "lg:text-zinc-900"
+            }`}
+          />
           <p className="hidden text-sm text-zinc-500 lg:block">
             {eLogin ? "Ainda não tem conta? " : "Já tem conta? "}
             <Link
@@ -326,18 +341,10 @@ export function AuthForm({ modo }: { modo: "login" | "cadastro" }) {
           </div>
         </div>
 
-        {/* Rodape (so desktop, como no mockup) */}
+        {/* Rodape (so desktop, como no mockup). Sem "voltar a vitrine": /[slug]
+            redireciona quem nao esta logado para ca, entao o link seria um laco. */}
         <div className="hidden items-center justify-between text-xs text-zinc-400 lg:flex">
           <span>© {new Date().getFullYear()} Astro Estética Automotiva</span>
-          {!eLogin && (
-            <Link
-              href={`/${slug}`}
-              className="inline-flex items-center gap-1 hover:text-zinc-600"
-            >
-              Voltar à vitrine
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          )}
         </div>
       </div>
     </div>
