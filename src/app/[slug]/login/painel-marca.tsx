@@ -1,6 +1,39 @@
 import { Check } from "lucide-react";
 import { Logo } from "@/components/ui/astro";
 
+export type Estetica = { nome: string; logoUrl: string | null };
+
+// Identidade da estetica (RF14). O cliente chega aqui por um link que a
+// propria estetica divulgou; sem o nome e o logo na tela, ele nao tem como
+// confirmar que caiu no lugar certo. Sempre sobre fundo escuro — no desktop
+// vive no painel de marca, no celular no topo do formulario.
+export function MarcaEstetica({ estetica }: { estetica: Estetica }) {
+  const iniciais = estetica.nome
+    .split(" ")
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-white/5">
+        {estetica.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={estetica.logoUrl}
+            alt={`Logo ${estetica.nome}`}
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          <span className="text-xs font-semibold tracking-wide text-white">{iniciais}</span>
+        )}
+      </div>
+      <span className="truncate text-sm font-semibold text-white">{estetica.nome}</span>
+    </div>
+  );
+}
+
 // Painel escuro de marca das telas 02 (login) e 03 (cadastro). No mockup ele
 // ocupa um terco da tela: a esquerda no login, a direita no cadastro. So
 // existe no desktop — no celular a tela inteira ja e escura e ele seria
@@ -9,7 +42,13 @@ import { Logo } from "@/components/ui/astro";
 // O fundo tem duas camadas sobre o azul-escuro da marca: listras diagonais
 // muito sutis (dao textura sem virar padrao chamativo) e um brilho radial
 // azul deslocado do centro, que e o que da profundidade no desenho.
-export function PainelMarca({ modo }: { modo: "login" | "cadastro" }) {
+export function PainelMarca({
+  modo,
+  estetica,
+}: {
+  modo: "login" | "cadastro";
+  estetica: Estetica;
+}) {
   const eLogin = modo === "login";
 
   return (
@@ -35,12 +74,11 @@ export function PainelMarca({ modo }: { modo: "login" | "cadastro" }) {
         }}
       />
 
-      {/* Topo */}
-      <div className="relative flex items-center gap-3">
-        <span className="astro-label rounded border border-white/10 bg-white/5 px-2 py-1 !text-white/50">
-          Hero · 2026
-        </span>
-        {eLogin && <Logo className="text-lg text-white" />}
+      {/* Topo: de quem e esta pagina. A estetica vem primeiro, a marca da
+          plataforma fica discreta ao lado. */}
+      <div className="relative flex items-center justify-between gap-4">
+        <MarcaEstetica estetica={estetica} />
+        {eLogin && <Logo className="shrink-0 text-sm text-white/40" />}
       </div>
 
       {/* Rodape */}

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
+import { ClienteShell } from "../cliente-shell";
 import { HistoricoLista } from "./historico-lista";
 
 // RF15, UC05 — historico de agendamentos do cliente (tela 13 do mockup).
@@ -51,10 +52,12 @@ export default async function HistoricoPage({
   });
 
   return (
-    <HistoricoLista
-      slug={slug}
-      itens={itens}
-      horasLimite={tenant.cancelamentoHorasLimite}
-    />
+    <ClienteShell slug={slug}>
+      <HistoricoLista
+        slug={slug}
+        itens={itens}
+        horasLimite={tenant.cancelamentoHorasLimite}
+      />
+    </ClienteShell>
   );
 }

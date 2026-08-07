@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
+import { ClienteShell } from "../cliente-shell";
 import { PerfilCliente } from "./perfil-cliente";
 
 // UC15, tela 04 do mockup — perfil do cliente: dados de contato, estatisticas
@@ -39,22 +40,24 @@ export default async function PerfilPage({
     .toUpperCase();
 
   return (
-    <PerfilCliente
-      slug={slug}
-      nome={usuario.nome}
-      email={usuario.email}
-      telefone={usuario.telefone ?? ""}
-      desde={desde}
-      totalAgendamentos={usuario._count.agendamentos}
-      veiculos={usuario.veiculos.map((v) => ({
-        id: v.id,
-        marca: v.marca,
-        modelo: v.modelo,
-        placa: v.placa,
-        ano: v.ano,
-        cor: v.cor,
-        segmento: v.segmento,
-      }))}
-    />
+    <ClienteShell slug={slug}>
+      <PerfilCliente
+        slug={slug}
+        nome={usuario.nome}
+        email={usuario.email}
+        telefone={usuario.telefone ?? ""}
+        desde={desde}
+        totalAgendamentos={usuario._count.agendamentos}
+        veiculos={usuario.veiculos.map((v) => ({
+          id: v.id,
+          marca: v.marca,
+          modelo: v.modelo,
+          placa: v.placa,
+          ano: v.ano,
+          cor: v.cor,
+          segmento: v.segmento,
+        }))}
+      />
+    </ClienteShell>
   );
 }
