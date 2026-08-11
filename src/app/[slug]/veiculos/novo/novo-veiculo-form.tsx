@@ -66,10 +66,10 @@ export function NovoVeiculoForm() {
     "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-astro-blue focus:outline-none";
 
   return (
-    <div className="min-h-dvh bg-white">
+    <div className="min-h-dvh bg-white lg:min-h-0 lg:bg-transparent">
       <ThemeColor color="#0b1120" />
-      {/* Cabecalho escuro */}
-      <div className="astro-dark px-5 pb-10 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
+      {/* Cabecalho escuro — celular. No desktop o titulo vem da casca. */}
+      <div className="astro-dark px-5 pb-10 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
         <div className="mx-auto flex max-w-md items-center justify-between">
           <Link
             href={callbackUrl}
@@ -83,24 +83,37 @@ export function NovoVeiculoForm() {
         </div>
       </div>
 
-      {/* Formulario (sheet claro) */}
-      <div className="mx-auto -mt-4 max-w-md rounded-t-3xl bg-white px-5 pb-10 pt-6">
+      {/* Sheet claro no celular; cartao unico no desktop. A largura e travada
+          em 48rem: num monitor largo, um formulario esticado de ponta a ponta
+          deixa os campos absurdamente longos para dados curtos como ano e cor. */}
+      <div className="mx-auto -mt-4 max-w-md rounded-t-3xl bg-white px-5 pb-10 pt-6 lg:mx-0 lg:mt-0 lg:max-w-none lg:rounded-none lg:bg-transparent lg:px-8 lg:pt-0">
+        <div className="lg:max-w-3xl lg:rounded-2xl lg:border lg:border-zinc-100 lg:bg-white lg:p-7 lg:shadow-sm">
         <p className="astro-label">Passo 01 · Dados do veículo</p>
-        <h2 className="mt-1 text-2xl font-bold text-zinc-900">Cadastrar veículo</h2>
+        <h2 className="mt-1 text-2xl font-bold text-zinc-900 lg:text-xl">
+          Sobre o veículo
+        </h2>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
           {erro && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 lg:order-1 lg:col-span-2">
               {erro}
             </p>
           )}
 
-          <div className="space-y-1.5">
+          {/* O mockup poe o segmento depois dos dados do carro: primeiro se
+              descreve o veiculo, depois se classifica. No celular ele continua
+              em primeiro, como estava — a ordem muda so no desktop, via
+              `order`, sem mexer na ordem do DOM. */}
+          <div className="space-y-1.5 lg:order-7 lg:col-span-2">
             <label className="astro-label">Segmento</label>
+            {/* Lista suspensa no celular (um toque, sem ocupar altura) e
+                pastilhas no desktop, onde as cinco opcoes cabem numa linha e
+                mostram de uma vez o que existe. Os dois escrevem no mesmo
+                estado. */}
             <select
               value={form.segmento}
               onChange={(e) => set("segmento", e.target.value)}
-              className={inputCls}
+              className={`${inputCls} lg:hidden`}
             >
               {SEGMENTOS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -108,9 +121,39 @@ export function NovoVeiculoForm() {
                 </option>
               ))}
             </select>
+
+            <div className="hidden flex-wrap gap-2 lg:flex">
+              {SEGMENTOS.map((s) => {
+                const ativo = form.segmento === s.value;
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => set("segmento", s.value)}
+                    aria-pressed={ativo}
+                    className={
+                      ativo
+                        ? "flex items-center gap-1.5 rounded-xl bg-astro-bg px-4 py-2.5 text-sm font-semibold text-white"
+                        : "rounded-xl border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700 transition hover:border-zinc-300"
+                    }
+                  >
+                    {ativo && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
+                    )}
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* RN01 — o segmento e o que decide o preco. A dica fica colada na
+                escolha, que e onde ela muda a decisao. */}
+            <p className="pt-1 text-xs text-zinc-500">
+              O segmento define o preço do serviço.
+            </p>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 lg:order-2">
             <label className="astro-label">Marca</label>
             <input
               className={inputCls}
@@ -121,7 +164,7 @@ export function NovoVeiculoForm() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 lg:order-3">
             <label className="astro-label">Modelo</label>
             <input
               className={inputCls}
@@ -132,7 +175,7 @@ export function NovoVeiculoForm() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 lg:order-5">
             <label className="astro-label">Placa</label>
             <input
               className={inputCls}
@@ -143,7 +186,7 @@ export function NovoVeiculoForm() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 lg:order-4">
             <label className="astro-label">Ano</label>
             <input
               type="number"
@@ -155,7 +198,7 @@ export function NovoVeiculoForm() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 lg:order-6">
             <label className="astro-label">Cor</label>
             <input
               className={inputCls}
@@ -166,14 +209,26 @@ export function NovoVeiculoForm() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={carregando}
-            className="mt-2 w-full rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50"
-          >
-            {carregando ? "Salvando..." : "Cadastrar veículo"}
-          </button>
+          {/* No celular so o botao de enviar, como estava — quem volta usa o
+              "voltar" do cabecalho escuro. No desktop nao ha esse cabecalho,
+              entao o cancelar precisa existir aqui. */}
+          <div className="lg:order-8 lg:col-span-2 lg:flex lg:flex-row-reverse lg:gap-3">
+            <button
+              type="submit"
+              disabled={carregando}
+              className="mt-2 w-full rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50 lg:mt-0 lg:flex-1"
+            >
+              {carregando ? "Salvando..." : "Cadastrar veículo"}
+            </button>
+            <Link
+              href={callbackUrl}
+              className="hidden items-center justify-center rounded-xl border border-zinc-200 px-8 py-3.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 lg:flex"
+            >
+              Cancelar
+            </Link>
+          </div>
         </form>
+        </div>
       </div>
     </div>
   );
