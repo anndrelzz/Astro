@@ -31,7 +31,11 @@ export default async function NovoVeiculoPage({
   }
 
   return (
-    <ClienteShell slug={slug}>
+    <ClienteShell
+      slug={slug}
+      trilha={["Perfil", "Garagem", "Novo veículo"]}
+      titulo="Cadastrar veículo"
+    >
       <NovoVeiculoForm />
     </ClienteShell>
   );
