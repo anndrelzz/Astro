@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { calcularPreco } from "@/lib/precificacao";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
+import { ClienteShell } from "../../../cliente-shell";
 import { PagamentoForm } from "./pagamento-form";
 
 // Tela 10 — escolha da forma de pagamento. Recebe veiculo/data/hora via
@@ -44,16 +45,29 @@ export default async function PagamentoPage({
   const preco = Number(calcularPreco(servico, veiculo.segmento));
 
   return (
-    <PagamentoForm
+    <ClienteShell
       slug={slug}
-      servicoId={servicoId}
-      veiculoId={veiculoId}
-      data={data}
-      hora={hora}
-      servico={{ nome: servico.nome, duracaoMin: servico.duracaoMin }}
-      segmento={veiculo.segmento}
-      preco={preco}
-      pixDisponivel={!!tenant.pixChaveCopiaCola}
-    />
+      trilha={["Agendamento", "Pagamento"]}
+      titulo="Como prefere pagar?"
+    >
+      <PagamentoForm
+        slug={slug}
+        servicoId={servicoId}
+        veiculoId={veiculoId}
+        data={data}
+        hora={hora}
+        servico={{ nome: servico.nome, duracaoMin: servico.duracaoMin }}
+        veiculo={{
+          marca: veiculo.marca,
+          modelo: veiculo.modelo,
+          placa: veiculo.placa,
+          cor: veiculo.cor,
+        }}
+        segmento={veiculo.segmento}
+        preco={preco}
+        pixDisponivel={!!tenant.pixChaveCopiaCola}
+        cancelamentoHorasLimite={tenant.cancelamentoHorasLimite}
+      />
+    </ClienteShell>
   );
 }
