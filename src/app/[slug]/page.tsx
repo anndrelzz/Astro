@@ -43,8 +43,10 @@ export default async function TenantPage({
       where: { tenantId: tenant.id, ativo: true },
       orderBy: { nome: "asc" },
     });
+    // RN15 — aposentado nao conta para o "tem veiculo?" da RN04. Quem so tem
+    // carros aposentados cai no mesmo alerta de quem nao tem nenhum.
     const veiculos = await tx.veiculo.findMany({
-      where: { usuarioId: session!.user.id },
+      where: { usuarioId: session!.user.id, ativo: true },
     });
     return { servicosTenant, veiculos };
   });
