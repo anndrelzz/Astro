@@ -37,7 +37,8 @@ export async function POST(request: Request) {
   return NextResponse.json(veiculo, { status: 201 });
 }
 
-// RF15 — historico de veiculos do cliente autenticado.
+// RF15 — veiculos do cliente autenticado. RN15: aposentados ficam de fora;
+// eles so continuam visiveis dentro do historico dos agendamentos antigos.
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -46,7 +47,7 @@ export async function GET() {
 
   const veiculos = await withTenant(session.user.tenantId, (tx) =>
     tx.veiculo.findMany({
-      where: { usuarioId: session.user.id },
+      where: { usuarioId: session.user.id, ativo: true },
       orderBy: { id: "asc" },
     })
   );

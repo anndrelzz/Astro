@@ -44,8 +44,10 @@ export async function POST(request: Request) {
     const servico = await tx.servico.findFirst({
       where: { id: servicoId, tenantId: session.user.tenantId, ativo: true },
     });
+    // RN15 — veiculo aposentado nao agenda. O cliente disse que nao tem mais
+    // esse carro; aceitar o agendamento marcaria um horario para ele.
     const veiculo = await tx.veiculo.findFirst({
-      where: { id: veiculoId, usuarioId: session.user.id },
+      where: { id: veiculoId, usuarioId: session.user.id, ativo: true },
     });
     if (!tenant || !servico || !veiculo) {
       return { error: "Nao encontrado", httpStatus: 404 } as const;
