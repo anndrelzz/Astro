@@ -40,7 +40,7 @@ export default async function PerfilPage({
     .toUpperCase();
 
   return (
-    <ClienteShell slug={slug}>
+    <ClienteShell slug={slug} trilha={["Conta", "Perfil"]} titulo="Meu perfil">
       <PerfilCliente
         slug={slug}
         nome={usuario.nome}
@@ -48,6 +48,7 @@ export default async function PerfilPage({
         telefone={usuario.telefone ?? ""}
         desde={desde}
         totalAgendamentos={usuario._count.agendamentos}
+        telegramVinculado={!!usuario.telegramChatId}
         veiculos={usuario.veiculos.map((v) => ({
           id: v.id,
           marca: v.marca,
