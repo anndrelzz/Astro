@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Trash2, Clock, X } from "lucide-react";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
@@ -15,6 +15,7 @@ type Item = {
   segmento: string;
   valor: number;
   status: string;
+  formaPagamento: string;
   podeCancelar: boolean;
 };
 
@@ -38,6 +39,17 @@ const FILTROS: { chave: Categoria; label: string }[] = [
 const BRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+// O mockup mostra a forma de pagamento sob o nome do servico ("via PIX").
+const FORMA_ROTULO: Record<string, string> = { PIX: "PIX", LOCAL: "No local" };
+
+// Estilos do selo de status, compartilhados pelo card do celular e pela linha
+// da tabela do desktop.
+const BADGE = {
+  proximo: { txt: "Próximo", cls: "text-astro-blue-bright" },
+  concluido: { txt: "Concluído", cls: "text-zinc-400" },
+  cancelado: { txt: "Cancelado", cls: "text-red-500" },
+} as const;
+
 // Formata "10:00 – 11:00" a partir do inicio + duracao.
 function faixaHorario(iso: string, duracaoMin: number) {
   const inicio = new Date(iso);
@@ -58,14 +70,36 @@ export function HistoricoLista({
 }) {
   const router = useRouter();
   const [filtro, setFiltro] = useState<Categoria>("todos");
+  const [ordem, setOrdem] = useState<"recentes" | "antigos">("recentes");
   const [alvo, setAlvo] = useState<Item | null>(null); // agendamento no modal de cancelar
   const [cancelando, setCancelando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const visiveis =
-    filtro === "todos"
-      ? itens
-      : itens.filter((i) => categoria(i.status) === filtro);
+  const visiveis = useMemo(() => {
+    const filtrados =
+      filtro === "todos"
+        ? itens
+        : itens.filter((i) => categoria(i.status) === filtro);
+
+    // A pagina ja entrega em ordem decrescente; inverter cobre "Mais antigos"
+    // sem uma segunda consulta ao banco.
+    return ordem === "recentes" ? filtrados : [...filtrados].reverse();
+  }, [itens, filtro, ordem]);
+
+  // Contadores dos quatro indicadores do topo (tela 13). Contam sobre a lista
+  // inteira, nao sobre o filtro — eles sao o panorama que orienta o filtro.
+  const contagem = useMemo(() => {
+    const c = { todos: itens.length, proximo: 0, concluido: 0, cancelado: 0 };
+    for (const i of itens) c[categoria(i.status)]++;
+    return c;
+  }, [itens]);
+
+  const INDICADORES = [
+    { rotulo: "Total", valor: contagem.todos, cls: "text-zinc-900" },
+    { rotulo: "Próximo", valor: contagem.proximo, cls: "text-astro-blue" },
+    { rotulo: "Concluídos", valor: contagem.concluido, cls: "text-zinc-900" },
+    { rotulo: "Cancelado", valor: contagem.cancelado, cls: "text-red-500" },
+  ];
 
   async function confirmarCancelamento() {
     if (!alvo) return;
@@ -85,11 +119,11 @@ export function HistoricoLista({
   }
 
   return (
-    <div className="min-h-dvh bg-[#f6f8fb] pb-28">
+    <div className="min-h-dvh bg-[#f6f8fb] pb-28 lg:min-h-0 lg:bg-transparent lg:pb-10">
       <ThemeColor color="#f6f8fb" />
 
-      {/* Cabecalho */}
-      <header className="mx-auto max-w-md px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
+      {/* Cabecalho — celular. No desktop o titulo vem da casca. */}
+      <header className="mx-auto max-w-md px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
         <div className="flex items-end justify-between">
           <div>
             <p className="astro-label">
@@ -100,31 +134,64 @@ export function HistoricoLista({
             </h1>
           </div>
         </div>
-
-        {/* Filtros */}
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-          {FILTROS.map((f) => {
-            const ativo = filtro === f.chave;
-            return (
-              <button
-                key={f.chave}
-                onClick={() => setFiltro(f.chave)}
-                className={
-                  ativo
-                    ? "flex shrink-0 items-center gap-1.5 rounded-full bg-astro-bg px-4 py-2 text-sm font-semibold text-white"
-                    : "shrink-0 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-500"
-                }
-              >
-                {ativo && <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />}
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
       </header>
 
-      {/* Lista */}
-      <main className="mx-auto mt-4 max-w-md space-y-3 px-5">
+      {/* Indicadores — so no desktop (tela 13). No celular a contagem cabe na
+          linha "NN registros" do cabecalho, e quatro cartoes empilhados
+          empurrariam a lista para fora da primeira tela. */}
+      <div className="hidden gap-4 px-8 lg:grid lg:grid-cols-4">
+        {INDICADORES.map((ind) => (
+          <div
+            key={ind.rotulo}
+            className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm"
+          >
+            <p className="astro-label">{ind.rotulo}</p>
+            <p className={`mt-1 text-3xl font-bold ${ind.cls}`}>
+              {String(ind.valor).padStart(2, "0")}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtros, e a ordenacao ao lado no desktop */}
+      <div className="mx-auto mt-4 max-w-md px-5 lg:mx-0 lg:max-w-none lg:px-8">
+        <div className="lg:flex lg:items-center lg:justify-between lg:rounded-t-2xl lg:border lg:border-b-0 lg:border-zinc-100 lg:bg-white lg:p-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:pb-0">
+            {FILTROS.map((f) => {
+              const ativo = filtro === f.chave;
+              return (
+                <button
+                  key={f.chave}
+                  onClick={() => setFiltro(f.chave)}
+                  className={
+                    ativo
+                      ? "flex shrink-0 items-center gap-1.5 rounded-full bg-astro-bg px-4 py-2 text-sm font-semibold text-white"
+                      : "shrink-0 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-500"
+                  }
+                >
+                  {ativo && <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />}
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="hidden items-center gap-2 lg:flex">
+            <span className="astro-label whitespace-nowrap">Ordenar por</span>
+            <select
+              value={ordem}
+              onChange={(e) => setOrdem(e.target.value as "recentes" | "antigos")}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 focus:border-astro-blue focus:outline-none"
+            >
+              <option value="recentes">Mais recentes</option>
+              <option value="antigos">Mais antigos</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {/* Lista em cartoes — celular */}
+      <main className="mx-auto mt-4 max-w-md space-y-3 px-5 lg:hidden">
         {visiveis.map((item) => (
           <Card key={item.id} item={item} onCancelar={() => setAlvo(item)} />
         ))}
@@ -134,6 +201,42 @@ export function HistoricoLista({
           </p>
         )}
       </main>
+
+      {/* Tabela — desktop. Com a tela larga, os mesmos campos viram colunas
+          alinhadas: comparar seis agendamentos vira leitura vertical, em vez
+          de caçar o preço em seis cartoes. */}
+      <div className="hidden px-8 lg:block">
+        <div className="overflow-hidden rounded-b-2xl border border-zinc-100 bg-white shadow-sm">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-zinc-100">
+                {["Data", "Serviço", "Veículo", "Horário", "Valor", "Ações"].map(
+                  (col) => (
+                    <th key={col} className="astro-label px-4 py-3 font-normal">
+                      {col}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {visiveis.map((item) => (
+                <Linha
+                  key={item.id}
+                  item={item}
+                  onCancelar={() => setAlvo(item)}
+                />
+              ))}
+            </tbody>
+          </table>
+
+          {visiveis.length === 0 && (
+            <p className="px-4 py-12 text-center text-sm text-zinc-400">
+              Nenhum agendamento aqui.
+            </p>
+          )}
+        </div>
+      </div>
 
       <BottomNav slug={slug} />
 
@@ -155,6 +258,75 @@ export function HistoricoLista({
   );
 }
 
+// Linha da tabela do desktop. Mesmos dados do Card, dispostos em colunas.
+function Linha({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
+  const data = new Date(item.dataHoraISO);
+  const mes = data
+    .toLocaleDateString("pt-BR", { month: "short" })
+    .replace(".", "")
+    .toUpperCase();
+  const cat = categoria(item.status);
+  const badge = BADGE[cat];
+  const proximo = cat === "proximo";
+
+  return (
+    <tr className="align-middle transition hover:bg-zinc-50/60">
+      <td className="px-4 py-3">
+        <div
+          className={
+            proximo
+              ? "flex w-14 flex-col items-center justify-center rounded-xl bg-astro-blue py-2 text-white"
+              : "flex w-14 flex-col items-center justify-center rounded-xl bg-astro-bg py-2 text-white"
+          }
+        >
+          <span className="text-[0.6rem] font-medium opacity-70">{mes}</span>
+          <span className="text-lg font-bold leading-none">{data.getDate()}</span>
+          <span className="text-[0.55rem] opacity-50">{data.getFullYear()}</span>
+        </div>
+      </td>
+
+      <td className="px-4 py-3">
+        <p className={`astro-label !text-[0.62rem] ${badge.cls}`}>
+          • {badge.txt}
+        </p>
+        <p className="mt-0.5 font-bold text-zinc-900">{item.servicoNome}</p>
+        <p className="text-xs text-zinc-500">
+          via {FORMA_ROTULO[item.formaPagamento] ?? item.formaPagamento}
+        </p>
+      </td>
+
+      <td className="px-4 py-3 text-sm text-zinc-700">
+        {item.veiculoMarcaModelo} · {item.segmento}
+      </td>
+
+      <td className="px-4 py-3">
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-zinc-500">
+          <Clock className="h-3.5 w-3.5 shrink-0" />
+          {faixaHorario(item.dataHoraISO, item.duracaoMin)}
+        </span>
+      </td>
+
+      <td className="whitespace-nowrap px-4 py-3 font-semibold text-zinc-900">
+        {BRL(item.valor)}
+      </td>
+
+      <td className="px-4 py-3">
+        {/* So aparece quando o cancelamento e permitido (RF18). Fora do prazo
+            a celula fica vazia: um botao desabilitado convidaria ao clique. */}
+        {item.podeCancelar && (
+          <button
+            onClick={onCancelar}
+            aria-label={`Cancelar ${item.servicoNome}`}
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-500 transition hover:bg-red-100"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 // Card de agendamento (data + status + servico + preco).
 function Card({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
   const data = new Date(item.dataHoraISO);
@@ -165,13 +337,7 @@ function Card({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
   const dia = data.getDate();
   const ano = data.getFullYear();
   const cat = categoria(item.status);
-
-  const badge = {
-    proximo: { txt: "Próximo", cls: "text-astro-blue-bright" },
-    concluido: { txt: "Concluído", cls: "text-zinc-400" },
-    cancelado: { txt: "Cancelado", cls: "text-red-500" },
-  }[cat];
-
+  const badge = BADGE[cat];
   const proximo = cat === "proximo";
 
   return (

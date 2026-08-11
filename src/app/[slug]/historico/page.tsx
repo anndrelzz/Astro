@@ -47,12 +47,17 @@ export default async function HistoricoPage({
       segmento: a.veiculo.segmento,
       valor: Number(a.valor),
       status: a.status,
+      formaPagamento: a.formaPagamento,
       podeCancelar,
     };
   });
 
   return (
-    <ClienteShell slug={slug}>
+    <ClienteShell
+      slug={slug}
+      trilha={["Conta", "Agendamentos"]}
+      titulo="Meus agendamentos"
+    >
       <HistoricoLista
         slug={slug}
         itens={itens}
