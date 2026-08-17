@@ -9,9 +9,16 @@ import { NovoVeiculoForm } from "../../../veiculos/novo/novo-veiculo-form";
 //
 // Rota interceptada: quem chega aqui por um clique dentro do app ve o
 // formulario como pop-up sobre a tela onde estava. Quem abre a URL direto, ou
-// recarrega a pagina, cai na tela cheia de /[slug]/veiculos/novo — inclusive o
-// redirecionamento do agendar sem veiculo (RN04), que e navegacao dura e
-// portanto nao e interceptada.
+// recarrega a pagina, cai na tela cheia de /[slug]/veiculos/novo.
+//
+// Os dois caminhos levam ao mesmo formulario e ao mesmo callbackUrl, entao o
+// RN04 se cumpre de qualquer jeito: o redirecionamento do agendar sem veiculo
+// pode cair aqui ou na tela cheia, e em ambos o cliente volta ao agendamento
+// depois de salvar.
+//
+// A pagina de tras NAO e desmontada enquanto o pop-up esta aberto. Quem abre
+// este cadastro de dentro de outro modal precisa fechar o seu antes — e o que
+// o alerta "sem veiculo" da home faz (ver home-servicos.tsx).
 //
 // A guarda de sessao se repete aqui de proposito: interceptada ou nao, a rota
 // e uma porta, e cada porta confere quem entra.
