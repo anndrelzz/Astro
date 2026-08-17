@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { InputPlaca } from "@/components/ui/input-placa";
 
 const SEGMENTOS = [
   { value: "HATCH", label: "Hatch" },
@@ -24,7 +25,19 @@ const SEGMENTOS = [
 // `emModal` troca so o involucro: dentro do pop-up (rota interceptada) o
 // cabecalho escuro e o titulo ja vem do casulo, entao aqui sobra o formulario.
 // Os campos e as regras sao os mesmos nos dois casos.
-export function NovoVeiculoForm({ emModal = false }: { emModal?: boolean }) {
+//
+// cidade/estado sao da estetica, nao do carro — servem so para a faixa de cima
+// da placa desenhada (ver InputPlaca). Vem da pagina porque o tenant e lido no
+// servidor.
+export function NovoVeiculoForm({
+  emModal = false,
+  cidade,
+  estado,
+}: {
+  emModal?: boolean;
+  cidade?: string | null;
+  estado?: string | null;
+}) {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -163,12 +176,11 @@ export function NovoVeiculoForm({ emModal = false }: { emModal?: boolean }) {
 
           <div className="space-y-1.5 lg:order-5">
             <label className="astro-label">Placa</label>
-            <input
-              className={inputCls}
-              placeholder="ABC-1234 ou ABC1D23"
-              value={form.placa}
-              onChange={(e) => set("placa", e.target.value.toUpperCase())}
-              required
+            <InputPlaca
+              valor={form.placa}
+              aoMudar={(v) => set("placa", v)}
+              cidade={cidade}
+              estado={estado}
             />
           </div>
 
