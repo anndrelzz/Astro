@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Eye, EyeOff, Lock, Upload } from "lucide-react";
+import { Check, Eye, EyeOff, Lock } from "lucide-react";
 import { AdminHeader } from "../admin-header";
 
 // UC13, UC14, RF13, RF17, RF18, RN06 — configuracoes gerais da estetica.
@@ -12,6 +12,8 @@ import { AdminHeader } from "../admin-header";
 // parcial, entao o que nao mudou continua intocado no banco.
 //
 // Nao entram aqui, por decisao registrada:
+//   - Identidade visual (logo e cor) — tem tela propria em /admin/identidade
+//     (UC12, RF13). Editar a marca em dois lugares e convite a divergencia
 //   - Equipe e acessos, Plano e cobranca — Fora do Escopo (RFC 2.6)
 //   - Notificacoes ao Admin — o sistema hoje so notifica o cliente; seriam
 //     interruptores para um envio que nao existe
@@ -40,7 +42,6 @@ const SECOES = [
   { id: "gerais", rotulo: "Informacoes gerais" },
   { id: "endereco", rotulo: "Endereco" },
   { id: "publica", rotulo: "Pagina publica" },
-  { id: "identidade", rotulo: "Identidade visual" },
   { id: "pagamento", rotulo: "Pagamento e cancelamento" },
   { id: "atendimento", rotulo: "Atendimento" },
 ];
@@ -51,51 +52,21 @@ const HORAS_CANCELAMENTO = [1, 2, 4, 8, 12, 24, 48];
 export function ConfiguracoesAdmin({
   slug,
   configInicial,
-  logoUrlInicial,
 }: {
   slug: string;
   configInicial: Config;
-  logoUrlInicial: string | null;
 }) {
   const router = useRouter();
-  const inputArquivo = useRef<HTMLInputElement>(null);
 
   const [config, setConfig] = useState(configInicial);
-  const [logoUrl, setLogoUrl] = useState(logoUrlInicial);
   const [mostrarChave, setMostrarChave] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const [enviandoLogo, setEnviandoLogo] = useState(false);
 
   function campo<K extends keyof Config>(chave: K, valor: Config[K]) {
     setConfig((c) => ({ ...c, [chave]: valor }));
     setSucesso(null);
-  }
-
-  async function enviarLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    if (!arquivo) return;
-
-    setErro(null);
-    setSucesso(null);
-    setEnviandoLogo(true);
-
-    const formData = new FormData();
-    formData.append("logo", arquivo);
-    const resposta = await fetch("/api/tenant/logo", { method: "POST", body: formData });
-
-    setEnviandoLogo(false);
-
-    if (!resposta.ok) {
-      const json = await resposta.json().catch(() => null);
-      setErro(json?.error ?? "Nao foi possivel enviar o logo.");
-      return;
-    }
-    const json = await resposta.json();
-    setLogoUrl(json.logoUrl);
-    setSucesso("Logo atualizado.");
-    router.refresh();
   }
 
   async function salvar(e: React.FormEvent) {
@@ -120,13 +91,6 @@ export function ConfiguracoesAdmin({
     setSucesso("Configuracoes salvas.");
     router.refresh();
   }
-
-  const iniciais = config.nome
-    .split(" ")
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join("")
-    .toUpperCase();
 
   return (
     <form onSubmit={salvar}>
@@ -297,62 +261,10 @@ export function ConfiguracoesAdmin({
             </Campo>
           </Secao>
 
-          {/* 04 — Identidade visual */}
-          <Secao id="identidade" numero="04" rotulo="Identidade visual" titulo="A marca da estetica">
-            <div className="sm:col-span-2">
-              <div className="flex flex-wrap items-center gap-5 rounded-xl border border-admin-border bg-admin-bg p-5">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-admin-border bg-admin-surface">
-                  {logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={logoUrl}
-                      alt={`Logo ${config.nome}`}
-                      className="h-full w-full object-contain p-2"
-                    />
-                  ) : (
-                    <span className="text-lg font-bold text-astro-blue-bright">
-                      {iniciais || "?"}
-                    </span>
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white">Logo da estetica</p>
-                  <p className="mt-0.5 text-sm text-astro-muted">
-                    Aparece no site publico e no topo do painel.
-                  </p>
-                  <input
-                    ref={inputArquivo}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={enviarLogo}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => inputArquivo.current?.click()}
-                    disabled={enviandoLogo}
-                    className="mt-3 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-surface-2 px-3.5 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50"
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    {enviandoLogo
-                      ? "Enviando..."
-                      : logoUrl
-                        ? "Substituir logo"
-                        : "Enviar logo"}
-                  </button>
-                  <p className="mt-2 font-mono text-[0.65rem] uppercase tracking-wider text-astro-muted">
-                    PNG, JPG ou WEBP · ate 2MB
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Secao>
-
-          {/* 05 — Pagamento e cancelamento */}
+          {/* 04 — Pagamento e cancelamento */}
           <Secao
             id="pagamento"
-            numero="05"
+            numero="04"
             rotulo="Pagamento e cancelamento"
             titulo="Recebimento PIX e regras de cancelamento"
           >
@@ -412,10 +324,10 @@ export function ConfiguracoesAdmin({
             </div>
           </Secao>
 
-          {/* 06 — Atendimento */}
+          {/* 05 — Atendimento */}
           <Secao
             id="atendimento"
-            numero="06"
+            numero="05"
             rotulo="Atendimento"
             titulo="Como os horarios sao oferecidos"
           >

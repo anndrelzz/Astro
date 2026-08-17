@@ -9,6 +9,7 @@ import {
   Clock,
   LayoutGrid,
   LogOut,
+  Palette,
   Settings,
   Sparkles,
   Wallet,
@@ -48,9 +49,6 @@ export function AdminSidebar({
   const pathname = usePathname();
   const base = `/${slug}/admin`;
 
-  // O mockup preve 7 itens. Identidade visual entra no menu quando for
-  // construida como tela propria — hoje ainda vive dentro de Configuracoes.
-  // Link para tela inexistente e 404, nao vale a aparencia.
   const operacao: Item[] = [
     { href: base, label: "Dashboard", icone: LayoutGrid, exato: true },
     {
@@ -65,6 +63,7 @@ export function AdminSidebar({
   ];
 
   const loja: Item[] = [
+    { href: `${base}/identidade`, label: "Identidade visual", icone: Palette },
     { href: `${base}/configuracoes`, label: "Configuracoes", icone: Settings },
   ];
 
