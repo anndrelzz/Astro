@@ -148,6 +148,11 @@ model Veiculo {
   ano       Int
   cor       String
   segmento  SegmentoVeiculo
+  /// RN15 — veiculo aposentado sai da garagem e da escolha no agendamento,
+  /// mas preserva o historico. Necessario porque o agendamento aponta para o
+  /// veiculo: apagar a linha destruiria o registro do que ja foi vendido.
+  /// Veiculo sem nenhum agendamento e apagado de verdade e nunca chega aqui.
+  ativo     Boolean         @default(true)
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   usuario      Usuario       @relation(fields: [usuarioId], references: [id])

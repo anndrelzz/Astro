@@ -29,8 +29,9 @@ export default async function AgendarPage({
     const servico = await tx.servico.findFirst({
       where: { id: servicoId, tenantId: tenant.id, ativo: true },
     });
+    // RN15 — so os veiculos ativos entram na escolha.
     const veiculos = await tx.veiculo.findMany({
-      where: { usuarioId: session.user.id },
+      where: { usuarioId: session.user.id, ativo: true },
     });
     return { servico, veiculos };
   });

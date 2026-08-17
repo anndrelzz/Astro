@@ -36,7 +36,7 @@ export default async function PagamentoPage({
       where: { id: servicoId, tenantId: tenant.id, ativo: true },
     });
     const veiculo = await tx.veiculo.findFirst({
-      where: { id: veiculoId, usuarioId: session.user.id },
+      where: { id: veiculoId, usuarioId: session.user.id, ativo: true },
     });
     return { servico, veiculo };
   });
