@@ -180,7 +180,13 @@ export function HomeServicos({
               prosseguir para o agendamento se realizar o cadastro.
             </p>
 
+            {/* Fecha este alerta ao entregar a vez para o cadastro. Como o
+                cadastro e rota interceptada, ele abre como pop-up SEM desmontar
+                esta pagina — e sem fechar aqui, os dois modais ficariam
+                empilhados, cada um com seu proprio fundo escurecido. Um modal
+                de cada vez. */}
             <Link
+              onClick={() => setSemVeiculo(false)}
               href={`/${slug}/veiculos/novo?callbackUrl=/${slug}`}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-astro-blue to-astro-blue-bright py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25"
             >
