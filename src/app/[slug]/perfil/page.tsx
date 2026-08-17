@@ -27,7 +27,9 @@ export default async function PerfilPage({
     tx.usuario.findUnique({
       where: { id: session.user.id },
       include: {
-        veiculos: { orderBy: { id: "asc" } },
+        // RN15 — a garagem lista so os ativos; os aposentados seguem
+        // aparecendo dentro do historico dos agendamentos antigos.
+        veiculos: { where: { ativo: true }, orderBy: { id: "asc" } },
         _count: { select: { agendamentos: true } },
       },
     })

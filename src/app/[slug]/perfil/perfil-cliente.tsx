@@ -13,6 +13,7 @@ import {
   LogOut,
   Plus,
   Pencil,
+  Trash2,
   User,
   Mail,
   Phone,
@@ -56,6 +57,7 @@ export function PerfilCliente({
   telegramVinculado: boolean;
 }) {
   const [editando, setEditando] = useState(false);
+  const [removendo, setRemovendo] = useState<Veiculo | null>(null);
   const inicial = nome.trim()[0]?.toUpperCase() ?? "U";
 
   return (
@@ -231,6 +233,18 @@ export function PerfilCliente({
                     </span>
                   </div>
                 </div>
+
+                {/* RN15 — remover. O que acontece depende do que o carro
+                    carrega, e quem decide isso e o servidor; aqui so
+                    perguntamos. */}
+                <button
+                  type="button"
+                  onClick={() => setRemovendo(v)}
+                  aria-label={`Remover ${v.marca} ${v.modelo}`}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-lg text-zinc-300 transition hover:bg-red-50 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             ))}
 
@@ -314,6 +328,122 @@ export function PerfilCliente({
           onFechar={() => setEditando(false)}
         />
       )}
+
+      {/* RN15 — confirmacao de remocao do veiculo */}
+      {removendo && (
+        <ModalRemoverVeiculo
+          veiculo={removendo}
+          onFechar={() => setRemovendo(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// RN15 — confirmacao de remocao. Destrutivo, entao vermelho e com o carro
+// descrito por extenso: a garagem pode ter dois do mesmo modelo, e a placa e o
+// que separa um do outro.
+//
+// O texto nao promete qual dos tres desfechos vai acontecer (apagar de vez,
+// aposentar, ou recusar por agendamento futuro): quem sabe disso e o servidor,
+// que conhece os agendamentos. A tela pergunta e reporta o que voltou.
+function ModalRemoverVeiculo({
+  veiculo,
+  onFechar,
+}: {
+  veiculo: Veiculo;
+  onFechar: () => void;
+}) {
+  const router = useRouter();
+  const [removendo, setRemovendo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function confirmar() {
+    setErro(null);
+    setRemovendo(true);
+
+    const resposta = await fetch(`/api/veiculos/${veiculo.id}`, {
+      method: "DELETE",
+    });
+    setRemovendo(false);
+
+    if (!resposta.ok) {
+      const json = await resposta.json().catch(() => null);
+      setErro(json?.error ?? "Não foi possível remover o veículo.");
+      return;
+    }
+    onFechar();
+    router.refresh();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <button
+        aria-label="Fechar"
+        onClick={onFechar}
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      />
+
+      <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
+          <Trash2 className="h-6 w-6 text-red-500" />
+        </div>
+
+        <h2 className="mt-4 text-lg font-bold text-zinc-900">
+          Remover veículo?
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+          O{" "}
+          <span className="font-semibold text-zinc-700">
+            {veiculo.marca} {veiculo.modelo}
+          </span>{" "}
+          sai da sua garagem e deixa de aparecer na hora de agendar. Seus
+          agendamentos antigos com ele continuam no histórico.
+        </p>
+
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-zinc-50 p-3 text-left">
+          <div className="astro-dark flex h-12 w-14 shrink-0 items-center justify-center rounded-xl">
+            <span className="text-[0.6rem] font-semibold tracking-wider text-white/80">
+              {veiculo.segmento}
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-bold text-zinc-900">
+              {veiculo.marca} {veiculo.modelo}
+            </p>
+            <p className="font-mono text-xs text-zinc-500">{veiculo.placa}</p>
+          </div>
+        </div>
+
+        {erro && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+            {erro}
+          </p>
+        )}
+
+        <button
+          onClick={confirmar}
+          disabled={removendo}
+          className="mt-5 w-full rounded-2xl bg-red-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition hover:bg-red-600 disabled:opacity-50"
+        >
+          {removendo ? "Removendo..." : "Sim, remover veículo"}
+        </button>
+        <button
+          onClick={onFechar}
+          disabled={removendo}
+          className="mt-2 w-full py-2 text-sm font-semibold text-zinc-500 hover:text-zinc-700"
+        >
+          Manter na garagem
+        </button>
+
+        <button
+          onClick={onFechar}
+          aria-label="Fechar"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 hover:bg-zinc-200"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
