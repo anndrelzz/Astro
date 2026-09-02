@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clock } from "lucide-react";
 import Link from "next/link";
 import { ThemeColor } from "@/components/ui/theme-color";
 
@@ -207,19 +207,13 @@ export function AgendarForm({
 
         {/* Calendario */}
         <div className="lg:rounded-2xl lg:border lg:border-zinc-100 lg:bg-white lg:p-6 lg:shadow-sm">
-        <div className="mt-6 flex items-center justify-between lg:mt-0">
-          <p className="font-semibold text-zinc-900">
-            {MESES[dataObj.getMonth()]} {dataObj.getFullYear()}
-          </p>
-          <div className="flex gap-1">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-400">
-              <ChevronLeft className="h-4 w-4" />
-            </span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-400">
-              <ChevronRight className="h-4 w-4" />
-            </span>
-          </div>
-        </div>
+        {/* Janela rolante: sempre comeca em "hoje" e mostra os proximos 14 dias
+            (a tira rola de lado). Sem navegacao de mes — um lava-rapido nao
+            agenda muito alem de duas semanas, e datas distantes so aumentam a
+            chance de esquecimento e no-show. */}
+        <p className="mt-6 font-semibold text-zinc-900 lg:mt-0">
+          {MESES[dataObj.getMonth()]} {dataObj.getFullYear()}
+        </p>
 
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {dias.map((d) => {
