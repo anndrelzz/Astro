@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { LogOut, MessageCircle } from "lucide-react";
 import { itemAtivo, itensCliente } from "@/components/ui/bottom-nav";
+import { iniciais } from "@/lib/iniciais";
 
 // Barra lateral do cliente no desktop (telas 04, 06, 08, 09, 10, 11 e 13 do
 // mockup). Espelha a BottomNav do celular: mesma lista de itens, forma
@@ -96,7 +97,7 @@ export function ClienteSidebar({
       {/* Usuario logado */}
       <div className="mx-4 mb-5 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-astro-blue text-xs font-semibold text-white">
-          {usuarioNome[0]?.toUpperCase() ?? "U"}
+          {iniciais(usuarioNome)}
         </span>
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-sm font-semibold text-white">{usuarioNome}</p>

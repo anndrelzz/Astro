@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   BadgeCheck,
   CalendarDays,
-  Camera,
   ChevronRight,
   LogOut,
   Plus,
@@ -21,6 +20,7 @@ import {
 } from "lucide-react";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { iniciais } from "@/lib/iniciais";
 import { VincularTelegram } from "./vincular-telegram";
 
 type Veiculo = {
@@ -58,7 +58,7 @@ export function PerfilCliente({
 }) {
   const [editando, setEditando] = useState(false);
   const [removendo, setRemovendo] = useState<Veiculo | null>(null);
-  const inicial = nome.trim()[0]?.toUpperCase() ?? "U";
+  const inicial = iniciais(nome);
 
   return (
     <div className="min-h-dvh bg-[#f6f8fb] pb-28 lg:min-h-0 lg:bg-transparent lg:pb-10">
@@ -476,7 +476,7 @@ function ModalEditar({
   });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const inicial = nome.trim()[0]?.toUpperCase() ?? "U";
+  const inicial = iniciais(nome);
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
@@ -531,26 +531,12 @@ function ModalEditar({
           </button>
         </div>
 
-        {/* Avatar (foto meramente visual — sem campo no modelo). No desktop
-            o mockup poe a foto numa faixa horizontal, nao centralizada. */}
-        <div className="mt-4 flex flex-col items-center lg:flex-row lg:gap-4 lg:rounded-2xl lg:bg-zinc-50 lg:p-4">
-          <div className="relative shrink-0">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-astro-bg text-2xl font-bold text-white lg:h-16 lg:w-16 lg:text-xl">
-              {inicial}
-            </div>
-            <span className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-astro-blue lg:h-6 lg:w-6">
-              <Camera className="h-3.5 w-3.5 text-white" />
-            </span>
+        {/* Só as iniciais do cliente. O envio de foto ficou fora do escopo — o
+            RFC não prevê foto de perfil. */}
+        <div className="mt-4 flex justify-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-astro-bg text-2xl font-bold text-white lg:h-16 lg:w-16 lg:text-xl">
+            {inicial}
           </div>
-          <p className="mt-2 text-xs text-zinc-400 lg:mt-0 lg:text-left lg:text-sm">
-            <span className="lg:hidden">
-              Toque na câmera para adicionar uma foto
-            </span>
-            <span className="hidden lg:block">
-              <span className="font-semibold text-zinc-900">Foto de perfil</span>
-              <br />O envio de foto ainda não está disponível.
-            </span>
-          </p>
         </div>
 
         <form onSubmit={salvar} className="mt-5 space-y-4">
