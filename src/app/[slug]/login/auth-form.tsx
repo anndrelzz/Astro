@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,7 +37,7 @@ export function AuthForm({
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? `/${slug}`;
+  const callbackUrlParam = searchParams.get("callbackUrl");
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -103,7 +103,19 @@ export function AuthForm({
 
     // Mostra a animacao de sucesso e so entao entra no app (RN02).
     setSucesso(true);
-    const destino = callbackUrl.startsWith("/") ? callbackUrl : `/${slug}`;
+
+    // Um link especifico na URL (callbackUrl) sempre ganha: e para onde o
+    // usuario ia quando foi barrado no login. Sem ele, o admin cai direto no
+    // painel e o cliente na vitrine da estetica. O cadastro so cria CLIENTE,
+    // entao a consulta a sessao roda apenas no login.
+    let destino = `/${slug}`;
+    if (callbackUrlParam?.startsWith("/")) {
+      destino = callbackUrlParam;
+    } else if (eLogin) {
+      const sessao = await getSession();
+      if (sessao?.user.role === "ADMIN") destino = `/${slug}/admin`;
+    }
+
     setTimeout(() => {
       router.push(destino);
       router.refresh();
