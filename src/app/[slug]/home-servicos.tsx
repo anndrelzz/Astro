@@ -88,12 +88,7 @@ export function HomeServicos({
 
       {/* Cabecalho da secao */}
       <div className="mt-6 flex items-end justify-between">
-        <div>
-          <p className="astro-label">
-            {String(servicos.length).padStart(2, "0")} disponíveis
-          </p>
-          <h2 className="text-xl font-bold text-zinc-900">Nossos Serviços</h2>
-        </div>
+        <h2 className="text-xl font-bold text-zinc-900">Nossos Serviços</h2>
       </div>
 
       {/* Cards de servico. No celular e um carrossel horizontal de cards de

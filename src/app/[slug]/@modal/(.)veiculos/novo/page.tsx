@@ -42,7 +42,7 @@ export default async function NovoVeiculoModal({
   }
 
   return (
-    <ModalRota titulo="Cadastrar veículo" rotulo="Passo 01 · Dados do veículo">
+    <ModalRota titulo="Cadastrar veículo">
       <NovoVeiculoForm emModal cidade={tenant.cidade} estado={tenant.estado} />
     </ModalRota>
   );

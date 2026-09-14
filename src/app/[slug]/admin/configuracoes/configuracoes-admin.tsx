@@ -139,7 +139,7 @@ export function ConfiguracoesAdmin({
 
         <div className="min-w-0 space-y-5">
           {/* 01 — Informacoes gerais */}
-          <Secao id="gerais" numero="01" rotulo="Informacoes gerais" titulo="Identidade do estabelecimento">
+          <Secao id="gerais" titulo="Identidade do estabelecimento">
             <Campo rotulo="Nome da estetica" className="sm:col-span-2">
               <input
                 value={config.nome}
@@ -167,7 +167,7 @@ export function ConfiguracoesAdmin({
           </Secao>
 
           {/* 02 — Endereco */}
-          <Secao id="endereco" numero="02" rotulo="Endereco" titulo="Onde sua estetica esta">
+          <Secao id="endereco" titulo="Onde sua estetica esta">
             <Campo rotulo="CEP">
               <input
                 value={config.cep}
@@ -217,7 +217,7 @@ export function ConfiguracoesAdmin({
           </Secao>
 
           {/* 03 — Pagina publica */}
-          <Secao id="publica" numero="03" rotulo="Pagina publica" titulo="Como os clientes te encontram">
+          <Secao id="publica" titulo="Como os clientes te encontram">
             <Campo rotulo="Endereco da pagina" className="sm:col-span-2">
               <div className="flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
                 <Lock className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
@@ -262,12 +262,7 @@ export function ConfiguracoesAdmin({
           </Secao>
 
           {/* 04 — Pagamento e cancelamento */}
-          <Secao
-            id="pagamento"
-            numero="04"
-            rotulo="Pagamento e cancelamento"
-            titulo="Recebimento PIX e regras de cancelamento"
-          >
+          <Secao id="pagamento" titulo="Recebimento PIX e regras de cancelamento">
             <div className="sm:col-span-2">
               <p className="text-sm font-semibold text-white">Chave PIX Copia e Cola</p>
               <p className="mt-0.5 text-sm text-astro-muted">
@@ -325,12 +320,7 @@ export function ConfiguracoesAdmin({
           </Secao>
 
           {/* 05 — Atendimento */}
-          <Secao
-            id="atendimento"
-            numero="05"
-            rotulo="Atendimento"
-            titulo="Como os horarios sao oferecidos"
-          >
+          <Secao id="atendimento" titulo="Como os horarios sao oferecidos">
             <Campo
               rotulo="Capacidade simultanea"
               dica="Veiculos atendidos ao mesmo tempo em cada horario."
@@ -368,14 +358,10 @@ const ENTRADA =
 
 function Secao({
   id,
-  numero,
-  rotulo,
   titulo,
   children,
 }: {
   id: string;
-  numero: string;
-  rotulo: string;
   titulo: string;
   children: React.ReactNode;
 }) {
@@ -384,10 +370,7 @@ function Secao({
       id={id}
       className="scroll-mt-6 rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6"
     >
-      <p className="astro-label">
-        {numero} · {rotulo}
-      </p>
-      <h2 className="mt-1 text-lg font-semibold text-white">{titulo}</h2>
+      <h2 className="text-lg font-semibold text-white">{titulo}</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );

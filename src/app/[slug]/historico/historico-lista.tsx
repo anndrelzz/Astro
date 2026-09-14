@@ -126,10 +126,7 @@ export function HistoricoLista({
       <header className="mx-auto max-w-md px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
         <div className="flex items-end justify-between">
           <div>
-            <p className="astro-label">
-              {String(itens.length).padStart(2, "0")} registros
-            </p>
-            <h1 className="mt-1 text-2xl font-bold text-zinc-900">
+            <h1 className="text-2xl font-bold text-zinc-900">
               Meus agendamentos
             </h1>
           </div>
