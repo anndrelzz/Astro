@@ -45,7 +45,6 @@ export function ClienteSidebar({
       </div>
 
       <nav className="mt-8 flex-1 px-4">
-        <p className="astro-label px-3 pb-2">Menu</p>
         <ul className="space-y-1">
           {itens.map((item) => {
             const ativo = itemAtivo(pathname, item);
@@ -80,8 +79,7 @@ export function ClienteSidebar({
           Configuracoes (UC13). Sem numero, o botao nao teria para onde ir. */}
       {suporteWhatsapp && (
         <div className="mx-4 mb-3 rounded-xl bg-white/5 px-4 py-4">
-          <p className="astro-label">Suporte</p>
-          <p className="mt-1 text-sm font-semibold text-white">Precisa de ajuda?</p>
+          <p className="text-sm font-semibold text-white">Precisa de ajuda?</p>
           <a
             href={`https://wa.me/55${suporteWhatsapp}`}
             target="_blank"

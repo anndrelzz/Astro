@@ -152,8 +152,7 @@ export function FinanceiroDashboard({
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         {/* Receita por servico */}
         <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
-          <p className="astro-label">Por servico</p>
-          <h2 className="mt-1 text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-white">
             Receita por categoria
           </h2>
           <div className="mt-5">
@@ -169,8 +168,7 @@ export function FinanceiroDashboard({
 
         {/* Formas de pagamento */}
         <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
-          <p className="astro-label">Por metodo</p>
-          <h2 className="mt-1 text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-white">
             Como os clientes pagam
           </h2>
           <div className="mt-5">
@@ -184,8 +182,7 @@ export function FinanceiroDashboard({
 
       {/* Ranking de clientes */}
       <section className="mt-5 rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
-        <p className="astro-label">Clientes</p>
-        <h2 className="mt-1 text-lg font-semibold text-white">
+        <h2 className="text-lg font-semibold text-white">
           Quem mais gastou no periodo
         </h2>
 

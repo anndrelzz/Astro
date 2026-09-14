@@ -114,8 +114,7 @@ export function HorariosAdmin({
       )}
 
       <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
-        <p className="astro-label">Dias de funcionamento</p>
-        <h2 className="mt-1 text-lg font-semibold text-white">
+        <h2 className="text-lg font-semibold text-white">
           Quando sua estetica atende
         </h2>
 

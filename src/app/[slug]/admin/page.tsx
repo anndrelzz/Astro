@@ -198,16 +198,6 @@ export default async function AdminDashboardPage({
     .join("")
     .toUpperCase();
 
-  const dataExtenso = agora
-    .toLocaleDateString("pt-BR", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    .replace(/\./g, "")
-    .toUpperCase();
-
   return (
     <>
       {/* Capa + identidade da estetica */}
@@ -271,8 +261,7 @@ export default async function AdminDashboardPage({
 
       {/* Cabecalho da secao */}
       <div className="mb-5 mt-7">
-        <p className="astro-label">Visao geral · {dataExtenso}</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-white lg:text-3xl">
+        <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">
           Dashboard
         </h1>
       </div>
@@ -310,12 +299,9 @@ export default async function AdminDashboardPage({
       {/* Agenda do dia */}
       <section className="mt-7">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="astro-label">Agenda · hoje</p>
-            <h2 className="mt-1 text-lg font-semibold text-white lg:text-xl">
-              Agendamentos de hoje
-            </h2>
-          </div>
+          <h2 className="text-lg font-semibold text-white lg:text-xl">
+            Agendamentos de hoje
+          </h2>
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full bg-astro-blue/15 px-3 py-1 font-mono text-[0.65rem] uppercase tracking-wider text-astro-blue-bright">
               <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
