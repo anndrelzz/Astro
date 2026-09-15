@@ -43,16 +43,29 @@ const PERIODOS: { valor: Periodo; rotulo: string }[] = [
   { valor: "todos", rotulo: "Todos" },
 ];
 
-// "Concluido" nao ganha aba: nenhuma rota do sistema atribui esse status, entao
-// a aba mostraria zero para sempre. O status continua no banco porque o
-// historico do cliente o utiliza (UC05).
 const ABAS: { chave: "todos" | StatusAgendamento; rotulo: string }[] = [
   { chave: "todos", rotulo: "Todos" },
   { chave: "CONFIRMADO", rotulo: "Confirmados" },
   { chave: "PIX_PENDENTE", rotulo: "PIX pendente" },
   { chave: "PENDENTE_PAGAMENTO", rotulo: "Pagamento no local" },
+  { chave: "CONCLUIDO", rotulo: "Concluidos" },
   { chave: "CANCELADO", rotulo: "Cancelados" },
 ];
+
+// Nenhuma rota do sistema atribui o status CONCLUIDO (nem automatico, nem
+// botao do admin) — sem isso a aba "Concluidos" mostraria zero para sempre.
+// Mesmo truque do historico do cliente (UC05): um agendamento ativo cujo
+// horario final ja passou e tratado como concluido so para exibicao/filtro,
+// sem tocar o status gravado no banco.
+function statusEfetivo(
+  item: Pick<ItemAgendamento, "status" | "dataHoraISO" | "duracaoMin">
+): StatusAgendamento {
+  if (item.status === "CANCELADO" || item.status === "CONCLUIDO") {
+    return item.status;
+  }
+  const fim = new Date(item.dataHoraISO).getTime() + item.duracaoMin * 60000;
+  return fim < Date.now() ? "CONCLUIDO" : item.status;
+}
 
 const ESTILO_STATUS: Record<
   StatusAgendamento,
@@ -154,14 +167,17 @@ export function AgendamentosLista({
   const contagens = useMemo(() => {
     const m = new Map<string, number>();
     m.set("todos", itens.length);
-    for (const i of itens) m.set(i.status, (m.get(i.status) ?? 0) + 1);
+    for (const i of itens) {
+      const s = statusEfetivo(i);
+      m.set(s, (m.get(s) ?? 0) + 1);
+    }
     return m;
   }, [itens]);
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return itens.filter((i) => {
-      if (aba !== "todos" && i.status !== aba) return false;
+      if (aba !== "todos" && statusEfetivo(i) !== aba) return false;
       if (!termo) return true;
       return (
         i.clienteNome.toLowerCase().includes(termo) ||
@@ -304,13 +320,14 @@ export function AgendamentosLista({
             <tbody>
               {visiveis.map((item) => {
                 const d = new Date(item.dataHoraISO);
-                const estilo = ESTILO_STATUS[item.status];
+                const efetivo = statusEfetivo(item);
+                const estilo = ESTILO_STATUS[efetivo];
                 const aberto = expandido === item.id;
                 const podeConfirmar =
                   item.status === "PIX_PENDENTE" ||
                   item.status === "PENDENTE_PAGAMENTO";
                 const podeCancelar =
-                  item.status !== "CANCELADO" && item.status !== "CONCLUIDO";
+                  efetivo !== "CANCELADO" && efetivo !== "CONCLUIDO";
 
                 return (
                   <Fragment key={item.id}>
