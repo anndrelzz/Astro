@@ -19,8 +19,8 @@ const SPARKLES = [
   { x: 90, y: 28, size: 11, delay: 0.5, dur: 2.4 },
 ];
 
-const AZUL = "#3b82f6"; // astro-blue-bright
-const MUTED = "#8a97b1"; // astro-muted
+const AZUL = "var(--color-astro-blue-bright)";
+const MUTED = "var(--color-astro-muted)";
 
 function Sparkle({ x, y, size, delay, dur }: (typeof SPARKLES)[number]) {
   return (
@@ -79,8 +79,9 @@ export function SuccessScreen({
         <div
           className="flex h-28 w-28 items-center justify-center rounded-full"
           style={{
-            background: "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)",
-            boxShadow: "0 8px 40px rgba(37,99,235,0.55)",
+            background:
+              "linear-gradient(135deg, var(--color-astro-blue) 0%, var(--color-astro-blue-bright) 100%)",
+            boxShadow: "0 8px 40px color-mix(in srgb, var(--color-astro-blue) 55%, transparent)",
           }}
         >
           <motion.div

@@ -47,7 +47,7 @@ export default async function PixPage({
   return (
     <ClienteShell slug={slug} trilha={["Agendamento", "Pagamento", "PIX"]} titulo="Pagar com PIX">
       <div className="min-h-dvh bg-white lg:min-h-0 lg:bg-transparent">
-        <ThemeColor color="#0b1120" />
+        <ThemeColor color="#09090b" />
         {/* Cabecalho escuro — so no celular. */}
         <div className="astro-dark px-5 pb-16 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
           <div className="mx-auto flex max-w-md items-center justify-between">

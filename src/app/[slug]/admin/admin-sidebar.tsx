@@ -75,11 +75,18 @@ export function AdminSidebar({
     .toUpperCase();
 
   return (
-    // Gradiente vertical: um azul um pouco mais claro so no topo (junto da
-    // marca), escurecendo rapido — ja escuro no primeiro terco e quase preto
-    // do meio para baixo. O claro e um brilho localizado, nao um degrade que
-    // percorre a lateral inteira.
-    <aside className="hidden w-[248px] shrink-0 flex-col border-r border-admin-border bg-[linear-gradient(180deg,#1e2d4a_0%,#0b1220_28%,#05070f_100%)] lg:flex">
+    // Gradiente vertical: um brilho da cor primaria do tenant so no topo
+    // (junto da marca), escurecendo rapido — ja escuro no primeiro terco e
+    // quase preto do meio para baixo. O claro e um brilho localizado, nao um
+    // degrade que percorre a lateral inteira — e tingido pela cor escolhida
+    // em Identidade visual (RF13, UC12), nao um azul fixo.
+    <aside
+      className="hidden w-[248px] shrink-0 flex-col border-r border-admin-border lg:flex"
+      style={{
+        backgroundImage:
+          "linear-gradient(180deg, color-mix(in srgb, var(--color-astro-blue) 45%, black 55%) 0%, var(--color-admin-surface) 28%, black 100%)",
+      }}
+    >
       {/* Marca */}
       <div className="flex items-center gap-2.5 px-5 pt-6">
         <Image
@@ -230,14 +237,25 @@ function Grupo({
               <Link
                 href={item.href}
                 aria-current={ativo ? "page" : undefined}
-                // Item ativo em vidro azul: o fundo e TRANSLUCIDO (o gradiente
-                // da lateral aparece por tras) com desfoque, borda azul clara
-                // e brilho externo. Azul solido nao le como vidro — o que cria
-                // o efeito e a transparencia somada ao blur e a borda luminosa.
+                // Item ativo em vidro na cor primaria do tenant: o fundo e
+                // TRANSLUCIDO (o gradiente da lateral aparece por tras) com
+                // desfoque, borda clara e brilho externo. Cor solida nao le
+                // como vidro — o que cria o efeito e a transparencia somada
+                // ao blur e a borda luminosa.
                 className={
                   ativo
-                    ? "flex items-center gap-3 rounded-lg bg-[linear-gradient(120deg,rgba(59,130,246,0.55)_0%,rgba(37,99,235,0.32)_55%,rgba(29,78,216,0.18)_100%)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_4px_20px_-4px_rgba(59,130,246,0.55)] ring-1 ring-inset ring-astro-blue-bright/50 backdrop-blur-md"
+                    ? "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-white ring-1 ring-inset ring-astro-blue-bright/50 backdrop-blur-md"
                     : "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-astro-muted transition hover:bg-white/5 hover:text-white"
+                }
+                style={
+                  ativo
+                    ? {
+                        backgroundImage:
+                          "linear-gradient(120deg, color-mix(in srgb, var(--color-astro-blue-bright) 55%, transparent) 0%, color-mix(in srgb, var(--color-astro-blue) 32%, transparent) 55%, color-mix(in srgb, var(--color-astro-blue) 12%, transparent) 100%)",
+                        boxShadow:
+                          "0 4px 20px -4px color-mix(in srgb, var(--color-astro-blue-bright) 55%, transparent)",
+                      }
+                    : undefined
                 }
               >
                 <Icone className="h-4 w-4 shrink-0" />

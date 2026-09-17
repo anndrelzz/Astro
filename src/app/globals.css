@@ -3,24 +3,32 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
 
-  /* Paleta Astro (extraida dos mockups) */
-  --color-astro-bg: #0b1120;
-  --color-astro-surface: #141c2f;
-  --color-astro-surface-2: #1b2540;
-  --color-astro-border: #26304a;
+/* Sem "inline": as utilitarias (bg-astro-blue etc.) resolvem via var() em vez
+   de terem a cor gravada no CSS compilado — assim [slug]/layout.tsx consegue
+   sobrescrever --color-astro-blue por tenant (RF13, UC12) sem rebuild. */
+@theme {
+  /* Base neutra (preto/cinza puro, sem matiz) — so a cor primaria do tenant
+     (RF13, UC12) deve carregar cor na interface; o resto e pano de fundo. */
+  --color-astro-bg: #09090b;
+  --color-astro-surface: #18181b;
+  --color-astro-surface-2: #27272a;
+  --color-astro-border: #3f3f46;
   --color-astro-blue: #2563eb;
-  --color-astro-blue-bright: #3b82f6;
-  --color-astro-muted: #8a97b1;
+  /* Tom claro derivado da cor do tenant, nao de um segundo hex fixo — assim
+     hover/destaque acompanham qualquer cor escolhida na identidade visual. */
+  --color-astro-blue-bright: color-mix(in srgb, var(--color-astro-blue) 80%, white 20%);
+  --color-astro-muted: #a1a1aa;
 
   /* Painel admin (mockup de desktop) — escala propria, bem mais escura que a
      do cliente: o painel e uma ferramenta de trabalho, com muito dado na tela,
      e o contraste alto cansa menos em uso prolongado. Separado dos tokens
      astro-* de proposito, para nao alterar as telas do cliente. */
-  --color-admin-bg: #05070f;
-  --color-admin-surface: #0b1220;
-  --color-admin-surface-2: #131c2e;
-  --color-admin-border: #1b2438;
+  --color-admin-bg: #000000;
+  --color-admin-surface: #09090b;
+  --color-admin-surface-2: #18181b;
+  --color-admin-border: #27272a;
 }
 
 :root {
@@ -28,14 +36,14 @@
   --foreground: #171717;
 }
 
-/* Fundo padrao do documento = navy (app dark-first). Cada tela ajusta html+body
+/* Fundo padrao do documento = preto (app dark-first). Cada tela ajusta html+body
    via <ThemeColor> para a cor certa preencher ate as bordas do celular. */
 html {
-  background-color: #0b1120;
+  background-color: var(--color-astro-bg);
 }
 
 body {
-  background-color: #0b1120;
+  background-color: var(--color-astro-bg);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   /* Preenche a altura visivel real do mobile (evita faixa branca em cima/baixo). */
@@ -48,9 +56,11 @@ body {
 }
 
 /* Fundo escuro texturizado com listras diagonais + brilho superior,
-   usado nas telas do cliente (mobile-first). */
+   usado nas telas do cliente (mobile-first). O brilho e um tingimento da cor
+   primaria do tenant sobre o preto — nao um azul fixo — para acompanhar a
+   identidade visual (RF13, UC12). */
 .astro-dark {
-  background-color: #0b1120;
+  background-color: var(--color-astro-bg);
   background-image:
     repeating-linear-gradient(
       135deg,
@@ -59,8 +69,12 @@ body {
       transparent 2px,
       transparent 22px
     ),
-    radial-gradient(140% 100% at 50% -10%, #22335a 0%, #0b1120 55%);
-  color: #f8fafc;
+    radial-gradient(
+      140% 100% at 50% -10%,
+      color-mix(in srgb, var(--color-astro-blue) 35%, var(--color-astro-bg) 65%) 0%,
+      var(--color-astro-bg) 55%
+    );
+  color: #fafafa;
 }
 
 /* iOS Safari da um zoom automatico ao focar campos com fonte < 16px. No

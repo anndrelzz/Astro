@@ -252,7 +252,7 @@ export function NovoVeiculoForm({
 
   return (
     <div className="min-h-dvh bg-white lg:min-h-0 lg:bg-transparent">
-      <ThemeColor color="#0b1120" />
+      <ThemeColor color="#09090b" />
       {/* Cabecalho escuro — celular. No desktop o titulo vem da casca. */}
       <div className="astro-dark px-5 pb-10 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
         <div className="mx-auto flex max-w-md items-center justify-between">

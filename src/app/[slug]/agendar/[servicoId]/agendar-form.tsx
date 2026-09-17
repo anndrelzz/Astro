@@ -163,7 +163,7 @@ export function AgendarForm({
 
   return (
     <div className="min-h-dvh bg-white lg:min-h-0 lg:bg-transparent">
-      <ThemeColor color="#0b1120" />
+      <ThemeColor color="#09090b" />
       {/* Cabecalho escuro — so no celular. No desktop quem situa o cliente e a
           trilha do cabecalho da casca, e o "voltar" e a propria barra lateral. */}
       <div className="astro-dark px-5 pb-16 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
