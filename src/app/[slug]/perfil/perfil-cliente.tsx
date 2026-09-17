@@ -42,7 +42,6 @@ export function PerfilCliente({
   nome,
   email,
   telefone,
-  desde,
   totalAgendamentos,
   veiculos,
   telegramVinculado,
@@ -51,7 +50,6 @@ export function PerfilCliente({
   nome: string;
   email: string;
   telefone: string;
-  desde: string;
   totalAgendamentos: number;
   veiculos: Veiculo[];
   telegramVinculado: boolean;
@@ -89,7 +87,6 @@ export function PerfilCliente({
             </span>
           </div>
           <h2 className="mt-3 text-xl font-bold text-white">{nome}</h2>
-          <p className="astro-label mt-0.5">Cliente desde · {desde}</p>
         </div>
       </div>
 
@@ -108,7 +105,6 @@ export function PerfilCliente({
             </div>
             <div className="min-w-0">
               <h2 className="truncate text-lg font-bold text-white">{nome}</h2>
-              <p className="astro-label mt-0.5">Cliente desde · {desde}</p>
             </div>
           </div>
 
@@ -519,7 +515,6 @@ function ModalEditar({
 
         <div className="flex items-start justify-between">
           <div>
-            <p className="astro-label">Editar perfil</p>
             <h2 className="text-xl font-bold text-zinc-900">Seus dados</h2>
           </div>
           <button

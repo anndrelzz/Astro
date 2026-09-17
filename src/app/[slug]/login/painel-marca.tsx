@@ -83,10 +83,6 @@ export function PainelMarca({
 
       {/* Rodape */}
       <div className="relative">
-        <p className="astro-label !text-white/40">
-          {eLogin ? "Sua garagem digital" : "Por que Astro"}
-        </p>
-
         {eLogin ? (
           <>
             <h2 className="mt-3 text-3xl font-bold leading-tight text-white">
