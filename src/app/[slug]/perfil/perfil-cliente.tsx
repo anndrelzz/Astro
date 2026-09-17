@@ -60,7 +60,7 @@ export function PerfilCliente({
 
   return (
     <div className="min-h-dvh bg-[#f6f8fb] pb-28 lg:min-h-0 lg:bg-transparent lg:pb-10">
-      <ThemeColor color="#0b1120" />
+      <ThemeColor color="#09090b" />
 
       {/* Cabecalho escuro — celular. No desktop o titulo vem da casca e a
           identidade do cliente esta no cartao da coluna esquerda. */}

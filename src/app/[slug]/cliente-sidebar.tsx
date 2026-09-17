@@ -29,10 +29,18 @@ export function ClienteSidebar({
   const itens = itensCliente(slug);
 
   return (
-    // Mesmo gradiente da lateral do admin: um azul mais claro so no topo,
-    // junto da marca, escurecendo rapido ate quase preto. O claro e um brilho
-    // localizado, nao um degrade que percorre a lateral inteira.
-    <aside className="hidden w-[248px] shrink-0 flex-col bg-[linear-gradient(180deg,#1e2d4a_0%,#0b1220_28%,#05070f_100%)] lg:flex">
+    // Mesmo gradiente da lateral do admin: um brilho da cor primaria do
+    // tenant so no topo, junto da marca, escurecendo rapido ate quase preto.
+    // O claro e um brilho localizado, nao um degrade que percorre a lateral
+    // inteira — e tingido pela cor escolhida em Identidade visual (RF13,
+    // UC12), nao um azul fixo.
+    <aside
+      className="hidden w-[248px] shrink-0 flex-col lg:flex"
+      style={{
+        backgroundImage:
+          "linear-gradient(180deg, color-mix(in srgb, var(--color-astro-blue) 45%, black 55%) 0%, var(--color-astro-bg) 28%, black 100%)",
+      }}
+    >
       <div className="px-5 pt-6">
         <Image
           src="/logo-astro-branco.png"
@@ -55,14 +63,23 @@ export function ClienteSidebar({
                 <Link
                   href={item.href}
                   aria-current={ativo ? "page" : undefined}
-                  // Item ativo: azul solido com halo neon ao redor, como no
-                  // mockup. O brilho e uma sombra sem deslocamento e com
-                  // spread negativo — ela vaza para fora da pilula em vez de
-                  // cair embaixo dela, que e o que faz parecer luz e nao sombra.
+                  // Item ativo: cor primaria solida com halo neon ao redor,
+                  // como no mockup. O brilho e uma sombra sem deslocamento e
+                  // com spread negativo — ela vaza para fora da pilula em vez
+                  // de cair embaixo dela, que e o que faz parecer luz e nao
+                  // sombra.
                   className={
                     ativo
-                      ? "flex items-center gap-3 rounded-xl bg-astro-blue px-3 py-2.5 text-sm font-semibold text-white shadow-[0_0_24px_-2px_rgba(37,99,235,0.85)]"
+                      ? "flex items-center gap-3 rounded-xl bg-astro-blue px-3 py-2.5 text-sm font-semibold text-white"
                       : "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-astro-muted transition hover:bg-white/5 hover:text-white"
+                  }
+                  style={
+                    ativo
+                      ? {
+                          boxShadow:
+                            "0 0 24px -2px color-mix(in srgb, var(--color-astro-blue) 85%, transparent)",
+                        }
+                      : undefined
                   }
                 >
                   <Icone className="h-4 w-4 shrink-0" />

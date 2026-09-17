@@ -7,19 +7,9 @@ import { Check, Copy, Upload } from "lucide-react";
 // UC12, RF13 — identidade visual da estetica (tela "Identidade visual" do
 // mockup do admin). Antes esta secao vivia dentro de /configuracoes.
 //
-// A paleta de atalho reproduz a do mockup; o seletor de cor livre continua
-// disponivel, entao o admin nao fica preso as opcoes sugeridas.
-
-const PALETA = [
-  "#2563eb",
-  "#ea580c",
-  "#a855f7",
-  "#22c55e",
-  "#eab308",
-  "#ef4444",
-  "#14b8a6",
-  "#3f3f46",
-];
+// Sem paleta de atalho: o seletor nativo abre a paleta completa do sistema
+// (roda de cores + gradiente), entao o admin testa qualquer tom livremente
+// em vez de escolher entre opcoes pre-fixadas.
 
 export function IdentidadeAdmin({
   logoUrlInicial,
@@ -188,52 +178,30 @@ export function IdentidadeAdmin({
         {/* Cor primaria */}
         <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
           <p className="astro-label">Cor primaria</p>
+          <p className="mt-1 text-sm text-astro-muted">
+            Aplicada em botoes, links e destaques, no site do cliente e no Admin.
+          </p>
 
-          <div className="mt-4 flex items-center gap-4 rounded-xl border border-admin-border bg-admin-bg p-4">
-            <span
-              className="h-14 w-14 shrink-0 rounded-xl border border-white/10"
-              style={{ backgroundColor: cor }}
-            />
-            <div className="min-w-0">
-              <p className="font-mono text-lg font-semibold text-white">
-                {cor.toUpperCase()}
-              </p>
-              <p className="text-sm text-astro-muted">
-                Aplicada em botoes, links e destaques
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {PALETA.map((opcao) => {
-              const ativa = opcao.toLowerCase() === cor.toLowerCase();
-              return (
-                <button
-                  key={opcao}
-                  onClick={() => setCor(opcao)}
-                  aria-label={`Usar a cor ${opcao}`}
-                  style={{ backgroundColor: opcao }}
-                  className={
-                    ativa
-                      ? "flex h-10 w-10 items-center justify-center rounded-lg ring-2 ring-white ring-offset-2 ring-offset-astro-surface"
-                      : "h-10 w-10 rounded-lg"
-                  }
-                >
-                  {ativa && <Check className="h-4 w-4 text-white" />}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
-            <span className="astro-label">Hex</span>
+          <label className="mt-4 flex cursor-pointer items-center gap-4 rounded-xl border border-admin-border bg-admin-bg p-4 transition hover:border-astro-blue/50">
             <input
               type="color"
               value={cor}
               onChange={(e) => setCor(e.target.value)}
-              aria-label="Escolher cor livre"
-              className="h-7 w-9 shrink-0 rounded border border-admin-border bg-transparent"
+              aria-label="Escolher cor primaria"
+              className="h-16 w-16 shrink-0 cursor-pointer rounded-xl border border-white/10 bg-transparent p-0"
             />
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-lg font-semibold text-white">
+                {cor.toUpperCase()}
+              </p>
+              <p className="text-sm text-astro-muted">
+                Toque no quadrado para abrir a paleta completa
+              </p>
+            </div>
+          </label>
+
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
+            <span className="astro-label">Hex</span>
             <span className="flex-1 font-mono text-sm text-slate-100">
               {cor.toUpperCase()}
             </span>
