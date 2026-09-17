@@ -1,21 +1,25 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 
-// Wordmark ASTRO com o "A" estilizado (chevron), conforme mockups.
-export function Logo({ className = "" }: { className?: string }) {
+// Wordmark oficial da marca (public/logo-astro-*.png). className controla o
+// tamanho: sempre passar uma altura (h-*), a largura acompanha via w-auto.
+export function Logo({
+  className = "",
+  variant = "branco",
+}: {
+  className?: string;
+  variant?: "branco" | "preto";
+}) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 font-semibold tracking-[0.2em] ${className}`}
-    >
-      <svg viewBox="0 0 24 24" className="h-[1.1em] w-[1.1em]" fill="none">
-        <path
-          d="M12 3 L21 20 L14.5 16 L12 21 L9.5 16 L3 20 Z"
-          fill="currentColor"
-        />
-      </svg>
-      <span>ASTRO</span>
-    </span>
+    <Image
+      src={variant === "branco" ? "/logo-astro-branco.png" : "/logo-astro-preto.png"}
+      alt="Astro"
+      width={712}
+      height={219}
+      className={`w-auto object-contain ${className}`}
+    />
   );
 }
 

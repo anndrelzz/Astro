@@ -70,7 +70,7 @@ export function PainelMarca({
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(60% 45% at 78% 34%, rgba(37,99,235,0.42) 0%, rgba(37,99,235,0) 70%)",
+            "radial-gradient(60% 45% at 78% 34%, color-mix(in srgb, var(--color-astro-blue) 42%, transparent) 0%, transparent 70%)",
         }}
       />
 
@@ -78,7 +78,7 @@ export function PainelMarca({
           plataforma fica discreta ao lado. */}
       <div className="relative flex items-center justify-between gap-4">
         <MarcaEstetica estetica={estetica} />
-        {eLogin && <Logo className="shrink-0 text-sm text-white/40" />}
+        {eLogin && <Logo className="h-7 shrink-0" />}
       </div>
 
       {/* Rodape */}

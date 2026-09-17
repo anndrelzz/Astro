@@ -128,7 +128,7 @@ export default async function TenantPage({
                 Painel
               </Link>
             )}
-            <Logo className="text-base text-zinc-900" />
+            <Logo variant="preto" className="h-4" />
           </div>
         </header>
 
