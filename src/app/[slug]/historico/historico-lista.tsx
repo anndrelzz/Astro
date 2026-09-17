@@ -21,11 +21,14 @@ type Item = {
 
 type Categoria = "todos" | "proximo" | "concluido" | "cancelado";
 
-// Categoriza pelo status persistido: concluido, cancelado ou "proximo"
-// (qualquer estado ativo — pendente/confirmado/pix).
-function categoria(status: string): Exclude<Categoria, "todos"> {
-  if (status === "CANCELADO") return "cancelado";
-  if (status === "CONCLUIDO") return "concluido";
+// Categoriza pelo status persistido, mas "concluido" tambem cobre qualquer
+// agendamento ativo cujo horario ja passou — nenhuma rota do sistema atribui
+// esse status automaticamente, entao sem isso um agendamento antigo nunca
+// cancelado ficaria em "Proximo" para sempre.
+function categoria(item: Pick<Item, "status" | "dataHoraISO" | "duracaoMin">): Exclude<Categoria, "todos"> {
+  if (item.status === "CANCELADO") return "cancelado";
+  const fim = new Date(item.dataHoraISO).getTime() + item.duracaoMin * 60000;
+  if (item.status === "CONCLUIDO" || fim < Date.now()) return "concluido";
   return "proximo";
 }
 
@@ -69,7 +72,7 @@ export function HistoricoLista({
   horasLimite: number;
 }) {
   const router = useRouter();
-  const [filtro, setFiltro] = useState<Categoria>("todos");
+  const [filtro, setFiltro] = useState<Categoria>("proximo");
   const [ordem, setOrdem] = useState<"recentes" | "antigos">("recentes");
   const [alvo, setAlvo] = useState<Item | null>(null); // agendamento no modal de cancelar
   const [cancelando, setCancelando] = useState(false);
@@ -79,7 +82,7 @@ export function HistoricoLista({
     const filtrados =
       filtro === "todos"
         ? itens
-        : itens.filter((i) => categoria(i.status) === filtro);
+        : itens.filter((i) => categoria(i) === filtro);
 
     // A pagina ja entrega em ordem decrescente; inverter cobre "Mais antigos"
     // sem uma segunda consulta ao banco.
@@ -90,7 +93,7 @@ export function HistoricoLista({
   // inteira, nao sobre o filtro — eles sao o panorama que orienta o filtro.
   const contagem = useMemo(() => {
     const c = { todos: itens.length, proximo: 0, concluido: 0, cancelado: 0 };
-    for (const i of itens) c[categoria(i.status)]++;
+    for (const i of itens) c[categoria(i)]++;
     return c;
   }, [itens]);
 
@@ -262,7 +265,7 @@ function Linha({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
     .toLocaleDateString("pt-BR", { month: "short" })
     .replace(".", "")
     .toUpperCase();
-  const cat = categoria(item.status);
+  const cat = categoria(item);
   const badge = BADGE[cat];
   const proximo = cat === "proximo";
 
@@ -333,7 +336,7 @@ function Card({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
     .toUpperCase();
   const dia = data.getDate();
   const ano = data.getFullYear();
-  const cat = categoria(item.status);
+  const cat = categoria(item);
   const badge = BADGE[cat];
   const proximo = cat === "proximo";
 
