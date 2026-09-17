@@ -76,9 +76,14 @@ export function NovoVeiculoForm({
       return;
     }
 
-    // No modal usa replace: o veiculo ja foi criado, e um "voltar" que
-    // reabrisse o formulario convidaria a cadastrar o mesmo carro de novo.
-    if (emModal) router.replace(callbackUrl);
+    // No modal, fechar e SEMPRE ir com router.back() (mesmo metodo do X, do
+    // Cancelar e do Esc em ModalRota) - e o unico jeito que fecha de verdade
+    // o slot da rota interceptada. router.replace(callbackUrl) so trocava a
+    // URL de fundo sem desmontar o pop-up, porque replace nao desfaz a
+    // navegacao soft que abriu a rota interceptada. Como todo ponto de
+    // entrada do modal passa callbackUrl igual a propria pagina que o abriu,
+    // back() sempre cai no lugar certo.
+    if (emModal) router.back();
     else router.push(callbackUrl);
     router.refresh();
   }

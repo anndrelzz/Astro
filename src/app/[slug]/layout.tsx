@@ -1,3 +1,5 @@
+import { ModalSlot } from "@/components/ui/modal-slot";
+
 // Layout de /[slug] que existe por um motivo so: abrir o slot paralelo
 // @modal, usado pelas rotas interceptadas (o cadastro de veiculo).
 //
@@ -15,7 +17,7 @@ export default function SlugLayout({
   return (
     <>
       {children}
-      {modal}
+      <ModalSlot>{modal}</ModalSlot>
     </>
   );
 }
