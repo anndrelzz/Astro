@@ -273,8 +273,7 @@ export function NovoVeiculoForm({
           deixa os campos absurdamente longos para dados curtos como ano e cor. */}
       <div className="mx-auto -mt-4 max-w-md rounded-t-3xl bg-white px-5 pb-10 pt-6 lg:mx-0 lg:mt-0 lg:max-w-none lg:rounded-none lg:bg-transparent lg:px-8 lg:pt-0">
         <div className="lg:max-w-3xl lg:rounded-2xl lg:border lg:border-zinc-100 lg:bg-white lg:p-7 lg:shadow-sm">
-          <p className="astro-label">Passo 01 · Dados do veículo</p>
-          <h2 className="mt-1 text-2xl font-bold text-zinc-900 lg:text-xl">
+          <h2 className="text-2xl font-bold text-zinc-900 lg:text-xl">
             Sobre o veículo
           </h2>
           {formulario}

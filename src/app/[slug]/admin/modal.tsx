@@ -15,14 +15,12 @@ export function Modal({
   aberto,
   onFechar,
   titulo,
-  subtitulo,
   children,
   rodape,
 }: {
   aberto: boolean;
   onFechar: () => void;
   titulo: string;
-  subtitulo?: string;
   children: React.ReactNode;
   rodape?: React.ReactNode;
 }) {
@@ -67,8 +65,7 @@ export function Modal({
       <div className="flex max-h-[85dvh] flex-col">
         <header className="flex items-start justify-between gap-4 border-b border-admin-border px-5 py-4">
           <div className="min-w-0">
-            {subtitulo && <p className="astro-label">{subtitulo}</p>}
-            <h2 id="titulo-modal" className="mt-0.5 text-lg font-semibold text-white">
+            <h2 id="titulo-modal" className="text-lg font-semibold text-white">
               {titulo}
             </h2>
           </div>

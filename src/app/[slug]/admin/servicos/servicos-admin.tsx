@@ -262,7 +262,6 @@ export function ServicosAdmin({ servicosIniciais }: { servicosIniciais: Servico[
       <Modal
         aberto={modalAberto}
         onFechar={fechar}
-        subtitulo={criando ? "Novo servico" : "Editar servico"}
         titulo={criando ? "Cadastrar servico" : rascunho.nome || "Sem nome"}
         rodape={
           <>

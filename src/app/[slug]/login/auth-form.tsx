@@ -169,9 +169,6 @@ export function AuthForm({
         <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">
           <div className="lg:mx-auto lg:w-full lg:max-w-md">
             <div className="mt-10 lg:mt-0">
-              <p className="astro-label hidden lg:block">
-                {eLogin ? "Entrar" : "Criar conta · Etapa 01 / 01"}
-              </p>
               <h1 className="text-3xl font-bold leading-tight text-white lg:mt-2 lg:text-zinc-900">
                 {eLogin ? (
                   <>

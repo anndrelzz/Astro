@@ -12,11 +12,9 @@ import { X } from "lucide-react";
 // levar de volta a tela de tras — que e onde o usuario acha que ainda esta.
 export function ModalRota({
   titulo,
-  rotulo,
   children,
 }: {
   titulo: string;
-  rotulo?: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -58,10 +56,7 @@ export function ModalRota({
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-zinc-200 lg:hidden" />
 
         <div className="flex items-start justify-between gap-4 px-6 lg:px-8">
-          <div>
-            {rotulo && <p className="astro-label">{rotulo}</p>}
-            <h2 className="text-xl font-bold text-zinc-900">{titulo}</h2>
-          </div>
+          <h2 className="text-xl font-bold text-zinc-900">{titulo}</h2>
           <button
             type="button"
             onClick={() => router.back()}

@@ -36,11 +36,6 @@ export default async function PerfilPage({
   );
   if (!usuario) redirect(`/${slug}/login`);
 
-  const desde = usuario.criadoEm
-    .toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
-    .replace(".", "")
-    .toUpperCase();
-
   return (
     <ClienteShell slug={slug} trilha={["Conta", "Perfil"]} titulo="Meu perfil">
       <PerfilCliente
@@ -48,7 +43,6 @@ export default async function PerfilPage({
         nome={usuario.nome}
         email={usuario.email}
         telefone={usuario.telefone ?? ""}
-        desde={desde}
         totalAgendamentos={usuario._count.agendamentos}
         telegramVinculado={!!usuario.telegramChatId}
         veiculos={usuario.veiculos.map((v) => ({
