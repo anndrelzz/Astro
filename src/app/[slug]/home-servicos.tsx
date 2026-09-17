@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Plus, Clock, Car, ArrowRight } from "lucide-react";
@@ -101,9 +102,17 @@ export function HomeServicos({
             key={servico.id}
             className="flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition lg:w-auto lg:shrink lg:hover:-translate-y-0.5 lg:hover:shadow-md"
           >
-            {/* Imagem placeholder com badge de duracao */}
-            <div className="relative flex h-36 items-end bg-gradient-to-br from-astro-surface-2 to-astro-bg p-3 lg:h-44">
-              <span className="flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+            {/* Imagem placeholder com badge de duracao. Enquanto nao ha foto
+                real do servico, a logo do Astro entra como marca d'agua. */}
+            <div className="relative flex h-36 items-end justify-center bg-gradient-to-br from-astro-surface-2 to-astro-bg p-3 lg:h-44">
+              <Image
+                src="/logo-astro-branco.png"
+                alt=""
+                width={96}
+                height={96}
+                className="pointer-events-none absolute inset-0 m-auto h-20 w-20 object-contain opacity-20 lg:h-24 lg:w-24"
+              />
+              <span className="relative flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
                 <Clock className="h-3 w-3" />
                 {formatarDuracao(servico.duracaoMin)}
               </span>
