@@ -24,17 +24,41 @@ export async function POST(request: Request) {
     );
   }
 
-  const veiculo = await withTenant(session.user.tenantId, (tx) =>
-    tx.veiculo.create({
+  const resultado = await withTenant(session.user.tenantId, async (tx) => {
+    // Duplicata = todos os campos iguais (marca/modelo/cor sem diferenciar
+    // maiuscula/minuscula) num veiculo ativo do mesmo cliente. Uma placa ou
+    // cor diferente ja e um veiculo diferente e passa direto.
+    const duplicado = await tx.veiculo.findFirst({
+      where: {
+        usuarioId: session.user.id,
+        ativo: true,
+        placa: parsed.data.placa,
+        ano: parsed.data.ano,
+        segmento: parsed.data.segmento,
+        marca: { equals: parsed.data.marca, mode: "insensitive" },
+        modelo: { equals: parsed.data.modelo, mode: "insensitive" },
+        cor: { equals: parsed.data.cor, mode: "insensitive" },
+      },
+    });
+    if (duplicado) {
+      return { error: "Voce ja tem esse veiculo cadastrado" } as const;
+    }
+
+    const veiculo = await tx.veiculo.create({
       data: {
         ...parsed.data,
         tenantId: session.user.tenantId,
         usuarioId: session.user.id,
       },
-    })
-  );
+    });
+    return { veiculo } as const;
+  });
 
-  return NextResponse.json(veiculo, { status: 201 });
+  if ("error" in resultado) {
+    return NextResponse.json({ error: resultado.error }, { status: 409 });
+  }
+
+  return NextResponse.json(resultado.veiculo, { status: 201 });
 }
 
 // RF15 — veiculos do cliente autenticado. RN15: aposentados ficam de fora;

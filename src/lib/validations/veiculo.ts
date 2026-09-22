@@ -9,7 +9,7 @@ const PLACA_MERCOSUL = /^[A-Z]{3}\d[A-Z]\d{2}$/;
 
 const placaSchema = z
   .string()
-  .transform((valor) => valor.toUpperCase().replace(/\s/g, ""))
+  .transform((valor) => valor.toUpperCase().replace(/[\s-]/g, ""))
   .refine((valor) => PLACA_ANTIGA.test(valor) || PLACA_MERCOSUL.test(valor), {
     message: "Placa invalida - use o formato ABC-1234 ou ABC1D23 (Mercosul)",
   });

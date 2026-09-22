@@ -1,3 +1,4 @@
+import { ModalSlot } from "@/components/ui/modal-slot";
 import { getTenantPorSlug } from "@/lib/tenant";
 
 // Layout de /[slug] que existe por dois motivos: abrir o slot paralelo
@@ -41,7 +42,7 @@ export default async function SlugLayout({
       }
     >
       {children}
-      {modal}
+      <ModalSlot>{modal}</ModalSlot>
     </div>
   );
 }
