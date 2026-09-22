@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 
 // Casulo dos modais que sao rota interceptada. Ele so desenha o fundo
@@ -19,6 +19,9 @@ export function ModalRota({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  // Respeita quem tem preferencia por menos movimento (SO), comum em quem
+  // tem enjoo/vestibular: sem isso a transicao de deslocamento rodava igual.
+  const movimentoReduzido = useReducedMotion();
 
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
@@ -53,15 +56,15 @@ export function ModalRota({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.18 }}
+        transition={{ duration: movimentoReduzido ? 0 : 0.18 }}
       />
 
       <motion.div
         className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-4 lg:max-h-[88dvh] lg:max-w-2xl lg:rounded-3xl lg:pb-8 lg:pt-8"
-        initial={{ opacity: 0, y: 24 }}
+        initial={{ opacity: 0, y: movimentoReduzido ? 0 : 24 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 16 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
+        exit={{ opacity: 0, y: movimentoReduzido ? 0 : 16 }}
+        transition={{ duration: movimentoReduzido ? 0 : 0.2, ease: "easeOut" }}
       >
         {/* Puxador — so faz sentido na gaveta. */}
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-zinc-200 lg:hidden" />
