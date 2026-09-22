@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getTenantPorSlug } from "@/lib/tenant";
 
 // Layout de /[slug] que existe por dois motivos: abrir o slot paralelo
 // @modal, usado pelas rotas interceptadas (o cadastro de veiculo), e aplicar
@@ -22,10 +22,7 @@ export default async function SlugLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug },
-    select: { corPrimaria: true },
-  });
+  const tenant = await getTenantPorSlug(slug);
   const cor = tenant?.corPrimaria ?? "#2563eb";
 
   return (

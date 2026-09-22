@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getTenantPorSlug } from "@/lib/tenant";
 import { withTenant } from "@/lib/tenant-db";
 import { AdminMobileNav, AdminSidebar } from "./admin-sidebar";
 
@@ -21,7 +21,7 @@ export default async function AdminLayout({
 }) {
   const { slug } = await params;
 
-  const tenant = await prisma.tenant.findUnique({ where: { slug } });
+  const tenant = await getTenantPorSlug(slug);
   if (!tenant) notFound();
 
   const session = await getServerSession(authOptions);
