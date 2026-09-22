@@ -11,6 +11,18 @@ import { Check, Copy, Upload } from "lucide-react";
 // (roda de cores + gradiente), entao o admin testa qualquer tom livremente
 // em vez de escolher entre opcoes pre-fixadas.
 
+// Formula de luminancia relativa do WCAG 2.1, com branco fixo do outro lado:
+// e o texto que o app sobrepoe na cor primaria (botoes, nav ativa, etc.),
+// nunca preto. Abaixo de 4.5:1 (AA para texto normal) o contraste fica ruim.
+function contrasteComBranco(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const linear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const luminancia = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  return 1.05 / (luminancia + 0.05);
+}
+
+const LIMITE_CONTRASTE_AA = 4.5;
+
 export function IdentidadeAdmin({
   logoUrlInicial,
   corInicial,
@@ -94,6 +106,8 @@ export function IdentidadeAdmin({
       /* clipboard indisponivel - ignora */
     }
   }
+
+  const contrasteBaixo = contrasteComBranco(cor) < LIMITE_CONTRASTE_AA;
 
   const iniciais = tenantNome
     .split(" ")
@@ -213,6 +227,13 @@ export function IdentidadeAdmin({
               {copiado ? "Copiado" : "Copiar"}
             </button>
           </div>
+
+          {contrasteBaixo && (
+            <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              Essa cor é muito clara para o texto branco dos botões — pode
+              ficar difícil de ler no site e no Admin.
+            </p>
+          )}
         </section>
       </div>
     </div>
