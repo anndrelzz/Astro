@@ -7,19 +7,21 @@ import { Check, Copy, Upload } from "lucide-react";
 // UC12, RF13 — identidade visual da estetica (tela "Identidade visual" do
 // mockup do admin). Antes esta secao vivia dentro de /configuracoes.
 //
-// A paleta de atalho reproduz a do mockup; o seletor de cor livre continua
-// disponivel, entao o admin nao fica preso as opcoes sugeridas.
+// Sem paleta de atalho: o seletor nativo abre a paleta completa do sistema
+// (roda de cores + gradiente), entao o admin testa qualquer tom livremente
+// em vez de escolher entre opcoes pre-fixadas.
 
-const PALETA = [
-  "#2563eb",
-  "#ea580c",
-  "#a855f7",
-  "#22c55e",
-  "#eab308",
-  "#ef4444",
-  "#14b8a6",
-  "#3f3f46",
-];
+// Formula de luminancia relativa do WCAG 2.1, com branco fixo do outro lado:
+// e o texto que o app sobrepoe na cor primaria (botoes, nav ativa, etc.),
+// nunca preto. Abaixo de 4.5:1 (AA para texto normal) o contraste fica ruim.
+function contrasteComBranco(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const linear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const luminancia = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  return 1.05 / (luminancia + 0.05);
+}
+
+const LIMITE_CONTRASTE_AA = 4.5;
 
 export function IdentidadeAdmin({
   logoUrlInicial,
@@ -105,6 +107,8 @@ export function IdentidadeAdmin({
     }
   }
 
+  const contrasteBaixo = contrasteComBranco(cor) < LIMITE_CONTRASTE_AA;
+
   const iniciais = tenantNome
     .split(" ")
     .slice(0, 2)
@@ -188,52 +192,30 @@ export function IdentidadeAdmin({
         {/* Cor primaria */}
         <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
           <p className="astro-label">Cor primaria</p>
+          <p className="mt-1 text-sm text-astro-muted">
+            Aplicada em botoes, links e destaques, no site do cliente e no Admin.
+          </p>
 
-          <div className="mt-4 flex items-center gap-4 rounded-xl border border-admin-border bg-admin-bg p-4">
-            <span
-              className="h-14 w-14 shrink-0 rounded-xl border border-white/10"
-              style={{ backgroundColor: cor }}
-            />
-            <div className="min-w-0">
-              <p className="font-mono text-lg font-semibold text-white">
-                {cor.toUpperCase()}
-              </p>
-              <p className="text-sm text-astro-muted">
-                Aplicada em botoes, links e destaques
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {PALETA.map((opcao) => {
-              const ativa = opcao.toLowerCase() === cor.toLowerCase();
-              return (
-                <button
-                  key={opcao}
-                  onClick={() => setCor(opcao)}
-                  aria-label={`Usar a cor ${opcao}`}
-                  style={{ backgroundColor: opcao }}
-                  className={
-                    ativa
-                      ? "flex h-10 w-10 items-center justify-center rounded-lg ring-2 ring-white ring-offset-2 ring-offset-astro-surface"
-                      : "h-10 w-10 rounded-lg"
-                  }
-                >
-                  {ativa && <Check className="h-4 w-4 text-white" />}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
-            <span className="astro-label">Hex</span>
+          <label className="mt-4 flex cursor-pointer items-center gap-4 rounded-xl border border-admin-border bg-admin-bg p-4 transition hover:border-astro-blue/50">
             <input
               type="color"
               value={cor}
               onChange={(e) => setCor(e.target.value)}
-              aria-label="Escolher cor livre"
-              className="h-7 w-9 shrink-0 rounded border border-admin-border bg-transparent"
+              aria-label="Escolher cor primaria"
+              className="h-16 w-16 shrink-0 cursor-pointer rounded-xl border border-white/10 bg-transparent p-0"
             />
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-lg font-semibold text-white">
+                {cor.toUpperCase()}
+              </p>
+              <p className="text-sm text-astro-muted">
+                Toque no quadrado para abrir a paleta completa
+              </p>
+            </div>
+          </label>
+
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
+            <span className="astro-label">Hex</span>
             <span className="flex-1 font-mono text-sm text-slate-100">
               {cor.toUpperCase()}
             </span>
@@ -245,6 +227,13 @@ export function IdentidadeAdmin({
               {copiado ? "Copiado" : "Copiar"}
             </button>
           </div>
+
+          {contrasteBaixo && (
+            <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              Essa cor é muito clara para o texto branco dos botões — pode
+              ficar difícil de ler no site e no Admin.
+            </p>
+          )}
         </section>
       </div>
     </div>

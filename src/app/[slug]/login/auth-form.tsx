@@ -124,7 +124,7 @@ export function AuthForm({
 
   return (
     <div className="astro-dark min-h-dvh lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <ThemeColor color="#0b1120" />
+      <ThemeColor color="#09090b" />
 
       {/* Animacao de sucesso (login/cadastro) */}
       <AnimatePresence>
@@ -149,11 +149,10 @@ export function AuthForm({
           <div className="flex min-w-0 items-center gap-3 lg:hidden">
             <MarcaEstetica estetica={estetica} />
           </div>
-          <Logo
-            className={`shrink-0 text-sm text-white/40 lg:text-lg ${
-              eLogin ? "lg:hidden" : "lg:text-zinc-900"
-            }`}
-          />
+          <span className={`shrink-0 ${eLogin ? "lg:hidden" : ""}`}>
+            <Logo className="h-5 lg:hidden" />
+            <Logo variant="preto" className="hidden h-7 lg:block" />
+          </span>
           <p className="hidden text-sm text-zinc-500 lg:block">
             {eLogin ? "Ainda não tem conta? " : "Já tem conta? "}
             <Link
