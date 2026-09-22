@@ -202,7 +202,13 @@ export default async function AdminDashboardPage({
     <>
       {/* Capa + identidade da estetica */}
       <section className="overflow-hidden rounded-2xl border border-admin-border">
-        <div className="relative flex h-36 items-center justify-center bg-[radial-gradient(120%_140%_at_50%_-20%,#3b82f6_0%,#1d4ed8_35%,#0b1120_100%)] lg:h-48">
+        <div
+          className="relative flex h-36 items-center justify-center lg:h-48"
+          style={{
+            backgroundImage:
+              "radial-gradient(120% 140% at 50% -20%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 35%, var(--color-admin-bg) 100%)",
+          }}
+        >
           {/* Listras diagonais sutis, como na capa do mockup */}
           <div
             className="pointer-events-none absolute inset-0 opacity-40"

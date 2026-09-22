@@ -22,10 +22,10 @@ import { useId, useState } from "react";
 // Azul claro em vez do azul padrao da marca: 5,09:1 de contraste contra a
 // superficie do painel, contra 3,62:1 do outro. Em barra fina isso aparece.
 export const COR_DADO = "#3b82f6";
-export const COR_CONTEXTO = "#8a97b1";
+export const COR_CONTEXTO = "#a1a1aa";
 export const COR_ALTERNATIVA = "#d95926";
-const COR_SUPERFICIE = "#0b1220";
-const COR_GRADE = "#1b2438";
+const COR_SUPERFICIE = "#09090b";
+const COR_GRADE = "#27272a";
 
 export function formatarReal(v: number, compacto = false) {
   if (compacto && v >= 1000) {

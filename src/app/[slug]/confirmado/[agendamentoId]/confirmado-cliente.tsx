@@ -112,7 +112,7 @@ export function ConfirmadoCliente({
 
   return (
     <div className="astro-dark relative min-h-dvh overflow-hidden">
-      <ThemeColor color="#0b1120" />
+      <ThemeColor color="#09090b" />
 
       {/* Fundo em duas camadas sobre o navy: listras diagonais muito sutis e um
           brilho radial azul no topo — mesmo tratamento do painel de marca do
@@ -130,7 +130,7 @@ export function ConfirmadoCliente({
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(55% 40% at 50% 20%, rgba(37,99,235,0.35) 0%, rgba(37,99,235,0) 70%)",
+            "radial-gradient(55% 40% at 50% 20%, color-mix(in srgb, var(--color-astro-blue) 35%, transparent) 0%, transparent 70%)",
         }}
       />
 
