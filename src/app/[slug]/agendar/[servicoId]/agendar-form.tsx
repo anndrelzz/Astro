@@ -16,6 +16,23 @@ type Veiculo = {
   preco: number;
 };
 
+// As tres situacoes possiveis da lista de horarios, e so elas. Antes eram duas
+// variaveis soltas (`slots` + `carregandoSlots`), que admitiam a combinacao
+// ruim: "carregando" com a lista do dia anterior ainda guardada. Num tipo so,
+// carregar e ter lista passam a ser mutuamente exclusivos.
+type EstadoSlots =
+  | { fase: "carregando" }
+  | { fase: "ok"; slots: string[] }
+  | { fase: "erro" };
+
+// A resposta carrega a etiqueta de qual busca ela e. Se a etiqueta nao bate com
+// a busca atual, a resposta e de um pedido que nao interessa mais.
+type RespostaSlots = { chave: string; slots: string[] | "erro" };
+
+function chaveBusca(tenantId: string, servicoId: string, data: string, tentativa: number) {
+  return `${tenantId}|${servicoId}|${data}|${tentativa}`;
+}
+
 const DIAS_SEMANA = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
 const DIAS_EXTENSO = [
   "Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado",
@@ -136,26 +153,60 @@ export function AgendarForm({
   });
 
   const [dataSel, setDataSel] = useState(isoLocal(hoje));
-  const [slots, setSlots] = useState<string[]>([]);
-  const [carregandoSlots, setCarregandoSlots] = useState(false);
   const [hora, setHora] = useState<string | null>(null);
   const [veiculoId, setVeiculoId] = useState(veiculos[0].id);
   const [trocando, setTrocando] = useState(false);
+  // Incrementado pelo "Tentar de novo": entra na chave da busca e por isso
+  // refaz o fetch mesmo com o dia inalterado.
+  const [tentativa, setTentativa] = useState(0);
+  const [resposta, setResposta] = useState<RespostaSlots | null>(null);
 
   const veiculo = veiculos.find((v) => v.id === veiculoId)!;
   const dataObj = new Date(dataSel + "T00:00:00");
 
+  const chave = chaveBusca(tenantId, servico.id, dataSel, tentativa);
+
+  // "Carregando" e derivado, nao guardado: enquanto a resposta em maos for de
+  // outra busca, a tela esta carregando. E o que impede a lista do dia anterior
+  // de reaparecer sob o titulo do dia novo — nao existe estado em que a tela
+  // tenha, ao mesmo tempo, um dia selecionado e a lista de outro.
+  const estado: EstadoSlots =
+    resposta === null || resposta.chave !== chave
+      ? { fase: "carregando" }
+      : resposta.slots === "erro"
+        ? { fase: "erro" }
+        : { fase: "ok", slots: resposta.slots };
+
   useEffect(() => {
-    setHora(null);
-    setCarregandoSlots(true);
-    fetch(`/api/slots?tenantId=${tenantId}&servicoId=${servico.id}&data=${dataSel}`)
-      .then((r) => r.json())
-      .then((j) => setSlots(j.slots ?? []))
-      .finally(() => setCarregandoSlots(false));
-  }, [dataSel, tenantId, servico.id]);
+    // Sem o abort, trocar de dia rapido deixa os dois pedidos correndo e quem
+    // responde por ultimo vence — nao quem foi pedido por ultimo. Cancelar o
+    // anterior no cleanup elimina a corrida na origem.
+    const controller = new AbortController();
+
+    fetch(`/api/slots?tenantId=${tenantId}&servicoId=${servico.id}&data=${dataSel}`, {
+      signal: controller.signal,
+    })
+      // fetch so rejeita quando a rede cai; 401 e 500 chegam como resposta
+      // normal. Sem este r.ok, o corpo do erro era lido como se fosse dado
+      // bom e o `?? []` virava "Nenhum horario disponivel nesse dia" — a tela
+      // anunciava estetica fechada quando o caso era sessao expirada.
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j) => setResposta({ chave, slots: j.slots ?? [] }))
+      .catch((erro: Error) => {
+        // Abortar nao e falha: e a limpeza do pedido que a gente mesmo cancelou.
+        if (erro.name !== "AbortError") setResposta({ chave, slots: "erro" });
+      });
+
+    return () => controller.abort();
+  }, [chave, dataSel, tenantId, servico.id]);
+
+  // O horario escolhido e conferido contra a lista que esta na tela agora. Uma
+  // nova busca (trocar de dia, ou "Tentar de novo" depois de alguem fechar
+  // aquele horario) pode devolver uma lista sem ele.
+  const horaValida = hora !== null && estado.fase === "ok" && estado.slots.includes(hora);
 
   function confirmar() {
-    if (!hora) return;
+    if (!horaValida) return;
     router.push(
       `/${slug}/agendar/${servico.id}/pagamento?veiculoId=${veiculoId}&data=${dataSel}&hora=${hora}`
     );
@@ -222,7 +273,12 @@ export function AgendarForm({
             return (
               <button
                 key={iso}
-                onClick={() => setDataSel(iso)}
+                onClick={() => {
+                  // Zerar a escolha pertence ao evento que troca o dia, nao ao
+                  // efeito: o horario das 10h da terca nao vale para a quinta.
+                  setDataSel(iso);
+                  setHora(null);
+                }}
                 className={
                   ativo
                     ? "flex shrink-0 flex-col items-center gap-1 rounded-xl bg-astro-blue px-3.5 py-2.5 text-white shadow-lg shadow-astro-blue/30"
@@ -246,32 +302,54 @@ export function AgendarForm({
           {MESES[dataObj.getMonth()].slice(0, 3)}
         </p>
         <p className="mt-1 font-semibold text-zinc-900">Horários disponíveis</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {carregandoSlots && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {estado.fase === "carregando" && (
             <span className="text-sm text-zinc-400">Carregando...</span>
           )}
-          {!carregandoSlots && slots.length === 0 && (
+
+          {/* Falha de carregamento tem mensagem propria: dizer "nenhum horario
+              disponivel" aqui culparia a estetica por um erro que e nosso. */}
+          {estado.fase === "erro" && (
+            <>
+              <span className="text-sm text-zinc-500">
+                Não foi possível carregar os horários.
+              </span>
+              <button
+                type="button"
+                onClick={() => setTentativa((n) => n + 1)}
+                className="text-sm font-semibold text-astro-blue"
+              >
+                Tentar de novo
+              </button>
+            </>
+          )}
+
+          {estado.fase === "ok" && estado.slots.length === 0 && (
             <span className="text-sm text-zinc-400">
               Nenhum horário disponível nesse dia.
             </span>
           )}
-          {slots.map((s) => {
-            const ativo = s === hora;
-            return (
-              <button
-                key={s}
-                onClick={() => setHora(s)}
-                className={
-                  ativo
-                    ? "flex items-center gap-1.5 rounded-xl bg-astro-bg px-4 py-2.5 text-sm font-semibold text-white"
-                    : "rounded-xl border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700"
-                }
-              >
-                {ativo && <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />}
-                {s}
-              </button>
-            );
-          })}
+
+          {estado.fase === "ok" &&
+            estado.slots.map((s) => {
+              const ativo = s === hora;
+              return (
+                <button
+                  key={s}
+                  onClick={() => setHora(s)}
+                  className={
+                    ativo
+                      ? "flex items-center gap-1.5 rounded-xl bg-astro-bg px-4 py-2.5 text-sm font-semibold text-white"
+                      : "rounded-xl border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700"
+                  }
+                >
+                  {ativo && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
+                  )}
+                  {s}
+                </button>
+              );
+            })}
         </div>
 
         </div>
@@ -332,8 +410,8 @@ export function AgendarForm({
               </p>
               <p className="mt-0.5 flex items-center gap-1.5 text-sm text-astro-muted">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
-                {hora
-                  ? `${hora} – ${somarMinutos(hora, servico.duracaoMin)}`
+                {horaValida
+                  ? `${hora} – ${somarMinutos(hora!, servico.duracaoMin)}`
                   : "Escolha um horário"}
               </p>
             </div>
@@ -377,7 +455,7 @@ export function AgendarForm({
           <button
             type="button"
             onClick={confirmar}
-            disabled={!hora}
+            disabled={!horaValida}
             className="mt-5 flex w-full items-center justify-between gap-2 rounded-xl bg-astro-blue px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 transition disabled:opacity-40"
           >
             Confirmar e ir ao pagamento
@@ -391,7 +469,7 @@ export function AgendarForm({
         <div className="mx-auto max-w-md">
           <button
             onClick={confirmar}
-            disabled={!hora}
+            disabled={!horaValida}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-40"
           >
             Confirmar agendamento
