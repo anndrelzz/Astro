@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { ModalRota } from "@/components/ui/modal-rota";
 import { NovoVeiculoForm } from "../../../veiculos/novo/novo-veiculo-form";
 
@@ -41,9 +42,22 @@ export default async function NovoVeiculoModal({
     redirect(`/${slug}/login?callbackUrl=/${slug}/veiculos/novo`);
   }
 
+  const segmentos = await withTenant(tenant.id, (tx) =>
+    tx.segmento.findMany({
+      where: { tenantId: tenant.id, ativo: true },
+      orderBy: { ordem: "asc" },
+      select: { id: true, nome: true },
+    })
+  );
+
   return (
     <ModalRota titulo="Cadastrar veículo">
-      <NovoVeiculoForm emModal cidade={tenant.cidade} estado={tenant.estado} />
+      <NovoVeiculoForm
+        emModal
+        cidade={tenant.cidade}
+        estado={tenant.estado}
+        segmentos={segmentos}
+      />
     </ModalRota>
   );
 }

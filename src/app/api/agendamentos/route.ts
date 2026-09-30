@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     // que foi vendido.
     const servico = await tx.servico.findFirst({
       where: { id: servicoId, tenantId: session.user.tenantId, ativo: true },
+      include: { precos: true },
     });
     // RN15 — veiculo aposentado nao agenda. O cliente disse que nao tem mais
     // esse carro; aceitar o agendamento marcaria um horario para ele.
@@ -56,6 +57,17 @@ export async function POST(request: Request) {
     // RN10 — PIX so pode ser escolhido se o Admin configurou a chave.
     if (formaPagamento === "PIX" && !tenant.pixChaveCopiaCola) {
       return { error: "PIX nao disponivel", httpStatus: 400 } as const;
+    }
+
+    // RN01 — o preco vem da tabela, nunca do cliente. Sem preco cadastrado para
+    // este tipo de veiculo, o agendamento NAO acontece: gravar com zero, ou com
+    // um palpite, seria vender por um valor que a estetica nao combinou.
+    const valor = calcularPreco(servico.precos, veiculo.segmentoId);
+    if (valor === null) {
+      return {
+        error: "Este servico ainda nao tem preco para o seu tipo de veiculo",
+        httpStatus: 409,
+      } as const;
     }
 
     const [ano, mes, dia] = data.split("-").map(Number);
@@ -77,7 +89,7 @@ export async function POST(request: Request) {
         dataHora,
         formaPagamento,
         status: formaPagamento === "PIX" ? "PIX_PENDENTE" : "PENDENTE_PAGAMENTO",
-        valor: calcularPreco(servico, veiculo.segmento),
+        valor,
       },
     });
 

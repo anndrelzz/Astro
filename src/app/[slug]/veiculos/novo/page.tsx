@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant } from "@/lib/tenant-db";
 import { ClienteShell } from "../../cliente-shell";
 import { NovoVeiculoForm } from "./novo-veiculo-form";
 
@@ -31,13 +32,26 @@ export default async function NovoVeiculoPage({
     redirect(`/${slug}/login?callbackUrl=/${slug}/veiculos/novo`);
   }
 
+  // Os tipos que esta estetica atende, na ordem que ela definiu (RN01 revisada).
+  const segmentos = await withTenant(tenant.id, (tx) =>
+    tx.segmento.findMany({
+      where: { tenantId: tenant.id, ativo: true },
+      orderBy: { ordem: "asc" },
+      select: { id: true, nome: true },
+    })
+  );
+
   return (
     <ClienteShell
       slug={slug}
       trilha={["Perfil", "Garagem", "Novo veículo"]}
       titulo="Cadastrar veículo"
     >
-      <NovoVeiculoForm cidade={tenant.cidade} estado={tenant.estado} />
+      <NovoVeiculoForm
+        cidade={tenant.cidade}
+        estado={tenant.estado}
+        segmentos={segmentos}
+      />
     </ClienteShell>
   );
 }
