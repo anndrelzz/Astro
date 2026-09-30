@@ -14,11 +14,18 @@ export const servicoSchema = z.object({
   // RN14 — pausado sai da vitrine do cliente, mas preserva o historico.
   ativo: z.coerce.boolean().default(true),
   duracaoMin: z.coerce.number().int().min(5, "Duracao minima de 5 minutos"),
-  precoHatch: z.coerce.number().min(0, "Preco invalido"),
-  precoSedan: z.coerce.number().min(0, "Preco invalido"),
-  precoSuv: z.coerce.number().min(0, "Preco invalido"),
-  precoPickup: z.coerce.number().min(0, "Preco invalido"),
-  precoVan: z.coerce.number().min(0, "Preco invalido"),
+  // Um preco por segmento, no lugar das cinco colunas fixas. A rota exige a
+  // lista COMPLETA dos segmentos ativos do tenant (decisao de 29/09: segmento
+  // cadastrado e segmento que a estetica atende, entao nao existe combinacao
+  // legitimamente sem preco) — isso e conferido la, onde se sabe quais sao.
+  precos: z
+    .array(
+      z.object({
+        segmentoId: z.string().uuid(),
+        valor: z.coerce.number().min(0, "Preco invalido"),
+      })
+    )
+    .min(1, "Informe o preco para cada tipo de veiculo"),
 });
 
 export type ServicoInput = z.infer<typeof servicoSchema>;

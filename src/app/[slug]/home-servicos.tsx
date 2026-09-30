@@ -4,23 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Plus, Clock, Car, ArrowRight } from "lucide-react";
-import type { SegmentoVeiculo } from "@/generated/prisma/enums";
-
 type Servico = {
   id: string;
   nome: string;
   descricao: string | null;
   duracaoMin: number;
-  precos: Record<SegmentoVeiculo, number>;
+  /// segmentoId -> preco. Chave e id, nao nome: a estetica pode renomear o
+  /// segmento sem que os precos se percam.
+  precos: Record<string, number>;
 };
 
-const SEGMENTOS: { valor: SegmentoVeiculo; label: string }[] = [
-  { valor: "HATCH", label: "Hatch" },
-  { valor: "SEDAN", label: "Sedan" },
-  { valor: "SUV", label: "SUV" },
-  { valor: "PICKUP", label: "Pickup" },
-  { valor: "VAN", label: "Van" },
-];
+export type SegmentoView = { id: string; nome: string };
 
 function formatarPreco(valor: number) {
   return `R$ ${valor.toFixed(2).replace(".", ",")}`;
@@ -37,19 +31,23 @@ function formatarDuracao(min: number) {
 export function HomeServicos({
   slug,
   servicos,
+  segmentos,
   segmentoInicial,
   logado,
   temVeiculo,
 }: {
   slug: string;
   servicos: Servico[];
-  segmentoInicial: SegmentoVeiculo;
+  segmentos: SegmentoView[];
+  segmentoInicial: string;
   logado: boolean;
   temVeiculo: boolean;
 }) {
-  const [segmento, setSegmento] = useState<SegmentoVeiculo>(segmentoInicial);
+  const [segmento, setSegmento] = useState(segmentoInicial);
   // RN04 — logado sem veiculo cai no modal "sem veiculo" (tela 07) ao agendar.
   const [semVeiculo, setSemVeiculo] = useState(false);
+
+  const nomeSegmento = segmentos.find((s) => s.id === segmento)?.nome ?? "";
 
   // Destino do agendamento conforme estado do usuario.
   function hrefAgendar(servicoId: string) {
@@ -64,16 +62,16 @@ export function HomeServicos({
         Selecione o segmento do seu veículo para ver os preços.
       </p>
 
-      {/* Seletor de segmento. No celular rola na horizontal (os 5 segmentos
-          nao cabem em 448px); no desktop ha espaco de sobra, entao a rolagem
-          sai e os chips ficam todos visiveis. */}
+      {/* Seletor de segmento. Os tipos vem da estetica (RN01 revisada), entao a
+          quantidade varia: uma pode ter tres, outra sete. No celular rola na
+          horizontal; no desktop os chips quebram em linhas. */}
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible">
-        {SEGMENTOS.map((s) => {
-          const ativo = s.valor === segmento;
+        {segmentos.map((s) => {
+          const ativo = s.id === segmento;
           return (
             <button
-              key={s.valor}
-              onClick={() => setSegmento(s.valor)}
+              key={s.id}
+              onClick={() => setSegmento(s.id)}
               className={
                 ativo
                   ? "flex shrink-0 items-center gap-2 rounded-full bg-astro-bg px-5 py-2.5 text-sm font-semibold text-white"
@@ -81,7 +79,7 @@ export function HomeServicos({
               }
             >
               {ativo && <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />}
-              {s.label}
+              {s.nome}
             </button>
           );
         })}
@@ -128,10 +126,19 @@ export function HomeServicos({
               <div className="mt-3 flex items-end justify-between">
                 <div>
                   <p className="text-[0.65rem] uppercase tracking-wide text-zinc-400">
-                    {segmento}
+                    {nomeSegmento}
                   </p>
+                  {/* Preco ausente so acontece na janela entre o Admin criar um
+                      tipo novo e precificar os servicos. Melhor dizer que falta
+                      combinar do que exibir R$ 0,00 como se fosse de graca. */}
                   <p className="text-lg font-bold text-zinc-900">
-                    {formatarPreco(servico.precos[segmento])}
+                    {servico.precos[segmento] === undefined ? (
+                      <span className="text-sm font-medium text-zinc-400">
+                        Sob consulta
+                      </span>
+                    ) : (
+                      formatarPreco(servico.precos[segmento])
+                    )}
                   </p>
                 </div>
                 {logado && !temVeiculo ? (

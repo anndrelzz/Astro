@@ -7,13 +7,10 @@ import Link from "next/link";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { InputPlaca } from "@/components/ui/input-placa";
 
-const SEGMENTOS = [
-  { value: "HATCH", label: "Hatch" },
-  { value: "SEDAN", label: "Sedan" },
-  { value: "SUV", label: "SUV" },
-  { value: "PICKUP", label: "Pickup" },
-  { value: "VAN", label: "Van" },
-];
+// Os tipos de veiculo agora sao da estetica (RN01 revisada), entao chegam do
+// servidor em vez de estarem escritos aqui. Cada uma define os seus: uma pode
+// separar picape pequena de grande, outra pode nem atender picape.
+export type SegmentoOpcao = { id: string; nome: string };
 
 // UC02, tela 08 — cadastro de veiculo. RN04: apos salvar, retorna ao fluxo
 // de agendamento (callbackUrl) quando acessado a partir do "Agendar".
@@ -33,10 +30,12 @@ export function NovoVeiculoForm({
   emModal = false,
   cidade,
   estado,
+  segmentos,
 }: {
   emModal?: boolean;
   cidade?: string | null;
   estado?: string | null;
+  segmentos: SegmentoOpcao[];
 }) {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
@@ -44,7 +43,7 @@ export function NovoVeiculoForm({
   const callbackUrl = searchParams.get("callbackUrl") ?? `/${slug}`;
 
   const [form, setForm] = useState({
-    segmento: "SUV",
+    segmentoId: segmentos[0]?.id ?? "",
     marca: "",
     modelo: "",
     placa: "",
@@ -111,29 +110,29 @@ export function NovoVeiculoForm({
           <div className="space-y-1.5 lg:order-7 lg:col-span-2">
             <label className="astro-label">Segmento</label>
             {/* Lista suspensa no celular (um toque, sem ocupar altura) e
-                pastilhas no desktop, onde as cinco opcoes cabem numa linha e
-                mostram de uma vez o que existe. Os dois escrevem no mesmo
-                estado. */}
+                pastilhas no desktop, que mostram de uma vez o que existe. Os
+                dois escrevem no mesmo estado. Quantas opcoes aparecem depende
+                da estetica, entao as pastilhas quebram em linhas. */}
             <select
-              value={form.segmento}
-              onChange={(e) => set("segmento", e.target.value)}
+              value={form.segmentoId}
+              onChange={(e) => set("segmentoId", e.target.value)}
               className={`${inputCls} lg:hidden`}
             >
-              {SEGMENTOS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
+              {segmentos.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
                 </option>
               ))}
             </select>
 
             <div className="hidden flex-wrap gap-2 lg:flex">
-              {SEGMENTOS.map((s) => {
-                const ativo = form.segmento === s.value;
+              {segmentos.map((s) => {
+                const ativo = form.segmentoId === s.id;
                 return (
                   <button
-                    key={s.value}
+                    key={s.id}
                     type="button"
-                    onClick={() => set("segmento", s.value)}
+                    onClick={() => set("segmentoId", s.id)}
                     aria-pressed={ativo}
                     className={
                       ativo
@@ -144,7 +143,7 @@ export function NovoVeiculoForm({
                     {ativo && (
                       <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
                     )}
-                    {s.label}
+                    {s.nome}
                   </button>
                 );
               })}

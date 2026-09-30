@@ -28,10 +28,12 @@ export default async function AgendarPage({
     // RN14 — servico pausado nao aparece nem pode ser agendado
     const servico = await tx.servico.findFirst({
       where: { id: servicoId, tenantId: tenant.id, ativo: true },
+      include: { precos: true },
     });
     // RN15 — so os veiculos ativos entram na escolha.
     const veiculos = await tx.veiculo.findMany({
       where: { usuarioId: session.user.id, ativo: true },
+      include: { segmento: true },
     });
     return { servico, veiculos };
   });
@@ -46,15 +48,28 @@ export default async function AgendarPage({
     );
   }
 
-  const veiculosView = veiculos.map((v) => ({
-    id: v.id,
-    marca: v.marca,
-    modelo: v.modelo,
-    placa: v.placa,
-    ano: v.ano,
-    segmento: v.segmento,
-    preco: Number(calcularPreco(servico, v.segmento)),
-  }));
+  // RN01 — carro cujo tipo ainda nao tem preco neste servico fica de fora da
+  // escolha. Oferecer e deixar o POST recusar depois seria pior: o cliente
+  // escolheria o carro e levaria o erro so no fim.
+  const veiculosView = veiculos.flatMap((v) => {
+    const preco = calcularPreco(servico.precos, v.segmentoId);
+    if (preco === null) return [];
+    return [
+      {
+        id: v.id,
+        marca: v.marca,
+        modelo: v.modelo,
+        placa: v.placa,
+        ano: v.ano,
+        segmento: v.segmento.nome,
+        preco: Number(preco),
+      },
+    ];
+  });
+
+  if (veiculosView.length === 0) {
+    redirect(`/${slug}`);
+  }
 
   return (
     <ClienteShell

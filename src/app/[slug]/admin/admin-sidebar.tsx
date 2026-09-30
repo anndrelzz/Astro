@@ -57,7 +57,7 @@ export function AdminSidebar({
       icone: CalendarDays,
       contador: pixPendentes,
     },
-    { href: `${base}/servicos`, label: "Servicos", icone: Sparkles },
+    { href: `${base}/catalogo`, label: "Catalogo", icone: Sparkles },
     { href: `${base}/horarios`, label: "Grade de horarios", icone: Clock },
     { href: `${base}/financeiro`, label: "Financeiro", icone: Wallet },
   ];
@@ -159,7 +159,7 @@ export function AdminMobileNav({
   const itens: Item[] = [
     { href: base, label: "Dashboard", icone: LayoutGrid, exato: true },
     { href: `${base}/agendamentos`, label: "Agendamentos", icone: CalendarDays, contador: pixPendentes },
-    { href: `${base}/servicos`, label: "Servicos", icone: Sparkles },
+    { href: `${base}/catalogo`, label: "Catalogo", icone: Sparkles },
     { href: `${base}/horarios`, label: "Grade", icone: Clock },
     { href: `${base}/financeiro`, label: "Financeiro", icone: Wallet },
     { href: `${base}/configuracoes`, label: "Configuracoes", icone: Settings },

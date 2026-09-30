@@ -34,15 +34,23 @@ export default async function PagamentoPage({
   const { servico, veiculo } = await withTenant(tenant.id, async (tx) => {
     const servico = await tx.servico.findFirst({
       where: { id: servicoId, tenantId: tenant.id, ativo: true },
+      include: { precos: true },
     });
     const veiculo = await tx.veiculo.findFirst({
       where: { id: veiculoId, usuarioId: session.user.id, ativo: true },
+      include: { segmento: true },
     });
     return { servico, veiculo };
   });
   if (!servico || !veiculo) notFound();
 
-  const preco = Number(calcularPreco(servico, veiculo.segmento));
+  // Sem preco para este tipo de veiculo nao ha o que cobrar — volta para a
+  // escolha em vez de mostrar uma tela de pagamento com valor inventado.
+  const precoDecimal = calcularPreco(servico.precos, veiculo.segmentoId);
+  if (precoDecimal === null) {
+    redirect(`/${slug}/agendar/${servicoId}`);
+  }
+  const preco = Number(precoDecimal);
 
   return (
     <ClienteShell
@@ -63,7 +71,7 @@ export default async function PagamentoPage({
           placa: veiculo.placa,
           cor: veiculo.cor,
         }}
-        segmento={veiculo.segmento}
+        segmento={veiculo.segmento.nome}
         preco={preco}
         pixDisponivel={!!tenant.pixChaveCopiaCola}
         cancelamentoHorasLimite={tenant.cancelamentoHorasLimite}

@@ -15,9 +15,10 @@ import { withTelegramTokenLookup, withTenant } from "@/lib/tenant-db";
 // role da aplicacao (DATABASE_URL). Rodar com:
 //   npm run test:rls
 
-// As 6 tabelas com RLS. A secao 6.1 do RFC cita 5 (usuario, agendamento,
+// As 8 tabelas com RLS. A secao 6.1 do RFC cita 5 (usuario, agendamento,
 // servico, veiculo, notificacao); a implementacao cobre tambem
-// horario_funcionamento, entao o teste cobre as 6.
+// horario_funcionamento, e desde 20260929_segmentos_editaveis mais duas:
+// segmento e preco_servico, que sao o catalogo de cada estetica.
 const TABELAS_COM_RLS = [
   "usuario",
   "veiculo",
@@ -25,6 +26,8 @@ const TABELAS_COM_RLS = [
   "agendamento",
   "horario_funcionamento",
   "notificacao",
+  "segmento",
+  "preco_servico",
 ] as const;
 
 const PREFIXO = "__test__rls";
@@ -68,16 +71,18 @@ async function criarTenantCompleto(sufixo: string, linkToken: string | null) {
       },
     });
 
+    const segmento = await tx.segmento.create({
+      data: { tenantId: tenant.id, nome: `Hatch ${sufixo}`, ordem: 1 },
+    });
+
     const servico = await tx.servico.create({
       data: {
         tenantId: tenant.id,
         nome: `Lavagem ${sufixo}`,
         duracaoMin: 60,
-        precoHatch: 60,
-        precoSedan: 70,
-        precoSuv: 90,
-        precoPickup: 100,
-        precoVan: 120,
+        precos: {
+          create: [{ tenantId: tenant.id, segmentoId: segmento.id, valor: 60 }],
+        },
       },
     });
 
@@ -90,7 +95,7 @@ async function criarTenantCompleto(sufixo: string, linkToken: string | null) {
         placa: sufixo === "a" ? "AAA1A11" : "BBB2B22",
         ano: 2020,
         cor: "Preto",
-        segmento: "HATCH",
+        segmentoId: segmento.id,
       },
     });
 
@@ -136,10 +141,14 @@ async function removerTenantCompleto(f: Fixture | undefined) {
   await withTenant(f.tenantId, async (tx) => {
     await tx.notificacao.deleteMany({ where: { tenantId: f.tenantId } });
     await tx.agendamento.deleteMany({ where: { tenantId: f.tenantId } });
+    // precoServico e veiculo saem antes de servico e segmento: os dois apontam
+    // para segmento, que so pode ser removido quando ninguem mais o referencia.
+    await tx.precoServico.deleteMany({ where: { tenantId: f.tenantId } });
     await tx.veiculo.deleteMany({ where: { tenantId: f.tenantId } });
     await tx.horarioFuncionamento.deleteMany({ where: { tenantId: f.tenantId } });
     await tx.usuario.deleteMany({ where: { tenantId: f.tenantId } });
     await tx.servico.deleteMany({ where: { tenantId: f.tenantId } });
+    await tx.segmento.deleteMany({ where: { tenantId: f.tenantId } });
   });
   await prisma.tenant.delete({ where: { id: f.tenantId } });
 }
@@ -195,7 +204,7 @@ describe("nivel 0 — pre-condicoes do banco", () => {
     assert.equal(role.rolbypassrls, false, `role "${role.current_user}" tem BYPASSRLS: RLS seria ignorado`);
   });
 
-  test("RLS esta ENABLED e FORCED nas 6 tabelas sensiveis", async () => {
+  test("RLS esta ENABLED e FORCED nas 8 tabelas sensiveis", async () => {
     const lista = TABELAS_COM_RLS.map((t) => `'${t}'`).join(", ");
     const linhas = await prisma.$queryRawUnsafe<
       { relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }[]
@@ -325,11 +334,6 @@ describe("nivel 3 — isolamento de escrita (WITH CHECK)", () => {
               tenantId: tenantB.tenantId, // tentativa de escrever no vizinho
               nome: "servico invasor",
               duracaoMin: 30,
-              precoHatch: 1,
-              precoSedan: 1,
-              precoSuv: 1,
-              precoPickup: 1,
-              precoVan: 1,
             },
           })
         ),
