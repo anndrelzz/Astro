@@ -299,10 +299,13 @@ export function CatalogoAdmin({
                           </span>
                         )}
                       </div>
+                      {/* So a duracao. A descricao sai daqui: e o texto mais
+                          longo da linha e empurrava as colunas de preco, que
+                          sao o que se olha nesta tela. Ela continua sendo
+                          editada no modal e exibida ao cliente na vitrine. */}
                       <p className="mt-0.5 flex items-center gap-2 text-xs text-astro-muted">
                         <Clock className="h-3 w-3 shrink-0" />
                         <span className="font-mono">{formatarDuracao(s.duracaoMin)}</span>
-                        {s.descricao && <span className="truncate">· {s.descricao}</span>}
                       </p>
                     </td>
                     {segmentos.map((seg) => {
