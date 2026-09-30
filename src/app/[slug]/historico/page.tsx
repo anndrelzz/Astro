@@ -26,7 +26,7 @@ export default async function HistoricoPage({
   const agendamentos = await withTenant(tenant.id, (tx) =>
     tx.agendamento.findMany({
       where: { tenantId: tenant.id, usuarioId: session.user.id },
-      include: { servico: true, veiculo: true },
+      include: { servico: true, veiculo: { include: { segmento: true } } },
       orderBy: { dataHora: "desc" },
     })
   );
@@ -44,7 +44,7 @@ export default async function HistoricoPage({
       duracaoMin: a.servico.duracaoMin,
       servicoNome: a.servico.nome,
       veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
-      segmento: a.veiculo.segmento,
+      segmento: a.veiculo.segmento.nome,
       valor: Number(a.valor),
       status: a.status,
       formaPagamento: a.formaPagamento,

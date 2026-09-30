@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
 import { withTenant } from "@/lib/tenant-db";
+import { validarPrecosCompletos } from "@/lib/catalogo";
 import { servicoSchema } from "@/lib/validations/servico";
 
 // UC08 — edicao e remocao de servico, restrito ao Admin da propria estetica.
@@ -29,18 +30,33 @@ export async function PATCH(
     );
   }
 
-  const resultado = await withTenant(session.user.tenantId, async (tx) => {
-    const servico = await tx.servico.findFirst({
-      where: { id, tenantId: session.user.tenantId },
-    });
+  const tenantId = session.user.tenantId;
+  const { precos, ...dadosServico } = parsed.data;
+
+  const resultado = await withTenant(tenantId, async (tx) => {
+    const servico = await tx.servico.findFirst({ where: { id, tenantId } });
     if (!servico) {
       return { error: "Nao encontrado", status: 404 } as const;
     }
 
+    const problema = await validarPrecosCompletos(tx, tenantId, precos);
+    if (problema) return { error: problema, status: 400 } as const;
+
     const atualizado = await tx.servico.update({
       where: { id },
-      data: parsed.data,
+      data: dadosServico,
     });
+
+    // upsert em vez de apagar-e-recriar: o preco tem id proprio e apagar
+    // invalidaria referencias a toa. Um segmento aposentado depois da ultima
+    // edicao continua com sua linha antiga, que e o que o historico espera.
+    for (const p of precos) {
+      await tx.precoServico.upsert({
+        where: { servicoId_segmentoId: { servicoId: id, segmentoId: p.segmentoId } },
+        update: { valor: p.valor },
+        create: { tenantId, servicoId: id, segmentoId: p.segmentoId, valor: p.valor },
+      });
+    }
 
     return { atualizado } as const;
   });

@@ -25,6 +25,15 @@ export async function POST(request: Request) {
   }
 
   const resultado = await withTenant(session.user.tenantId, async (tx) => {
+    // O RLS garante que o segmento e deste tenant; o `ativo` nao. Segmento
+    // aposentado continua valendo para o historico, mas nao recebe carro novo.
+    const segmento = await tx.segmento.findFirst({
+      where: { id: parsed.data.segmentoId, tenantId: session.user.tenantId, ativo: true },
+    });
+    if (!segmento) {
+      return { error: "Tipo de veiculo indisponivel" } as const;
+    }
+
     // Duplicata = todos os campos iguais (marca/modelo/cor sem diferenciar
     // maiuscula/minuscula) num veiculo ativo do mesmo cliente. Uma placa ou
     // cor diferente ja e um veiculo diferente e passa direto.
@@ -34,7 +43,7 @@ export async function POST(request: Request) {
         ativo: true,
         placa: parsed.data.placa,
         ano: parsed.data.ano,
-        segmento: parsed.data.segmento,
+        segmentoId: parsed.data.segmentoId,
         marca: { equals: parsed.data.marca, mode: "insensitive" },
         modelo: { equals: parsed.data.modelo, mode: "insensitive" },
         cor: { equals: parsed.data.cor, mode: "insensitive" },

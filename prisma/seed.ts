@@ -35,34 +35,57 @@ async function main() {
     tenant.id
   );
 
+  // Tipos de veiculo (RN01 revisada). Estes sao apenas o ponto de partida de
+  // uma estetica nova — ela renomeia, remove e acrescenta pela tela de
+  // Catalogo. A EstimaCar, por exemplo, troca Pickup por "Picape pequena" e
+  // "Picape grande", e remove Van.
+  const segmentosSeed = ["Hatch", "Sedan", "SUV", "Pickup", "Van"];
+  const segmentos: { id: string; nome: string }[] = [];
+  for (const [ordem, nome] of segmentosSeed.entries()) {
+    const existente = await prisma.segmento.findFirst({
+      where: { tenantId: tenant.id, nome },
+    });
+    segmentos.push(
+      existente ??
+        (await prisma.segmento.create({
+          data: { tenantId: tenant.id, nome, ordem },
+        }))
+    );
+  }
+
+  // Preco na ordem dos segmentos acima.
   const servicosSeed = [
     {
       nome: "Lavagem Completa",
       descricao: "Lavagem externa, limpeza de rodas e aplicacao de cera express",
       duracaoMin: 60,
-      precoHatch: 60,
-      precoSedan: 70,
-      precoSuv: 90,
-      precoPickup: 100,
-      precoVan: 120,
+      precos: [60, 70, 90, 100, 120],
     },
     {
       nome: "Polimento Técnico",
       descricao: "Correcao de micro-riscos e revitalizacao da pintura",
       duracaoMin: 180,
-      precoHatch: 350,
-      precoSedan: 400,
-      precoSuv: 500,
-      precoPickup: 550,
-      precoVan: 650,
+      precos: [350, 400, 500, 550, 650],
     },
   ];
-  for (const servico of servicosSeed) {
+  for (const { precos, ...servico } of servicosSeed) {
     const existente = await prisma.servico.findFirst({
       where: { tenantId: tenant.id, nome: servico.nome },
     });
     if (!existente) {
-      await prisma.servico.create({ data: { ...servico, tenantId: tenant.id } });
+      await prisma.servico.create({
+        data: {
+          ...servico,
+          tenantId: tenant.id,
+          precos: {
+            create: segmentos.map((s, i) => ({
+              tenantId: tenant.id,
+              segmentoId: s.id,
+              valor: precos[i],
+            })),
+          },
+        },
+      });
     }
   }
 

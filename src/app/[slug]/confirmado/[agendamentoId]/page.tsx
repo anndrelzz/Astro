@@ -25,7 +25,7 @@ export default async function ConfirmadoPage({
   const agendamento = await withTenant(tenant.id, (tx) =>
     tx.agendamento.findFirst({
       where: { id: agendamentoId, tenantId: tenant.id, usuarioId: session.user.id },
-      include: { servico: true, veiculo: true },
+      include: { servico: true, veiculo: { include: { segmento: true } } },
     })
   );
   if (!agendamento) notFound();
@@ -37,7 +37,7 @@ export default async function ConfirmadoPage({
       status={agendamento.status}
       estetica={tenant.nome}
       servico={agendamento.servico.nome}
-      veiculo={`${agendamento.veiculo.modelo} · ${agendamento.veiculo.segmento}`}
+      veiculo={`${agendamento.veiculo.modelo} · ${agendamento.veiculo.segmento.nome}`}
       dataISO={agendamento.dataHora.toISOString()}
       duracaoMin={agendamento.servico.duracaoMin}
       formaPagamento={agendamento.formaPagamento}
