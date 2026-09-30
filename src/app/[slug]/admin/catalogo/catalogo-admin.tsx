@@ -125,13 +125,7 @@ export function CatalogoAdmin({
       <div className="astro-dark mb-6 overflow-hidden rounded-2xl border border-admin-border px-6 py-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="astro-label flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
-              Configuração da estética
-            </p>
-            <h1 className="mt-1.5 text-2xl font-bold text-white lg:text-3xl">
-              Catálogo
-            </h1>
+            <h1 className="text-2xl font-bold text-white lg:text-3xl">Catálogo</h1>
             <p className="mt-1 max-w-xl text-sm text-astro-muted">
               Os tipos de veículo que você atende, seus serviços e o preço de
               cada combinação.
