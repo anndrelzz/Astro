@@ -119,12 +119,43 @@ export function CatalogoAdmin({
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Catálogo</h1>
-        <p className="mt-1 text-sm text-astro-muted">
-          Os tipos de veículo que você atende, seus serviços e o preço de cada
-          combinação.
-        </p>
+      {/* Faixa de topo com o tratamento .astro-dark (listras diagonais +
+          brilho tingido pela cor do tenant, RF13). O mesmo da vitrine do
+          cliente, para o Admin nao parecer outro produto. */}
+      <div className="astro-dark mb-6 overflow-hidden rounded-2xl border border-admin-border px-6 py-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="astro-label flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
+              Configuração da estética
+            </p>
+            <h1 className="mt-1.5 text-2xl font-bold text-white lg:text-3xl">
+              Catálogo
+            </h1>
+            <p className="mt-1 max-w-xl text-sm text-astro-muted">
+              Os tipos de veículo que você atende, seus serviços e o preço de
+              cada combinação.
+            </p>
+          </div>
+
+          {/* Resumo em numeros: da a dimensao do catalogo de relance e ancora
+              o lado direito da faixa, que ficaria vazio. */}
+          <div className="flex gap-2.5">
+            {[
+              { valor: segmentos.length, rotulo: segmentos.length === 1 ? "tipo" : "tipos" },
+              { valor: servicos.length, rotulo: servicos.length === 1 ? "serviço" : "serviços" },
+              { valor: segmentos.length * servicos.length, rotulo: "preços" },
+            ].map((item) => (
+              <div
+                key={item.rotulo}
+                className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-center"
+              >
+                <p className="font-mono text-xl font-bold text-white">{item.valor}</p>
+                <p className="astro-label mt-0.5">{item.rotulo}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {erro && (
@@ -176,26 +207,32 @@ export function CatalogoAdmin({
                 </button>
               </span>
             ) : (
+              // Os icones so aparecem no hover (e no foco por teclado, senao
+              // some para quem navega por Tab). Com muitos tipos cadastrados,
+              // dois icones em cada pastilha viram ruido — a acao e ocasional,
+              // o nome e o que se le o tempo todo.
               <span
                 key={s.id}
-                className="group flex items-center gap-2 rounded-full border border-admin-border bg-admin-bg py-1.5 pl-4 pr-2 text-sm text-slate-100"
+                className="group flex items-center rounded-full border border-admin-border bg-gradient-to-b from-admin-surface-2 to-admin-bg py-1.5 pl-4 pr-2 text-sm text-slate-100 transition hover:border-astro-blue/40"
               >
                 {s.nome}
-                <button
-                  onClick={() => setRenomeando({ id: s.id, nome: s.nome })}
-                  aria-label={`Renomear ${s.nome}`}
-                  className="text-astro-muted transition hover:text-white"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => chamar(`/api/segmentos/${s.id}`, "DELETE")}
-                  disabled={salvando}
-                  aria-label={`Remover ${s.nome}`}
-                  className="text-astro-muted transition hover:text-red-400 disabled:opacity-40"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <span className="ml-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+                  <button
+                    onClick={() => setRenomeando({ id: s.id, nome: s.nome })}
+                    aria-label={`Renomear ${s.nome}`}
+                    className="rounded-full p-1 text-astro-muted transition hover:bg-white/10 hover:text-white"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => chamar(`/api/segmentos/${s.id}`, "DELETE")}
+                    disabled={salvando}
+                    aria-label={`Remover ${s.nome}`}
+                    className="rounded-full p-1 text-astro-muted transition hover:bg-red-500/15 hover:text-red-400 disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </span>
               </span>
             )
           )}
@@ -241,7 +278,7 @@ export function CatalogoAdmin({
               <button
                 onClick={criarSegmento}
                 disabled={salvando || !novoSegmento.trim()}
-                className="rounded-lg bg-astro-blue px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                className="rounded-lg bg-gradient-to-b from-astro-blue-bright to-astro-blue px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-astro-blue/20 transition hover:brightness-110 disabled:opacity-40"
               >
                 Adicionar
               </button>
@@ -269,27 +306,40 @@ export function CatalogoAdmin({
       ) : (
         <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-surface">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[44rem] text-sm">
+            <table className="w-full min-w-[44rem] border-separate border-spacing-0 text-sm">
               <thead>
-                <tr className="border-b border-admin-border">
-                  <th className="astro-label px-4 py-3 text-left">Serviço</th>
+                {/* A coluna do servico fica fixa na rolagem horizontal: com
+                    muitos tipos cadastrados a tabela passa da largura da tela,
+                    e sem isso o preco perde a referencia de qual servico e.
+                    Precisa de fundo proprio (o conteudo passa por baixo) e de
+                    border-separate na tabela, senao a borda nao acompanha a
+                    celula grudada. */}
+                <tr>
+                  <th className="astro-label sticky left-0 z-20 border-b border-admin-border bg-admin-surface-2 px-4 py-3 text-left">
+                    Serviço
+                  </th>
                   {segmentos.map((s) => (
-                    <th key={s.id} className="astro-label w-24 px-2 py-3 text-right">
+                    <th
+                      key={s.id}
+                      className="astro-label w-24 border-b border-admin-border bg-gradient-to-b from-admin-surface-2 to-admin-surface px-2 py-3 text-right"
+                    >
                       {s.nome}
                     </th>
                   ))}
-                  <th className="w-24 px-4 py-3" />
+                  <th className="w-24 border-b border-admin-border bg-admin-surface-2 px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {servicos.map((s) => (
                   <tr
                     key={s.id}
-                    className={`border-b border-admin-border/60 transition last:border-0 hover:bg-white/[0.03] ${
-                      s.ativo ? "" : "opacity-50"
-                    }`}
+                    className={`group transition ${s.ativo ? "" : "opacity-50"}`}
                   >
-                    <td className="px-4 py-3.5">
+                    <td className="sticky left-0 z-10 border-b border-admin-border/60 bg-admin-surface px-4 py-3.5 transition group-hover:bg-admin-surface-2">
+                      {/* Acento na borda esquerda no hover: marca a linha inteira
+                          sem precisar colorir o fundo das celulas de preco, que
+                          e onde o olho esta. */}
+                      <span className="absolute inset-y-0 left-0 w-0.5 bg-astro-blue opacity-0 transition-opacity group-hover:opacity-100" />
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-white">{s.nome}</p>
                         {!s.ativo && (
@@ -313,23 +363,25 @@ export function CatalogoAdmin({
                       return (
                         <td
                           key={seg.id}
-                          className="px-2 py-3.5 text-right font-mono text-slate-200"
+                          className="border-b border-admin-border/60 px-2 py-3.5 text-right font-mono text-slate-300 transition group-hover:bg-white/[0.02] group-hover:text-white"
                         >
                           {/* Zero aqui quase sempre significa "tipo recem-criado
                               e ainda nao precificado", nao "de graca" — por isso
                               aparece destacado, e nao como R$ 0,00 normal. */}
                           {valor === undefined || valor === 0 ? (
-                            <span className="text-amber-400/80">a definir</span>
+                            <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-xs text-amber-400/90">
+                              a definir
+                            </span>
                           ) : (
                             valor.toFixed(2).replace(".", ",")
                           )}
                         </td>
                       );
                     })}
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="border-b border-admin-border/60 px-4 py-3.5 text-right transition group-hover:bg-white/[0.02]">
                       <button
                         onClick={() => setServicoEdit(s)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-astro-blue hover:text-white"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-slate-200 opacity-70 transition hover:border-astro-blue hover:text-white group-hover:opacity-100"
                       >
                         <Pencil className="h-3 w-3" />
                         Editar
@@ -344,7 +396,7 @@ export function CatalogoAdmin({
           <div className="border-t border-admin-border p-4">
             <button
               onClick={() => setServicoEdit(servicoVazio)}
-              className="flex items-center gap-1.5 rounded-lg bg-astro-blue px-4 py-2 text-sm font-semibold text-white"
+              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-b from-astro-blue-bright to-astro-blue px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-astro-blue/20 transition hover:brightness-110"
             >
               <Plus className="h-4 w-4" />
               Novo serviço
@@ -452,7 +504,7 @@ export function CatalogoAdmin({
               <button
                 onClick={salvarServico}
                 disabled={salvando || !servicoEdit.nome.trim()}
-                className="flex-1 rounded-lg bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                className="flex-1 rounded-lg bg-gradient-to-b from-astro-blue-bright to-astro-blue px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/20 transition hover:brightness-110 disabled:opacity-40"
               >
                 {salvando ? "Salvando..." : "Salvar"}
               </button>
