@@ -29,7 +29,11 @@ export default async function PerfilPage({
       include: {
         // RN15 — a garagem lista so os ativos; os aposentados seguem
         // aparecendo dentro do historico dos agendamentos antigos.
-        veiculos: { where: { ativo: true }, orderBy: { id: "asc" } },
+        veiculos: {
+          where: { ativo: true },
+          orderBy: { id: "asc" },
+          include: { segmento: true },
+        },
         _count: { select: { agendamentos: true } },
       },
     })
@@ -52,7 +56,7 @@ export default async function PerfilPage({
           placa: v.placa,
           ano: v.ano,
           cor: v.cor,
-          segmento: v.segmento,
+          segmento: v.segmento.nome,
         }))}
       />
     </ClienteShell>

@@ -10,7 +10,6 @@ import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { ClienteShell } from "./cliente-shell";
 import { HomeServicos } from "./home-servicos";
-import type { SegmentoVeiculo } from "@/generated/prisma/enums";
 
 // RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
 // Home do cliente conforme mockup (tela 06): saudacao, card da estetica,
@@ -36,19 +35,27 @@ export default async function TenantPage({
     redirect(`/${slug}/login`);
   }
 
-  const { servicosTenant, veiculos } = await withTenant(tenant.id, async (tx) => {
+  const { servicosTenant, veiculos, segmentos } = await withTenant(tenant.id, async (tx) => {
     // RN14 — a vitrine mostra apenas servicos ativos. Pausado sai daqui, mas
     // continua existindo para os agendamentos que ja o referenciam.
     const servicosTenant = await tx.servico.findMany({
       where: { tenantId: tenant.id, ativo: true },
+      include: { precos: true },
       orderBy: { nome: "asc" },
     });
     // RN15 — aposentado nao conta para o "tem veiculo?" da RN04. Quem so tem
     // carros aposentados cai no mesmo alerta de quem nao tem nenhum.
     const veiculos = await tx.veiculo.findMany({
       where: { usuarioId: session!.user.id, ativo: true },
+      include: { segmento: true },
     });
-    return { servicosTenant, veiculos };
+    // Os tipos que ESTA estetica atende, na ordem que ela definiu (RN01
+    // revisada). Aposentado fica de fora do seletor.
+    const segmentos = await tx.segmento.findMany({
+      where: { tenantId: tenant.id, ativo: true },
+      orderBy: { ordem: "asc" },
+    });
+    return { servicosTenant, veiculos, segmentos };
   });
 
   const servicos = servicosTenant.map((s) => ({
@@ -56,13 +63,11 @@ export default async function TenantPage({
     nome: s.nome,
     descricao: s.descricao,
     duracaoMin: s.duracaoMin,
-    precos: {
-      HATCH: Number(s.precoHatch),
-      SEDAN: Number(s.precoSedan),
-      SUV: Number(s.precoSuv),
-      PICKUP: Number(s.precoPickup),
-      VAN: Number(s.precoVan),
-    } as Record<SegmentoVeiculo, number>,
+    // Mapa segmentoId -> preco. Servico sem preco para um segmento simplesmente
+    // nao aparece naquele filtro, em vez de aparecer com valor inventado.
+    precos: Object.fromEntries(
+      s.precos.map((p) => [p.segmentoId, Number(p.valor)])
+    ) as Record<string, number>,
   }));
 
   // Endereco montado a partir do que estiver preenchido — estetica que so
@@ -75,7 +80,9 @@ export default async function TenantPage({
     .filter(Boolean)
     .join(" · ");
 
-  const segmentoInicial: SegmentoVeiculo = veiculos[0]?.segmento ?? "SUV";
+  // Abre no tipo do carro que o cliente ja tem; sem carro, no primeiro da
+  // estetica. Antes o padrao era "SUV" fixo, que agora pode nem existir.
+  const segmentoInicial = veiculos[0]?.segmentoId ?? segmentos[0]?.id ?? "";
   const primeiroNome = session?.user.name?.split(" ")[0] ?? "";
   const iniciais = tenant.nome
     .split(" ")
@@ -208,6 +215,7 @@ export default async function TenantPage({
           <HomeServicos
             slug={slug}
             servicos={servicos}
+            segmentos={segmentos.map((s) => ({ id: s.id, nome: s.nome }))}
             segmentoInicial={segmentoInicial}
             logado={logado}
             temVeiculo={veiculos.length > 0}

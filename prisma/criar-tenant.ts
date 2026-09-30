@@ -168,11 +168,26 @@ async function main() {
         },
       });
 
+      // Ponto de partida dos tipos de veiculo (RN01 revisada). Sem nenhum, o
+      // Admin cairia numa tela de Catalogo vazia e nao conseguiria cadastrar
+      // servico — preco depende de tipo. Ele renomeia e remove o que nao
+      // atende; e mais rapido ajustar cinco do que criar do zero.
+      await tx.segmento.createMany({
+        data: ["Hatch", "Sedan", "SUV", "Pickup", "Van"].map((nome, ordem) => ({
+          tenantId: tenant.id,
+          nome,
+          ordem,
+        })),
+      });
+
       return tenant;
     });
 
     console.log(`\nEstetica "${tenant.nome}" criada em /${tenant.slug}`);
     console.log(`Login do admin: ${email}`);
+    console.log(
+      `Proximo passo: ajustar os tipos de veiculo e cadastrar os servicos em /${tenant.slug}/admin/catalogo`
+    );
   } catch (e) {
     // O adapter de driver (@prisma/adapter-pg) nao preenche e.meta.target
     // com os nomes das colunas como o Prisma padrao - so da pra saber que

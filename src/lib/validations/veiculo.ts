@@ -24,7 +24,10 @@ export const veiculoSchema = z.object({
     .min(1950, "Ano invalido")
     .max(anoAtual + 1, "Ano invalido"),
   cor: z.string().min(1, "Informe a cor"),
-  segmento: z.enum(["HATCH", "SEDAN", "SUV", "PICKUP", "VAN"]),
+  // Antes era o enum fixo do sistema. Agora e um segmento do proprio tenant —
+  // a rota confere que o id pertence a ele e esta ativo (o RLS ja garante o
+  // tenant; o ativo nao).
+  segmentoId: z.string().uuid("Escolha o tipo de veiculo"),
 });
 
 export type VeiculoInput = z.infer<typeof veiculoSchema>;

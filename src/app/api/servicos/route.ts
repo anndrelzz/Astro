@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
 import { withTenant } from "@/lib/tenant-db";
+import { validarPrecosCompletos } from "@/lib/catalogo";
 import { servicoSchema } from "@/lib/validations/servico";
 
 // UC08, RF01 — Admin cadastra servicos com preco por segmento de veiculo.
@@ -24,11 +25,34 @@ export async function POST(request: Request) {
     );
   }
 
-  const servico = await withTenant(session.user.tenantId, (tx) =>
-    tx.servico.create({
-      data: { ...parsed.data, tenantId: session.user.tenantId },
-    })
-  );
+  const tenantId = session.user.tenantId;
+  const { precos, ...dadosServico } = parsed.data;
 
-  return NextResponse.json(servico, { status: 201 });
+  const resultado = await withTenant(tenantId, async (tx) => {
+    const problema = await validarPrecosCompletos(tx, tenantId, precos);
+    if (problema) return { error: problema, status: 400 } as const;
+
+    const servico = await tx.servico.create({
+      data: {
+        ...dadosServico,
+        tenantId,
+        precos: {
+          create: precos.map((p) => ({
+            tenantId,
+            segmentoId: p.segmentoId,
+            valor: p.valor,
+          })),
+        },
+      },
+      include: { precos: true },
+    });
+
+    return { servico } as const;
+  });
+
+  if ("error" in resultado) {
+    return NextResponse.json({ error: resultado.error }, { status: resultado.status });
+  }
+
+  return NextResponse.json(resultado.servico, { status: 201 });
 }

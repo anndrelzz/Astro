@@ -3,7 +3,8 @@
 //
 // Nota de arquitetura (M1, RNF06): Row-Level Security esta ativo no banco
 // (migration 20260723_rls) para usuario, veiculo, servico, agendamento,
-// horario_funcionamento e notificacao. As policies filtram por
+// horario_funcionamento e notificacao, mais segmento e preco_servico
+// (migration 20260929_segmentos_editaveis). As policies filtram por
 // current_setting('app.tenant_id') — o codigo da aplicacao DEVE rodar
 // toda leitura/escrita nessas tabelas atraves de withTenant()
 // (src/lib/tenant-db.ts), que abre uma transacao e seta essa GUC via
@@ -24,14 +25,6 @@ datasource db {
 enum Role {
   ADMIN
   CLIENTE
-}
-
-enum SegmentoVeiculo {
-  HATCH
-  SEDAN
-  SUV
-  PICKUP
-  VAN
 }
 
 enum StatusAgendamento {
@@ -92,11 +85,64 @@ model Tenant {
   usuarios     Usuario[]
   veiculos     Veiculo[]
   servicos     Servico[]
+  segmentos    Segmento[]
+  precos       PrecoServico[]
   agendamentos Agendamento[]
   horarios     HorarioFuncionamento[]
   notificacoes Notificacao[]
 
   @@map("tenant")
+}
+
+/// Tipos de veiculo que a estetica atende, definidos por ela (RN01 revisada).
+///
+/// Antes era o enum SegmentoVeiculo, fixo no sistema: HATCH/SEDAN/SUV/PICKUP/VAN
+/// para todo mundo. Pedido do cliente real (EstimaCar, 20/09): ele nao atende VAN
+/// e cobra diferente de picape pequena e picape grande. Lista fixa obrigava a
+/// inventar preco para segmento que ele nao atende e nao permitia o que ele
+/// atende — sobrava e faltava ao mesmo tempo.
+///
+/// `ativo` segue o mesmo padrao de RN14 (servico) e RN15 (veiculo): remover de
+/// verdade so quando nada aponta para ele; caso contrario aposenta, some das
+/// escolhas e o historico continua legivel.
+model Segmento {
+  id       String  @id @default(uuid())
+  tenantId String
+  nome     String
+  /// Ordem de exibicao na vitrine e nas colunas do catalogo do Admin.
+  ordem    Int
+  ativo    Boolean @default(true)
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  veiculos Veiculo[]
+  precos   PrecoServico[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId])
+  @@map("segmento")
+}
+
+/// Preco de um servico para um segmento (RF01, RF04). Substitui as cinco
+/// colunas fixas precoHatch..precoVan de Servico.
+///
+/// Todo servico precisa de preco para todo segmento ativo do tenant — decisao
+/// do Andre em 29/09: como a lista de segmentos agora e da propria estetica,
+/// segmento cadastrado e segmento que ela atende, entao nao existe combinacao
+/// legitimamente sem preco.
+model PrecoServico {
+  id         String  @id @default(uuid())
+  tenantId   String
+  servicoId  String
+  segmentoId String
+  valor      Decimal @db.Decimal(10, 2)
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  servico  Servico  @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+  segmento Segmento @relation(fields: [segmentoId], references: [id])
+
+  @@unique([servicoId, segmentoId])
+  @@index([tenantId])
+  @@map("preco_servico")
 }
 
 /// Grade semanal recorrente de funcionamento (RF02). Um intervalo por dia
@@ -139,15 +185,16 @@ model Usuario {
 
 /// Cadastro obrigatorio antes do primeiro agendamento (RN04, UC02).
 model Veiculo {
-  id        String          @id @default(uuid())
-  tenantId  String
-  usuarioId String
-  marca     String
-  modelo    String
-  placa     String
-  ano       Int
-  cor       String
-  segmento  SegmentoVeiculo
+  id         String @id @default(uuid())
+  tenantId   String
+  usuarioId  String
+  marca      String
+  modelo     String
+  placa      String
+  ano        Int
+  cor        String
+  /// Aponta para um Segmento do proprio tenant (antes era o enum fixo).
+  segmentoId String
   /// RN15 — veiculo aposentado sai da garagem e da escolha no agendamento,
   /// mas preserva o historico. Necessario porque o agendamento aponta para o
   /// veiculo: apagar a linha destruiria o registro do que ja foi vendido.
@@ -156,10 +203,12 @@ model Veiculo {
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   usuario      Usuario       @relation(fields: [usuarioId], references: [id])
+  segmento     Segmento      @relation(fields: [segmentoId], references: [id])
   agendamentos Agendamento[]
 
   @@index([usuarioId])
   @@index([tenantId])
+  @@index([segmentoId])
   @@map("veiculo")
 }
 
@@ -177,14 +226,11 @@ model Servico {
   /// "pausar", ele ficaria no catalogo do cliente para sempre.
   ativo      Boolean @default(true)
   duracaoMin Int
-  precoHatch  Decimal @db.Decimal(10, 2)
-  precoSedan  Decimal @db.Decimal(10, 2)
-  precoSuv    Decimal @db.Decimal(10, 2)
-  precoPickup Decimal @db.Decimal(10, 2)
-  precoVan    Decimal @db.Decimal(10, 2)
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
   agendamentos Agendamento[]
+  /// Um preco por segmento ativo do tenant — ver PrecoServico.
+  precos       PrecoServico[]
 
   @@index([tenantId])
   @@map("servico")
