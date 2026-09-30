@@ -31,26 +31,31 @@ export default async function HistoricoPage({
     })
   );
 
-  const itens = agendamentos.map((a) => {
-    const horasAte = (a.dataHora.getTime() - Date.now()) / (1000 * 60 * 60);
-    const podeCancelar =
-      a.status !== "CANCELADO" &&
-      a.status !== "CONCLUIDO" &&
-      horasAte >= tenant.cancelamentoHorasLimite;
-
-    return {
-      id: a.id,
-      dataHoraISO: a.dataHora.toISOString(),
-      duracaoMin: a.servico.duracaoMin,
-      servicoNome: a.servico.nome,
-      veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
-      segmento: a.veiculo.segmento.nome,
-      valor: Number(a.valor),
-      status: a.status,
-      formaPagamento: a.formaPagamento,
-      podeCancelar,
-    };
-  });
+  // O "pode cancelar" era decidido aqui, com o relogio do servidor, e virava
+  // prop congelada no momento da renderizacao. A HistoricoLista, do lado do
+  // cliente, recalculava a categoria do agendamento com o relogio do navegador
+  // a cada render. Dois relogios decidindo coisas diferentes sobre a mesma
+  // linha: uma aba deixada aberta cruzando a janela de cancelamento passava a
+  // mostrar o selo "Concluido" com o botao "Cancelar" ainda ativo.
+  //
+  // Agora o servidor manda so o dado bruto e quem decide as duas coisas e a
+  // tela, com um relogio so. Isso tambem tira o Date.now() da renderizacao do
+  // Server Component (react-hooks/purity): render passa a depender apenas do
+  // que veio do banco.
+  //
+  // A rota de cancelamento revalida a janela antes de gravar (RN11), entao a
+  // tela nunca e a unica guarda.
+  const itens = agendamentos.map((a) => ({
+    id: a.id,
+    dataHoraISO: a.dataHora.toISOString(),
+    duracaoMin: a.servico.duracaoMin,
+    servicoNome: a.servico.nome,
+    veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+    segmento: a.veiculo.segmento.nome,
+    valor: Number(a.valor),
+    status: a.status,
+    formaPagamento: a.formaPagamento,
+  }));
 
   return (
     <ClienteShell
