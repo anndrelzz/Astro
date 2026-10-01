@@ -10,8 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  TrendingUp,
 } from "lucide-react";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
+import { Modal } from "../modal";
 
 // RF11, UC10 — tabela de agendamentos do painel (mockup do admin).
 //
@@ -31,6 +33,8 @@ export type ItemAgendamento = {
   placa: string;
   servicoNome: string;
   valor: number;
+  // Acrescimo lancado pelo Admin na avaliacao presencial. Nulo = sem acrescimo.
+  acrescimoAplicado: number | null;
   status: StatusAgendamento;
 };
 
@@ -150,10 +154,14 @@ export function AgendamentosLista({
   slug,
   itens,
   periodo,
+  acrescimoCondicaoPercent,
 }: {
   slug: string;
   itens: ItemAgendamento[];
   periodo: Periodo;
+  // Politica de acrescimo da estetica. Nulo = nao cobra acrescimo, e o botao
+  // de lancar nem aparece.
+  acrescimoCondicaoPercent: number | null;
 }) {
   const router = useRouter();
 
@@ -163,6 +171,9 @@ export function AgendamentosLista({
   const [expandido, setExpandido] = useState<string | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // Agendamento com o modal de acrescimo aberto, e o percentual digitado.
+  const [acrescimoAlvo, setAcrescimoAlvo] = useState<ItemAgendamento | null>(null);
+  const [percentDigitado, setPercentDigitado] = useState("");
 
   const contagens = useMemo(() => {
     const m = new Map<string, number>();
@@ -205,12 +216,18 @@ export function AgendamentosLista({
     router.push(`/${slug}/admin/agendamentos?periodo=${valor}`);
   }
 
-  async function agir(id: string, acao: "confirmar-pagamento" | "cancelar") {
+  async function agir(
+    id: string,
+    acao: "confirmar-pagamento" | "cancelar",
+    acrescimoPercent?: number
+  ) {
     setProcessando(id);
     setErro(null);
 
     const resposta = await fetch(`/api/agendamentos/${id}/${acao}`, {
       method: "POST",
+      headers: acrescimoPercent ? { "Content-Type": "application/json" } : undefined,
+      body: acrescimoPercent ? JSON.stringify({ acrescimoPercent }) : undefined,
     });
 
     setProcessando(null);
@@ -223,6 +240,13 @@ export function AgendamentosLista({
     setExpandido(null);
     router.refresh();
   }
+
+  // Calculo ao vivo do modal: o percentual digitado vira reais na hora.
+  const percentNumero = Number(percentDigitado) || 0;
+  const valorAcrescimo = acrescimoAlvo
+    ? acrescimoAlvo.valor * (percentNumero / 100)
+    : 0;
+  const totalComAcrescimo = (acrescimoAlvo?.valor ?? 0) + valorAcrescimo;
 
   return (
     <div className="space-y-4">
@@ -387,6 +411,11 @@ export function AgendamentosLista({
                           se desloca conforme o tamanho do numero nem do badge */}
                       <td className="whitespace-nowrap px-4 py-3.5 text-right align-middle font-bold text-white">
                         {formatarReal(item.valor)}
+                        {item.acrescimoAplicado !== null && (
+                          <span className="ml-1 font-normal text-amber-300">
+                            + {formatarReal(item.acrescimoAplicado)}
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -438,6 +467,20 @@ export function AgendamentosLista({
                                     : item.status === "PIX_PENDENTE"
                                       ? "Confirmar PIX"
                                       : "Confirmar pagamento"}
+                                </button>
+                              )}
+                              {/* So aparece quando a estetica tem politica de
+                                  acrescimo configurada: sem ela, o botao seria
+                                  um caminho para cobrar o que nunca foi
+                                  avisado ao cliente. */}
+                              {podeConfirmar && acrescimoCondicaoPercent !== null && (
+                                <button
+                                  onClick={() => setAcrescimoAlvo(item)}
+                                  disabled={processando === item.id}
+                                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 px-3.5 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
+                                >
+                                  <TrendingUp className="h-3.5 w-3.5" />
+                                  Confirmar com acréscimo
                                 </button>
                               )}
                               {podeCancelar && (
@@ -523,6 +566,108 @@ export function AgendamentosLista({
           </div>
         )}
       </div>
+
+      {/* Lancamento do acrescimo por condicao do veiculo.
+          O Admin digita o percentual e ve o total em reais atualizar, porque e
+          em reais que ele cobra — "30%" nao diz quanto entra no caixa. */}
+      {acrescimoAlvo && (
+        <Modal
+          aberto
+          onFechar={() => {
+            setAcrescimoAlvo(null);
+            setPercentDigitado("");
+          }}
+          titulo="Confirmar com acréscimo"
+          rodape={
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  agir(acrescimoAlvo.id, "confirmar-pagamento", percentNumero);
+                  setAcrescimoAlvo(null);
+                  setPercentDigitado("");
+                }}
+                disabled={percentNumero <= 0 || processando === acrescimoAlvo.id}
+                className="rounded-lg bg-astro-blue px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+              >
+                Confirmar {formatarReal(totalComAcrescimo)}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAcrescimoAlvo(null);
+                  setPercentDigitado("");
+                }}
+                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+              >
+                Voltar
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-astro-muted">
+            {acrescimoAlvo.clienteNome} · {acrescimoAlvo.servicoNome} ·{" "}
+            {acrescimoAlvo.veiculo}
+          </p>
+
+          <div className="mt-4">
+            <label className="astro-label">Acréscimo</label>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={percentDigitado}
+                onChange={(e) => setPercentDigitado(e.target.value)}
+                placeholder={String(acrescimoCondicaoPercent ?? 0)}
+                className="w-32 rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-100"
+              />
+              <span className="text-sm text-astro-muted">%</span>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-astro-muted">Combinado no agendamento</span>
+              <span className="font-mono text-slate-200">
+                {formatarReal(acrescimoAlvo.valor)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-astro-muted">Acréscimo</span>
+              <span className="font-mono text-amber-300">
+                + {formatarReal(valorAcrescimo)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-white/10 pt-2">
+              <span className="font-semibold text-white">Total cobrado</span>
+              <span className="font-mono text-base font-bold text-white">
+                {formatarReal(totalComAcrescimo)}
+              </span>
+            </div>
+          </div>
+
+          {/* O cliente viu um teto no agendamento. Passar dele nao e bloqueado
+              — quem avalia o carro e o Admin — mas precisa ser uma decisao
+              consciente, nao um numero digitado sem contexto. */}
+          {acrescimoCondicaoPercent !== null &&
+            percentNumero > acrescimoCondicaoPercent && (
+              <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                O cliente foi avisado de até {acrescimoCondicaoPercent}% (
+                {formatarReal(
+                  acrescimoAlvo.valor * (1 + acrescimoCondicaoPercent / 100)
+                )}
+                ). Você está cobrando acima disso.
+              </p>
+            )}
+
+          <p className="mt-3 text-xs text-astro-muted">
+            {acrescimoAlvo.status === "PIX_PENDENTE"
+              ? `O cliente pagou ${formatarReal(acrescimoAlvo.valor)} por PIX. Os ${formatarReal(valorAcrescimo)} são recebidos no local.`
+              : "O valor total é recebido no local."}
+          </p>
+        </Modal>
+      )}
     </div>
   );
 }
