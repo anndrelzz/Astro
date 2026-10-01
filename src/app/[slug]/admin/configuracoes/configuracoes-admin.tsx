@@ -33,6 +33,7 @@ type Config = {
   cidade: string;
   estado: string;
   pixChaveCopiaCola: string;
+  acrescimoCondicaoPercent: number | null;
   cancelamentoHorasLimite: number;
   capacidadeSimultanea: number;
   intervaloMinutos: number;
@@ -315,6 +316,37 @@ export function ConfiguracoesAdmin({
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Fica junto do PIX e do cancelamento porque e da mesma familia:
+                o que o cliente precisa saber sobre dinheiro ANTES de confirmar. */}
+            <div className="sm:col-span-2">
+              <p className="text-sm font-semibold text-white">
+                Acrescimo por condicao do veiculo
+              </p>
+              <p className="mt-0.5 text-sm text-astro-muted">
+                Avisa o cliente, antes de confirmar, que o valor pode subir ate
+                esse percentual se o veiculo chegar em condicao muito ruim. A
+                diferenca e sempre paga no local, inclusive quando ele ja pagou
+                por PIX. Deixe vazio se voce nao cobra acrescimo.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  placeholder="sem acrescimo"
+                  value={config.acrescimoCondicaoPercent ?? ""}
+                  onChange={(e) =>
+                    campo(
+                      "acrescimoCondicaoPercent",
+                      e.target.value === "" ? null : Number(e.target.value)
+                    )
+                  }
+                  className={`${ENTRADA} w-40`}
+                />
+                <span className="text-sm text-astro-muted">%</span>
               </div>
             </div>
           </Secao>
