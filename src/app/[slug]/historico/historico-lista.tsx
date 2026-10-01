@@ -14,6 +14,9 @@ type Item = {
   veiculoMarcaModelo: string;
   segmento: string;
   valor: number;
+  // Acrescimo cobrado na avaliacao presencial. O cliente aceitou a
+  // possibilidade ao agendar; esconder o que foi cobrado seria estranho.
+  acrescimoAplicado: number | null;
   status: string;
   formaPagamento: string;
   podeCancelar: boolean;
@@ -308,6 +311,11 @@ function Linha({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
 
       <td className="whitespace-nowrap px-4 py-3 font-semibold text-zinc-900">
         {BRL(item.valor)}
+        {item.acrescimoAplicado !== null && (
+          <span className="ml-1 text-xs font-normal text-amber-600">
+            + {BRL(item.acrescimoAplicado)}
+          </span>
+        )}
       </td>
 
       <td className="px-4 py-3">
@@ -377,6 +385,11 @@ function Card({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
           <span>{faixaHorario(item.dataHoraISO, item.duracaoMin)}</span>
           <span className="font-semibold text-zinc-900">
             {BRL(item.valor)}
+        {item.acrescimoAplicado !== null && (
+          <span className="ml-1 text-xs font-normal text-amber-600">
+            + {BRL(item.acrescimoAplicado)}
+          </span>
+        )}
           </span>
         </div>
       </div>
@@ -472,6 +485,11 @@ function ModalCancelar({
           </div>
           <span className="shrink-0 font-bold text-zinc-900">
             {BRL(item.valor)}
+        {item.acrescimoAplicado !== null && (
+          <span className="ml-1 text-xs font-normal text-amber-600">
+            + {BRL(item.acrescimoAplicado)}
+          </span>
+        )}
           </span>
         </div>
 
