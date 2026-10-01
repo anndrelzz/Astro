@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Diamond, Wallet, Check } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Diamond, Wallet, Check } from "lucide-react";
 import Link from "next/link";
 import { ThemeColor } from "@/components/ui/theme-color";
 
@@ -36,6 +36,7 @@ export function PagamentoForm({
   preco,
   pixDisponivel,
   cancelamentoHorasLimite,
+  acrescimoCondicaoPercent,
 }: {
   slug: string;
   servicoId: string;
@@ -51,6 +52,9 @@ export function PagamentoForm({
   // le esse numero em vez de repetir "24h" fixo, que seria mentira para quem
   // configurou outra janela.
   cancelamentoHorasLimite: number;
+  // Acrescimo maximo por condicao do veiculo, configurado pelo Admin. Nulo = a
+  // estetica nao cobra acrescimo e nenhum aviso aparece.
+  acrescimoCondicaoPercent: number | null;
 }) {
   const router = useRouter();
   const [forma, setForma] = useState<"PIX" | "LOCAL">(
@@ -58,6 +62,10 @@ export function PagamentoForm({
   );
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Aviso de acrescimo exibido antes de confirmar (pedido da EstimaCar). O
+  // cliente so segue depois de ver o teto; sem isso ele descobre o acrescimo
+  // na estetica, e no caso do PIX descobre depois de ja ter pago.
+  const [mostrarAviso, setMostrarAviso] = useState(false);
 
   const d = new Date(data + "T00:00:00");
   const dataFmt = `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES_ABR[d.getMonth()]}`;
@@ -87,6 +95,22 @@ export function PagamentoForm({
       router.push(`/${slug}/confirmado/${json.id}`);
     }
   }
+
+  // Clicar no botao principal abre o aviso quando a estetica tem politica de
+  // acrescimo; sem politica, segue direto como antes.
+  function aoConfirmar() {
+    if (acrescimoCondicaoPercent) {
+      setMostrarAviso(true);
+      return;
+    }
+    confirmar();
+  }
+
+  const precoTeto = acrescimoCondicaoPercent
+    ? preco * (1 + acrescimoCondicaoPercent / 100)
+    : null;
+  const diferencaMax = precoTeto ? precoTeto - preco : 0;
+  const brl = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
   const acaoRotulo = enviando
     ? "Processando..."
@@ -239,7 +263,7 @@ export function PagamentoForm({
 
           <button
             type="button"
-            onClick={confirmar}
+            onClick={aoConfirmar}
             disabled={enviando}
             className="mt-5 flex w-full items-center justify-between gap-2 rounded-xl bg-astro-blue px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50"
           >
@@ -258,7 +282,7 @@ export function PagamentoForm({
       <div className="fixed inset-x-0 bottom-0 border-t border-zinc-100 bg-white/95 px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur lg:hidden">
         <div className="mx-auto max-w-md">
           <button
-            onClick={confirmar}
+            onClick={aoConfirmar}
             disabled={enviando}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50"
           >
@@ -267,6 +291,76 @@ export function PagamentoForm({
           </button>
         </div>
       </div>
+
+      {/* Aviso de acrescimo por condicao do veiculo.
+          Aparece antes de criar o agendamento, nao depois: no PIX o cliente
+          paga o valor cheio adiantado, entao descobrir o acrescimo na estetica
+          significaria descobrir depois de ja ter pago. O texto muda conforme a
+          forma escolhida porque a consequencia pratica e diferente — quem paga
+          no local acerta um valor so; quem paga por PIX paga a diferenca a
+          parte. */}
+      {mostrarAviso && precoTeto !== null && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6">
+          <div className="w-full max-w-md rounded-t-3xl bg-white p-6 sm:rounded-2xl">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+
+            <h2 className="mt-4 text-center text-lg font-bold text-zinc-900">
+              O valor pode mudar na avaliação
+            </h2>
+            <p className="mt-2 text-center text-sm leading-relaxed text-zinc-600">
+              Se o veículo chegar em condição muito ruim, a estética pode cobrar
+              até <strong>{acrescimoCondicaoPercent}% a mais</strong> por este
+              serviço.
+            </p>
+
+            <div className="mt-4 space-y-2 rounded-xl bg-zinc-50 p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500">
+                  {forma === "PIX" ? "Você paga agora" : "Valor do serviço"}
+                </span>
+                <span className="font-semibold text-zinc-900">{brl(preco)}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-zinc-200 pt-2">
+                <span className="text-zinc-500">Pode chegar a</span>
+                <span className="font-bold text-zinc-900">{brl(precoTeto)}</span>
+              </div>
+            </div>
+
+            <p className="mt-3 text-center text-xs leading-relaxed text-zinc-500">
+              {forma === "PIX" ? (
+                <>
+                  Havendo acréscimo, a diferença de até{" "}
+                  <strong>{brl(diferencaMax)}</strong> é paga no local — não é
+                  cobrada no PIX.
+                </>
+              ) : (
+                <>O valor final é acertado no local, após a avaliação.</>
+              )}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMostrarAviso(false);
+                confirmar();
+              }}
+              disabled={enviando}
+              className="mt-5 w-full rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {enviando ? "Processando..." : "Entendi, confirmar agendamento"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMostrarAviso(false)}
+              className="mt-2 w-full py-2 text-sm font-medium text-zinc-500"
+            >
+              Voltar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
