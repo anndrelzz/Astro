@@ -77,6 +77,15 @@ model Tenant {
   cidade       String?
   estado       String?
   pixChaveCopiaCola       String? // RF17 — se nulo, opcao PIX nao e exibida ao cliente (RN10)
+  /// Acrescimo maximo, em %, que a estetica pode cobrar quando o veiculo chega
+  /// em condicao muito ruim (pedido da EstimaCar: ate 30% na lavacao). NULO =
+  /// a estetica nao tem essa politica, e o cliente nao ve aviso nenhum — mesmo
+  /// padrao da RN10 com a chave PIX.
+  ///
+  /// O valor do agendamento continua sendo o calculado pelo segmento (RN01); o
+  /// acrescimo e avaliado presencialmente e a diferenca e paga no local,
+  /// inclusive quando o cliente ja pagou por PIX.
+  acrescimoCondicaoPercent Int?
   cancelamentoHorasLimite Int      @default(2) // RF18 — antecedencia minima para cancelamento pelo cliente
   capacidadeSimultanea    Int      @default(1) // RN06 — configurada pelo Admin, numero de atendimentos ao mesmo tempo
   intervaloMinutos        Int      @default(60) // RF02 — granularidade dos horarios oferecidos
