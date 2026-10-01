@@ -328,7 +328,7 @@ function BotaoSair({ slug, className = "" }: { slug: string; className?: string 
             <button
               type="button"
               onClick={() => setConfirmando(false)}
-              className="rounded-lg border border-admin-border px-4 py-2 text-sm text-slate-200 transition hover:border-astro-blue hover:text-white"
+              className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
             >
               Cancelar
             </button>
