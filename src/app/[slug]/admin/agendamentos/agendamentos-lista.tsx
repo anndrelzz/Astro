@@ -173,7 +173,16 @@ export function AgendamentosLista({
   const [erro, setErro] = useState<string | null>(null);
   // Agendamento com o modal de acrescimo aberto, e o percentual digitado.
   const [acrescimoAlvo, setAcrescimoAlvo] = useState<ItemAgendamento | null>(null);
-  const [percentDigitado, setPercentDigitado] = useState("");
+  // O Admin pode digitar pelo percentual OU pelo total cobrado — na correria
+  // ele viu "servico de 150, cobrei 180" e nao pensou em porcentagem nenhuma.
+  // Os dois campos escrevem no MESMO estado, o acrescimo em reais, e cada um
+  // reexibe esse valor na sua unidade. Guardar os dois separados abriria a
+  // porta para eles discordarem.
+  const [acrescimoReais, setAcrescimoReais] = useState(0);
+  // Qual campo esta sob o cursor: o outro e reformatado a partir do estado, e
+  // este fica como o Admin digitou (senao "1" vira "1,00" no meio da digitacao).
+  const [campoEditando, setCampoEditando] = useState<"percent" | "total" | null>(null);
+  const [textoDigitado, setTextoDigitado] = useState("");
 
   const contagens = useMemo(() => {
     const m = new Map<string, number>();
@@ -219,15 +228,15 @@ export function AgendamentosLista({
   async function agir(
     id: string,
     acao: "confirmar-pagamento" | "cancelar",
-    acrescimoPercent?: number
+    acrescimo?: number
   ) {
     setProcessando(id);
     setErro(null);
 
     const resposta = await fetch(`/api/agendamentos/${id}/${acao}`, {
       method: "POST",
-      headers: acrescimoPercent ? { "Content-Type": "application/json" } : undefined,
-      body: acrescimoPercent ? JSON.stringify({ acrescimoPercent }) : undefined,
+      headers: acrescimo ? { "Content-Type": "application/json" } : undefined,
+      body: acrescimo ? JSON.stringify({ acrescimo }) : undefined,
     });
 
     setProcessando(null);
@@ -241,12 +250,34 @@ export function AgendamentosLista({
     router.refresh();
   }
 
-  // Calculo ao vivo do modal: o percentual digitado vira reais na hora.
-  const percentNumero = Number(percentDigitado) || 0;
-  const valorAcrescimo = acrescimoAlvo
-    ? acrescimoAlvo.valor * (percentNumero / 100)
-    : 0;
-  const totalComAcrescimo = (acrescimoAlvo?.valor ?? 0) + valorAcrescimo;
+  // Calculo ao vivo do modal. A fonte e sempre `acrescimoReais`; percentual e
+  // total sao duas leituras dele.
+  const base = acrescimoAlvo?.valor ?? 0;
+  const valorAcrescimo = acrescimoReais;
+  const totalComAcrescimo = base + valorAcrescimo;
+  const percentNumero = base > 0 ? (valorAcrescimo / base) * 100 : 0;
+
+  // O campo que NAO esta sendo editado mostra o valor derivado; o que esta
+  // mostra exatamente o que foi digitado.
+  const textoPercent =
+    campoEditando === "percent"
+      ? textoDigitado
+      : valorAcrescimo > 0
+        ? String(Math.round(percentNumero * 100) / 100)
+        : "";
+  const textoTotal =
+    campoEditando === "total"
+      ? textoDigitado
+      : valorAcrescimo > 0
+        ? totalComAcrescimo.toFixed(2)
+        : "";
+
+  function limparAcrescimo() {
+    setAcrescimoAlvo(null);
+    setAcrescimoReais(0);
+    setCampoEditando(null);
+    setTextoDigitado("");
+  }
 
   return (
     <div className="space-y-4">
@@ -573,31 +604,24 @@ export function AgendamentosLista({
       {acrescimoAlvo && (
         <Modal
           aberto
-          onFechar={() => {
-            setAcrescimoAlvo(null);
-            setPercentDigitado("");
-          }}
+          onFechar={limparAcrescimo}
           titulo="Confirmar com acréscimo"
           rodape={
             <>
               <button
                 type="button"
                 onClick={() => {
-                  agir(acrescimoAlvo.id, "confirmar-pagamento", percentNumero);
-                  setAcrescimoAlvo(null);
-                  setPercentDigitado("");
+                  agir(acrescimoAlvo.id, "confirmar-pagamento", valorAcrescimo);
+                  limparAcrescimo();
                 }}
-                disabled={percentNumero <= 0 || processando === acrescimoAlvo.id}
+                disabled={valorAcrescimo <= 0 || processando === acrescimoAlvo.id}
                 className="rounded-lg bg-astro-blue px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
               >
                 Confirmar {formatarReal(totalComAcrescimo)}
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setAcrescimoAlvo(null);
-                  setPercentDigitado("");
-                }}
+                onClick={limparAcrescimo}
                 className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
               >
                 Voltar
@@ -610,19 +634,64 @@ export function AgendamentosLista({
             {acrescimoAlvo.veiculo}
           </p>
 
-          <div className="mt-4">
-            <label className="astro-label">Acréscimo</label>
-            <div className="mt-1 flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={percentDigitado}
-                onChange={(e) => setPercentDigitado(e.target.value)}
-                placeholder={String(acrescimoCondicaoPercent ?? 0)}
-                className="w-32 rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-100"
-              />
-              <span className="text-sm text-astro-muted">%</span>
+          {/* Dois caminhos para a mesma informacao. O da direita e o que ele
+              costuma ter na cabeca: viu o servico de 150 e cobrou 180. */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="astro-label" htmlFor="acrescimo-percent">
+                Acréscimo
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  id="acrescimo-percent"
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={textoPercent}
+                  onFocus={() => {
+                    setCampoEditando("percent");
+                    setTextoDigitado(textoPercent);
+                  }}
+                  onChange={(e) => {
+                    setTextoDigitado(e.target.value);
+                    setAcrescimoReais((base * (Number(e.target.value) || 0)) / 100);
+                  }}
+                  onBlur={() => setCampoEditando(null)}
+                  placeholder={String(acrescimoCondicaoPercent ?? 0)}
+                  className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-100"
+                />
+                <span className="text-sm text-astro-muted">%</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="astro-label" htmlFor="acrescimo-total">
+                Ou o total cobrado
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-sm text-astro-muted">R$</span>
+                <input
+                  id="acrescimo-total"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={textoTotal}
+                  onFocus={() => {
+                    setCampoEditando("total");
+                    setTextoDigitado(textoTotal);
+                  }}
+                  onChange={(e) => {
+                    setTextoDigitado(e.target.value);
+                    // Total abaixo do combinado nao e acrescimo negativo: e o
+                    // Admin ainda digitando (ex.: "1" antes de "180").
+                    const total = Number(e.target.value) || 0;
+                    setAcrescimoReais(Math.max(0, total - base));
+                  }}
+                  onBlur={() => setCampoEditando(null)}
+                  placeholder={base.toFixed(2)}
+                  className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-100"
+                />
+              </div>
             </div>
           </div>
 

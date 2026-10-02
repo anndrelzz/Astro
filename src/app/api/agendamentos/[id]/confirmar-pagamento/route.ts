@@ -9,13 +9,20 @@ import { withTenant } from "@/lib/tenant-db";
 // confirma o recebimento (avaliacao presencial). O corpo e opcional: sem ele,
 // confirma pelo valor combinado, como antes.
 //
-// Teto de 100% pelo mesmo motivo do percentual configurado: acima disso o
-// "acrescimo" seria outro servico, e um dedo escorregado nao pode dobrar a
+// Recebe o acrescimo EM REAIS, nao em percentual. A tela deixa o Admin digitar
+// pelos dois lados, e na pratica ele digita o total: ninguem na correria pensa
+// "isso e 20%", pensa "cobrei 180". Se o servidor recalculasse a partir de um
+// percentual, um total de R$ 175,00 sobre R$ 150,00 viraria 16,666...% e a
+// volta devolveria R$ 174,99 — ele digitou 175, tem que gravar 175.
+//
+// O que protege nao e o formato e sim o teto, conferido aqui contra o valor do
+// agendamento que esta no banco: o acrescimo nao pode passar de 100% dele.
+// Acima disso seria outro servico, e um dedo escorregado nao pode dobrar a
 // cobranca. Nao limitamos ao percentual que a estetica configurou — quem esta
 // na frente do carro e o Admin — mas a tela mostra o que foi prometido ao
 // cliente para a decisao ser consciente.
 const corpoSchema = z.object({
-  acrescimoPercent: z.coerce.number().min(0).max(100),
+  acrescimo: z.coerce.number().min(0),
 });
 
 // UC16, RF06 — Admin confirma manualmente o recebimento.
@@ -48,7 +55,7 @@ export async function POST(
   if (parsed && !parsed.success) {
     return NextResponse.json({ error: "Acrescimo invalido" }, { status: 400 });
   }
-  const acrescimoPercent = parsed?.success ? parsed.data.acrescimoPercent : 0;
+  const acrescimoInformado = parsed?.success ? parsed.data.acrescimo : 0;
 
   const resultado = await withTenant(session.user.tenantId, async (tx) => {
     const agendamento = await tx.agendamento.findFirst({
@@ -65,13 +72,16 @@ export async function POST(
       } as const;
     }
 
-    // O acrescimo e calculado aqui, a partir do `valor` que esta no banco — a
-    // tela manda o percentual, nao o valor em reais. Se mandasse reais, a
-    // cobranca passaria a depender de um numero digitado no navegador.
-    const acrescimo =
-      acrescimoPercent > 0
-        ? Number(agendamento.valor) * (acrescimoPercent / 100)
-        : null;
+    // Teto conferido contra o valor que esta no banco, nao contra um numero
+    // que veio junto no corpo.
+    if (acrescimoInformado > Number(agendamento.valor)) {
+      return {
+        error: "O acrescimo nao pode passar do valor do servico",
+        status: 400,
+      } as const;
+    }
+
+    const acrescimo = acrescimoInformado > 0 ? acrescimoInformado : null;
 
     await tx.agendamento.update({
       where: { id },
