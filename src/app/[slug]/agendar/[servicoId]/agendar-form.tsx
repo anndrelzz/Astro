@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Clock } from "lucide-react";
 import Link from "next/link";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { chaveDia } from "@/lib/fuso";
 
 type Veiculo = {
   id: string;
@@ -144,8 +145,11 @@ export function AgendarForm({
   const router = useRouter();
 
   // Proximos 14 dias como tira de dias selecionaveis.
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  // "Hoje" e o dia no relogio da estetica (lib/fuso.ts). A tela tambem e
+  // renderizada no servidor, e entre 21h e meia-noite o "hoje" de um servidor
+  // em UTC ja seria o dia seguinte. Daqui para baixo as datas sao so
+  // calendario (dia/mes/ano), lidas no mesmo fuso em que foram montadas.
+  const hoje = new Date(`${chaveDia(new Date())}T00:00:00`);
   const dias = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(hoje);
     d.setDate(hoje.getDate() + i);

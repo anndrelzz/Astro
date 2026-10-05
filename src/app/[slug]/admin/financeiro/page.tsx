@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { FinanceiroDashboard, type Periodo } from "./financeiro-dashboard";
@@ -18,30 +19,24 @@ const PERIODOS: Periodo[] = ["hoje", "7dias", "30dias", "90dias", "ano"];
 // pagamento aparece em separado, nunca somado a receita.
 const RECEBIDO = ["CONFIRMADO", "CONCLUIDO"] as const;
 
+// Dias contados no relogio da estetica (lib/fuso.ts), nao no do servidor.
+const DIAS_ATRAS: Record<Exclude<Periodo, "ano">, number> = {
+  hoje: 0,
+  "7dias": 6,
+  "30dias": 29,
+  "90dias": 89,
+};
+
 function janela(periodo: Periodo) {
-  const fim = new Date();
-  fim.setHours(23, 59, 59, 999);
+  const agora = new Date();
+  const fim = fimDoDia(agora);
 
-  const inicio = new Date();
-  inicio.setHours(0, 0, 0, 0);
-
-  if (periodo === "hoje") {
-    // ja esta no inicio de hoje
-  } else if (periodo === "7dias") {
-    inicio.setDate(inicio.getDate() - 6);
-  } else if (periodo === "30dias") {
-    inicio.setDate(inicio.getDate() - 29);
-  } else if (periodo === "90dias") {
-    inicio.setDate(inicio.getDate() - 89);
-  } else {
-    inicio.setMonth(0, 1);
-  }
+  const inicio =
+    periodo === "ano"
+      ? instanteNoFuso(partesNoFuso(agora).ano, 1, 1)
+      : inicioDoDia(agora, -DIAS_ATRAS[periodo]);
 
   return { inicio, fim };
-}
-
-function chaveDia(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export default async function AdminFinanceiroPage({
@@ -118,7 +113,7 @@ export default async function AdminFinanceiroPage({
   // Serie diaria: cada dia do periodo, mesmo sem movimento — buraco no meio da
   // serie temporal mentiria sobre o ritmo do negocio.
   const porDia = new Map<string, { recebido: number; pendente: number }>();
-  for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
+  for (let i = 0, d = inicio; d <= fim; i++, d = inicioDoDia(inicio, i)) {
     porDia.set(chaveDia(d), { recebido: 0, pendente: 0 });
   }
   for (const a of dados.atual) {

@@ -1,5 +1,6 @@
 import type { TipoNotificacao } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
+import { FUSO } from "@/lib/fuso";
 import { enviarEmail } from "./email";
 import { enviarTelegram } from "./telegram";
 
@@ -15,7 +16,13 @@ function montarMensagem(
   servicoNome: string,
   dataHora: Date
 ) {
-  const dataFormatada = dataHora.toLocaleString("pt-BR");
+  // Sem timeZone, o texto sairia no fuso do servidor (UTC na nuvem): o cliente
+  // agendado para 10:00 leria 13:00 no e-mail.
+  const dataFormatada = dataHora.toLocaleString("pt-BR", {
+    timeZone: FUSO,
+    dateStyle: "short",
+    timeStyle: "short",
+  });
   switch (tipo) {
     case "CONFIRMACAO_AGENDAMENTO":
       return `Seu agendamento de ${servicoNome} foi confirmado para ${dataFormatada}.`;

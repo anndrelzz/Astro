@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { SuccessScreen } from "@/components/ui/success-screen";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { horaMinuto, partesNoFuso } from "@/lib/fuso";
 
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const MESES_ABR = [
@@ -97,9 +98,8 @@ export function ConfirmadoCliente({
 
   const d = new Date(dataISO);
   const fim = new Date(d.getTime() + duracaoMin * 60000);
-  const hhmm = (x: Date) =>
-    `${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`;
-  const faixa = `${hhmm(d)} – ${hhmm(fim)}`;
+  const faixa = `${horaMinuto(d)} – ${horaMinuto(fim)}`;
+  const pd = partesNoFuso(d);
 
   const campos = [
     { rotulo: "Serviço", texto: servico },
@@ -187,13 +187,13 @@ export function ConfirmadoCliente({
             <div className="flex items-center gap-4 lg:shrink-0">
               <div className="flex flex-col items-center justify-center rounded-2xl bg-astro-blue px-4 py-3 text-white lg:h-full lg:px-6 lg:py-5">
                 <span className="text-[0.55rem] font-medium uppercase tracking-widest opacity-80">
-                  {MESES_ABR[d.getMonth()]} {d.getFullYear()}
+                  {MESES_ABR[pd.mes - 1]} {pd.ano}
                 </span>
                 <span className="text-2xl font-bold leading-none lg:text-4xl">
-                  {d.getDate()}
+                  {pd.dia}
                 </span>
                 <span className="text-[0.55rem] uppercase tracking-widest opacity-80">
-                  {DIAS[d.getDay()]}
+                  {DIAS[pd.diaSemana]}
                 </span>
               </div>
               {/* Data por extenso — so no celular. No desktop o bloco azul e a
@@ -201,7 +201,7 @@ export function ConfirmadoCliente({
               <div className="lg:hidden">
                 <p className="astro-label">Data e horário</p>
                 <p className="font-semibold text-white">
-                  {d.getDate()} de {MESES_LONGO[d.getMonth()]}
+                  {pd.dia} de {MESES_LONGO[pd.mes - 1]}
                 </p>
                 <p className="text-sm text-astro-muted">{faixa}</p>
               </div>

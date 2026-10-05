@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
+import { instanteNoFuso } from "@/lib/fuso";
 import { dispararNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { withTenant } from "@/lib/tenant-db";
@@ -72,7 +73,8 @@ export async function POST(request: Request) {
 
     const [ano, mes, dia] = data.split("-").map(Number);
     const [h, m] = hora.split(":").map(Number);
-    const dataHora = new Date(ano, mes - 1, dia, h, m);
+    // O horario escolhido e o do relogio da estetica, nao o do servidor.
+    const dataHora = instanteNoFuso(ano, mes, dia, h, m);
 
     // Reconfere disponibilidade no momento da confirmacao (RN06).
     const slotsDisponiveis = await calcularSlotsDisponiveis(tx, tenant, servico, dataHora);
