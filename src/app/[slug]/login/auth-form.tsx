@@ -9,6 +9,7 @@ import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { Logo, Field, FieldLabel, PrimaryButton } from "@/components/ui/astro";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { SuccessScreen } from "@/components/ui/success-screen";
+import { callbackUrlSeguro } from "@/lib/callback-url";
 import { PainelMarca, MarcaEstetica, type Estetica } from "./painel-marca";
 
 // Regras de senha exibidas ao usuario no cadastro. Precisam bater exatamente
@@ -37,7 +38,8 @@ export function AuthForm({
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrlParam = searchParams.get("callbackUrl");
+  // Valor fora da propria estetica vira null e e ignorado (ver callback-url.ts).
+  const callbackUrlParam = callbackUrlSeguro(searchParams.get("callbackUrl"), slug);
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -57,8 +59,8 @@ export function AuthForm({
   const atendidas = REGRAS_SENHA.filter((r) => r.ok(senha)).length;
 
   // Preserva o callbackUrl ao alternar entre login e cadastro.
-  const qs = searchParams.get("callbackUrl")
-    ? `?callbackUrl=${encodeURIComponent(searchParams.get("callbackUrl")!)}`
+  const qs = callbackUrlParam
+    ? `?callbackUrl=${encodeURIComponent(callbackUrlParam)}`
     : "";
   const outraRota = eLogin ? `/${slug}/cadastro${qs}` : `/${slug}/login${qs}`;
 
@@ -109,7 +111,7 @@ export function AuthForm({
     // painel e o cliente na vitrine da estetica. O cadastro so cria CLIENTE,
     // entao a consulta a sessao roda apenas no login.
     let destino = `/${slug}`;
-    if (callbackUrlParam?.startsWith("/")) {
+    if (callbackUrlParam) {
       destino = callbackUrlParam;
     } else if (eLogin) {
       const sessao = await getSession();
