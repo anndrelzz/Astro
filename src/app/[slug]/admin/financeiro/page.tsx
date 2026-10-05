@@ -164,7 +164,7 @@ export default async function AdminFinanceiroPage({
       receita: 0,
       visitas: 0,
     };
-    atual.receita += Number(a.valor);
+    atual.receita += totalCobrado(a);
     atual.visitas += 1;
     porCliente.set(a.usuarioId, atual);
   }
