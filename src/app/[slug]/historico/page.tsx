@@ -46,6 +46,7 @@ export default async function HistoricoPage({
       veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
       segmento: a.veiculo.segmento.nome,
       valor: Number(a.valor),
+    acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),
       status: a.status,
       formaPagamento: a.formaPagamento,
       podeCancelar,

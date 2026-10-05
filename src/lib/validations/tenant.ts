@@ -69,6 +69,15 @@ export const tenantConfigSchema = z
       }),
 
     pixChaveCopiaCola: z.string().trim().nullable(),
+    // Nulo (ou vazio) = a estetica nao tem politica de acrescimo e o cliente
+    // nao ve aviso nenhum. Teto de 100% porque acima disso o "acrescimo" seria
+    // outro servico, e um dedo escorregado em tela nao pode dobrar o aviso.
+    acrescimoCondicaoPercent: z.coerce
+      .number()
+      .int()
+      .min(1, "Use ao menos 1% — deixe vazio para nao avisar nada")
+      .max(100, "Maximo de 100%")
+      .nullable(),
     cancelamentoHorasLimite: z.coerce.number().int().min(0, "Valor invalido"),
     capacidadeSimultanea: z.coerce.number().int().min(1, "Minimo de 1"),
     intervaloMinutos: z.coerce.number().int().min(5, "Minimo de 5 minutos"),

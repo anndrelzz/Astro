@@ -10,8 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  TrendingUp,
 } from "lucide-react";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
+import { Modal } from "../modal";
 
 // RF11, UC10 — tabela de agendamentos do painel (mockup do admin).
 //
@@ -31,6 +33,8 @@ export type ItemAgendamento = {
   placa: string;
   servicoNome: string;
   valor: number;
+  // Acrescimo lancado pelo Admin na avaliacao presencial. Nulo = sem acrescimo.
+  acrescimoAplicado: number | null;
   status: StatusAgendamento;
 };
 
@@ -150,10 +154,14 @@ export function AgendamentosLista({
   slug,
   itens,
   periodo,
+  acrescimoCondicaoPercent,
 }: {
   slug: string;
   itens: ItemAgendamento[];
   periodo: Periodo;
+  // Politica de acrescimo da estetica. Nulo = nao cobra acrescimo, e o botao
+  // de lancar nem aparece.
+  acrescimoCondicaoPercent: number | null;
 }) {
   const router = useRouter();
 
@@ -163,6 +171,18 @@ export function AgendamentosLista({
   const [expandido, setExpandido] = useState<string | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // Agendamento com o modal de acrescimo aberto, e o percentual digitado.
+  const [acrescimoAlvo, setAcrescimoAlvo] = useState<ItemAgendamento | null>(null);
+  // O Admin pode digitar pelo percentual OU pelo total cobrado — na correria
+  // ele viu "servico de 150, cobrei 180" e nao pensou em porcentagem nenhuma.
+  // Os dois campos escrevem no MESMO estado, o acrescimo em reais, e cada um
+  // reexibe esse valor na sua unidade. Guardar os dois separados abriria a
+  // porta para eles discordarem.
+  const [acrescimoReais, setAcrescimoReais] = useState(0);
+  // Qual campo esta sob o cursor: o outro e reformatado a partir do estado, e
+  // este fica como o Admin digitou (senao "1" vira "1,00" no meio da digitacao).
+  const [campoEditando, setCampoEditando] = useState<"percent" | "total" | null>(null);
+  const [textoDigitado, setTextoDigitado] = useState("");
 
   const contagens = useMemo(() => {
     const m = new Map<string, number>();
@@ -205,12 +225,18 @@ export function AgendamentosLista({
     router.push(`/${slug}/admin/agendamentos?periodo=${valor}`);
   }
 
-  async function agir(id: string, acao: "confirmar-pagamento" | "cancelar") {
+  async function agir(
+    id: string,
+    acao: "confirmar-pagamento" | "cancelar",
+    acrescimo?: number
+  ) {
     setProcessando(id);
     setErro(null);
 
     const resposta = await fetch(`/api/agendamentos/${id}/${acao}`, {
       method: "POST",
+      headers: acrescimo ? { "Content-Type": "application/json" } : undefined,
+      body: acrescimo ? JSON.stringify({ acrescimo }) : undefined,
     });
 
     setProcessando(null);
@@ -222,6 +248,35 @@ export function AgendamentosLista({
     }
     setExpandido(null);
     router.refresh();
+  }
+
+  // Calculo ao vivo do modal. A fonte e sempre `acrescimoReais`; percentual e
+  // total sao duas leituras dele.
+  const base = acrescimoAlvo?.valor ?? 0;
+  const valorAcrescimo = acrescimoReais;
+  const totalComAcrescimo = base + valorAcrescimo;
+  const percentNumero = base > 0 ? (valorAcrescimo / base) * 100 : 0;
+
+  // O campo que NAO esta sendo editado mostra o valor derivado; o que esta
+  // mostra exatamente o que foi digitado.
+  const textoPercent =
+    campoEditando === "percent"
+      ? textoDigitado
+      : valorAcrescimo > 0
+        ? String(Math.round(percentNumero * 100) / 100)
+        : "";
+  const textoTotal =
+    campoEditando === "total"
+      ? textoDigitado
+      : valorAcrescimo > 0
+        ? totalComAcrescimo.toFixed(2)
+        : "";
+
+  function limparAcrescimo() {
+    setAcrescimoAlvo(null);
+    setAcrescimoReais(0);
+    setCampoEditando(null);
+    setTextoDigitado("");
   }
 
   return (
@@ -387,6 +442,11 @@ export function AgendamentosLista({
                           se desloca conforme o tamanho do numero nem do badge */}
                       <td className="whitespace-nowrap px-4 py-3.5 text-right align-middle font-bold text-white">
                         {formatarReal(item.valor)}
+                        {item.acrescimoAplicado !== null && (
+                          <span className="ml-1 font-normal text-amber-300">
+                            + {formatarReal(item.acrescimoAplicado)}
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -438,6 +498,20 @@ export function AgendamentosLista({
                                     : item.status === "PIX_PENDENTE"
                                       ? "Confirmar PIX"
                                       : "Confirmar pagamento"}
+                                </button>
+                              )}
+                              {/* So aparece quando a estetica tem politica de
+                                  acrescimo configurada: sem ela, o botao seria
+                                  um caminho para cobrar o que nunca foi
+                                  avisado ao cliente. */}
+                              {podeConfirmar && acrescimoCondicaoPercent !== null && (
+                                <button
+                                  onClick={() => setAcrescimoAlvo(item)}
+                                  disabled={processando === item.id}
+                                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 px-3.5 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
+                                >
+                                  <TrendingUp className="h-3.5 w-3.5" />
+                                  Confirmar com acréscimo
                                 </button>
                               )}
                               {podeCancelar && (
@@ -523,6 +597,146 @@ export function AgendamentosLista({
           </div>
         )}
       </div>
+
+      {/* Lancamento do acrescimo por condicao do veiculo.
+          O Admin digita o percentual e ve o total em reais atualizar, porque e
+          em reais que ele cobra — "30%" nao diz quanto entra no caixa. */}
+      {acrescimoAlvo && (
+        <Modal
+          aberto
+          onFechar={limparAcrescimo}
+          titulo="Confirmar com acréscimo"
+          rodape={
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  agir(acrescimoAlvo.id, "confirmar-pagamento", valorAcrescimo);
+                  limparAcrescimo();
+                }}
+                disabled={valorAcrescimo <= 0 || processando === acrescimoAlvo.id}
+                className="rounded-lg bg-astro-blue px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+              >
+                Confirmar {formatarReal(totalComAcrescimo)}
+              </button>
+              <button
+                type="button"
+                onClick={limparAcrescimo}
+                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+              >
+                Voltar
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-astro-muted">
+            {acrescimoAlvo.clienteNome} · {acrescimoAlvo.servicoNome} ·{" "}
+            {acrescimoAlvo.veiculo}
+          </p>
+
+          {/* Dois caminhos para a mesma informacao. O da direita e o que ele
+              costuma ter na cabeca: viu o servico de 150 e cobrou 180. */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="astro-label" htmlFor="acrescimo-percent">
+                Acréscimo
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  id="acrescimo-percent"
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={textoPercent}
+                  onFocus={() => {
+                    setCampoEditando("percent");
+                    setTextoDigitado(textoPercent);
+                  }}
+                  onChange={(e) => {
+                    setTextoDigitado(e.target.value);
+                    setAcrescimoReais((base * (Number(e.target.value) || 0)) / 100);
+                  }}
+                  onBlur={() => setCampoEditando(null)}
+                  placeholder={String(acrescimoCondicaoPercent ?? 0)}
+                  className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-100"
+                />
+                <span className="text-sm text-astro-muted">%</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="astro-label" htmlFor="acrescimo-total">
+                Ou o total cobrado
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-sm text-astro-muted">R$</span>
+                <input
+                  id="acrescimo-total"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={textoTotal}
+                  onFocus={() => {
+                    setCampoEditando("total");
+                    setTextoDigitado(textoTotal);
+                  }}
+                  onChange={(e) => {
+                    setTextoDigitado(e.target.value);
+                    // Total abaixo do combinado nao e acrescimo negativo: e o
+                    // Admin ainda digitando (ex.: "1" antes de "180").
+                    const total = Number(e.target.value) || 0;
+                    setAcrescimoReais(Math.max(0, total - base));
+                  }}
+                  onBlur={() => setCampoEditando(null)}
+                  placeholder={base.toFixed(2)}
+                  className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-slate-100"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-astro-muted">Combinado no agendamento</span>
+              <span className="font-mono text-slate-200">
+                {formatarReal(acrescimoAlvo.valor)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-astro-muted">Acréscimo</span>
+              <span className="font-mono text-amber-300">
+                + {formatarReal(valorAcrescimo)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-white/10 pt-2">
+              <span className="font-semibold text-white">Total cobrado</span>
+              <span className="font-mono text-base font-bold text-white">
+                {formatarReal(totalComAcrescimo)}
+              </span>
+            </div>
+          </div>
+
+          {/* O cliente viu um teto no agendamento. Passar dele nao e bloqueado
+              — quem avalia o carro e o Admin — mas precisa ser uma decisao
+              consciente, nao um numero digitado sem contexto. */}
+          {acrescimoCondicaoPercent !== null &&
+            percentNumero > acrescimoCondicaoPercent && (
+              <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                O cliente foi avisado de até {acrescimoCondicaoPercent}% (
+                {formatarReal(
+                  acrescimoAlvo.valor * (1 + acrescimoCondicaoPercent / 100)
+                )}
+                ). Você está cobrando acima disso.
+              </p>
+            )}
+
+          <p className="mt-3 text-xs text-astro-muted">
+            {acrescimoAlvo.status === "PIX_PENDENTE"
+              ? `O cliente pagou ${formatarReal(acrescimoAlvo.valor)} por PIX. Os ${formatarReal(valorAcrescimo)} são recebidos no local.`
+              : "O valor total é recebido no local."}
+          </p>
+        </Modal>
+      )}
     </div>
   );
 }
