@@ -88,13 +88,19 @@ export default async function AdminAgendamentosPage({
     placa: a.veiculo.placa,
     servicoNome: a.servico.nome,
     valor: Number(a.valor),
+    acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),
     status: a.status,
   }));
 
   return (
     <>
       <AdminHeader trilha="Lista" titulo="Agendamentos" />
-      <AgendamentosLista slug={slug} itens={itens} periodo={periodo} />
+      <AgendamentosLista
+        slug={slug}
+        itens={itens}
+        periodo={periodo}
+        acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}
+      />
     </>
   );
 }

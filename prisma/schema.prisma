@@ -257,6 +257,14 @@ model Agendamento {
   status         StatusAgendamento @default(PENDENTE_PAGAMENTO)
   formaPagamento FormaPagamento
   valor          Decimal           @db.Decimal(10, 2)
+  /// Acrescimo cobrado na avaliacao presencial, lancado pelo Admin ao
+  /// confirmar o pagamento. NULO = sem acrescimo.
+  ///
+  /// Fica ao lado do `valor` em vez de somar nele: `valor` e o que foi
+  /// combinado com o cliente no agendamento e nao muda (RN01). Separados, o
+  /// historico mostra "R$ 120,00 + R$ 36,00" para os dois lados e o financeiro
+  /// consegue dizer quanto da receita veio de acrescimo.
+  acrescimoAplicado Decimal? @db.Decimal(10, 2)
   criadoEm       DateTime          @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
