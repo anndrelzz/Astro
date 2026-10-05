@@ -34,6 +34,16 @@ export function Modal({
       dialog.showModal();
       // Trava a rolagem do fundo enquanto o modal esta aberto.
       document.body.style.overflow = "hidden";
+
+      // O showModal() foca o primeiro elemento focavel, que aqui e o "X" de
+      // fechar — e o atributo autofocus nao vence isso de forma confiavel
+      // quando o dialog e aberto por codigo. Entao a procura e explicita: se o
+      // conteudo tem um campo, ele recebe o foco. Num modal de um campo so,
+      // obrigar um clique antes de digitar e atrito a toa.
+      const campo = dialog.querySelector<HTMLElement>(
+        "input:not([type=hidden]), textarea, select"
+      );
+      campo?.focus();
     } else if (!aberto && dialog.open) {
       dialog.close();
       document.body.style.overflow = "";
