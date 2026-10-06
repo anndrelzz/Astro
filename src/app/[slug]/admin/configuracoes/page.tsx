@@ -40,6 +40,7 @@ export default async function AdminConfiguracoesPage({
         cidade: tenant.cidade ?? "",
         estado: tenant.estado ?? "",
         pixChaveCopiaCola: tenant.pixChaveCopiaCola ?? "",
+        acrescimoCondicaoPercent: tenant.acrescimoCondicaoPercent,
         cancelamentoHorasLimite: tenant.cancelamentoHorasLimite,
         capacidadeSimultanea: tenant.capacidadeSimultanea,
         intervaloMinutos: tenant.intervaloMinutos,

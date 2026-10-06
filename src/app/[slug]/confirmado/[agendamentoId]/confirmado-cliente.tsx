@@ -53,6 +53,7 @@ export function ConfirmadoCliente({
   duracaoMin,
   formaPagamento,
   valor,
+  acrescimoCondicaoPercent,
 }: {
   slug: string;
   agendamentoId: string;
@@ -64,6 +65,10 @@ export function ConfirmadoCliente({
   duracaoMin: number;
   formaPagamento: string;
   valor: number;
+  // Repetido aqui de proposito: o cliente aceitou o aviso no agendamento, mas
+  // o atendimento pode ser dias depois. Ver o teto de novo na tela que ele
+  // guarda evita a surpresa chegar na estetica.
+  acrescimoCondicaoPercent: number | null;
 }) {
   const copy = COPY[status] ?? COPY.PENDENTE_PAGAMENTO;
 
@@ -107,7 +112,12 @@ export function ConfirmadoCliente({
     { rotulo: "Horário", texto: faixa },
     { rotulo: "Local", texto: estetica },
     { rotulo: "Forma de pagamento", texto: pagamentoRotulo(formaPagamento, status) },
-    { rotulo: "Valor", texto: BRL(valor) },
+    {
+      rotulo: "Valor",
+      texto: acrescimoCondicaoPercent
+        ? `${BRL(valor)} · até ${BRL(valor * (1 + acrescimoCondicaoPercent / 100))}`
+        : BRL(valor),
+    },
   ];
 
   return (
