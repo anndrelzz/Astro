@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { FinanceiroDashboard, type Periodo } from "./financeiro-dashboard";
+import type { Prisma } from "@/generated/prisma/client";
 
 // RF12, UC11 — dashboard financeiro: receita por periodo, por servico e por
 // forma de pagamento.
@@ -17,6 +18,14 @@ const PERIODOS: Periodo[] = ["hoje", "7dias", "30dias", "90dias", "ano"];
 // RF12 — receita conta apenas o que ja foi confirmado. O que aguarda
 // pagamento aparece em separado, nunca somado a receita.
 const RECEBIDO = ["CONFIRMADO", "CONCLUIDO"] as const;
+
+// O que entrou de fato: o valor combinado no agendamento mais o acrescimo que o
+// Admin lancou na avaliacao presencial. Somar so `valor` fazia o relatorio
+// divergir do caixa — uma lavacao combinada por R$ 120,00 e cobrada por
+// R$ 156,00 aparecia como R$ 120,00.
+function totalCobrado(a: { valor: Prisma.Decimal; acrescimoAplicado: Prisma.Decimal | null }) {
+  return Number(a.valor) + Number(a.acrescimoAplicado ?? 0);
+}
 
 function janela(periodo: Periodo) {
   const fim = new Date();
@@ -87,28 +96,33 @@ export default async function AdminFinanceiroPage({
       orderBy: { dataHora: "asc" },
     });
 
-    const anterior = await tx.agendamento.aggregate({
-      _sum: { valor: true },
+    // findMany em vez de aggregate: o _sum soma UMA coluna, e a receita agora
+    // sao duas (valor + acrescimoAplicado).
+    const anteriores = await tx.agendamento.findMany({
       where: {
         tenantId: tenant.id,
         status: { in: [...RECEBIDO] },
         dataHora: { gte: inicioAnterior, lte: fimAnterior },
       },
+      select: { valor: true, acrescimoAplicado: true },
     });
 
-    return { atual, receitaAnterior: Number(anterior._sum.valor ?? 0) };
+    return {
+      atual,
+      receitaAnterior: anteriores.reduce((s, a) => s + totalCobrado(a), 0),
+    };
   });
 
   const recebidos = dados.atual.filter((a) =>
     (RECEBIDO as readonly string[]).includes(a.status)
   );
 
-  const receitaTotal = recebidos.reduce((s, a) => s + Number(a.valor), 0);
+  const receitaTotal = recebidos.reduce((s, a) => s + totalCobrado(a), 0);
   const ticketMedio = recebidos.length ? receitaTotal / recebidos.length : 0;
 
   const recebidoPix = recebidos
     .filter((a) => a.formaPagamento === "PIX")
-    .reduce((s, a) => s + Number(a.valor), 0);
+    .reduce((s, a) => s + totalCobrado(a), 0);
 
   const pendentes = dados.atual.filter(
     (a) => !(RECEBIDO as readonly string[]).includes(a.status)
@@ -125,7 +139,7 @@ export default async function AdminFinanceiroPage({
     const alvo = porDia.get(chaveDia(a.dataHora));
     if (!alvo) continue;
     if ((RECEBIDO as readonly string[]).includes(a.status)) {
-      alvo.recebido += Number(a.valor);
+      alvo.recebido += totalCobrado(a);
     } else {
       alvo.pendente += Number(a.valor);
     }
@@ -138,7 +152,7 @@ export default async function AdminFinanceiroPage({
       receita: 0,
       qtd: 0,
     };
-    atual.receita += Number(a.valor);
+    atual.receita += totalCobrado(a);
     atual.qtd += 1;
     porServico.set(a.servicoId, atual);
   }
@@ -150,7 +164,7 @@ export default async function AdminFinanceiroPage({
       receita: 0,
       visitas: 0,
     };
-    atual.receita += Number(a.valor);
+    atual.receita += totalCobrado(a);
     atual.visitas += 1;
     porCliente.set(a.usuarioId, atual);
   }
