@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
+import { FUSO, fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
@@ -52,18 +53,6 @@ const ESTILO_STATUS: Record<StatusAgendamento, { rotulo: string; classe: string;
   },
 };
 
-function inicioDoDia(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function fimDoDia(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
 export default async function AdminDashboardPage({
   params,
 }: {
@@ -82,13 +71,14 @@ export default async function AdminDashboardPage({
     redirect(`/${slug}`);
   }
 
+  // Dia, mes e hora do relogio da estetica (lib/fuso.ts), nao do servidor.
   const agora = new Date();
-  const ontem = new Date(agora);
-  ontem.setDate(agora.getDate() - 1);
+  const ontem = inicioDoDia(agora, -1);
+  const relogio = partesNoFuso(agora);
 
-  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-  const inicioMesPassado = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
-  const fimMesPassado = new Date(agora.getFullYear(), agora.getMonth(), 0, 23, 59, 59, 999);
+  const inicioMes = instanteNoFuso(relogio.ano, relogio.mes, 1);
+  const inicioMesPassado = instanteNoFuso(relogio.ano, relogio.mes - 1, 1);
+  const fimMesPassado = new Date(inicioMes.getTime() - 1);
 
   const dados = await withTenant(tenant.id, async (tx) => {
     const naoCancelado = { not: "CANCELADO" } as const;
@@ -157,7 +147,7 @@ export default async function AdminDashboardPage({
     // "Aberto agora" e "horarios livres" saem da grade de funcionamento (RF02).
     const horarioHoje = await tx.horarioFuncionamento.findUnique({
       where: {
-        tenantId_diaSemana: { tenantId: tenant.id, diaSemana: agora.getDay() },
+        tenantId_diaSemana: { tenantId: tenant.id, diaSemana: relogio.diaSemana },
       },
     });
 
@@ -173,7 +163,7 @@ export default async function AdminDashboardPage({
     };
   });
 
-  const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+  const minutosAgora = relogio.hora * 60 + relogio.minuto;
   const aberto =
     !!dados.horarioHoje &&
     minutosAgora >= dados.horarioHoje.horaInicioMin &&
@@ -384,7 +374,7 @@ export default async function AdminDashboardPage({
 }
 
 function formatarHora(d: Date) {
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO });
 }
 
 function formatarReal(valor: number) {
