@@ -75,6 +75,7 @@ export default async function PagamentoPage({
         preco={preco}
         pixDisponivel={!!tenant.pixChaveCopiaCola}
         cancelamentoHorasLimite={tenant.cancelamentoHorasLimite}
+        acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}
       />
     </ClienteShell>
   );

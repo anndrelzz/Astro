@@ -42,6 +42,7 @@ export default async function ConfirmadoPage({
       duracaoMin={agendamento.servico.duracaoMin}
       formaPagamento={agendamento.formaPagamento}
       valor={Number(agendamento.valor)}
+      acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}
     />
   );
 }
