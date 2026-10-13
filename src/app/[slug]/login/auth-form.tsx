@@ -51,6 +51,12 @@ export function AuthForm({
   // So habilita o submit apos a hidratacao: evita que um toque antes do JS
   // carregar dispare um submit nativo do form (recarrega a pagina em silencio).
   const [montado, setMontado] = useState(false);
+  // react-hooks/set-state-in-effect reclama de setState sincrono no efeito, e
+  // esta certa no caso geral: quase sempre significa estado que poderia ser
+  // derivado. Aqui nao ha o que derivar — a informacao E "a hidratacao
+  // terminou", e o unico jeito de saber isso e um efeito rodar, ja que efeito
+  // nao roda no servidor. Este e o padrao canonico para o caso.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMontado(true), []);
 
   const eLogin = modo === "login";
