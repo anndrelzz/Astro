@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
+import { FUSO } from "@/lib/fuso";
 import { Modal } from "../modal";
 
 // RF11, UC10 — tabela de agendamentos do painel (mockup do admin).
@@ -399,6 +400,7 @@ export function AgendamentosLista({
                           {d.toLocaleTimeString("pt-BR", {
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: FUSO,
                           })}
                         </p>
                         <p className="font-mono text-[0.65rem] text-astro-muted">

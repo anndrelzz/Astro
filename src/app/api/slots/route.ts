@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { instanteNoFuso } from "@/lib/fuso";
 import { calcularSlotsDisponiveis } from "@/lib/slots";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
@@ -42,7 +43,8 @@ export async function GET(request: Request) {
   }
 
   const [ano, mes, dia] = data.split("-").map(Number);
-  const dataConsulta = new Date(ano, mes - 1, dia);
+  // Meia-noite do dia consultado no fuso da estetica, nao no do servidor.
+  const dataConsulta = instanteNoFuso(ano, mes, dia);
   if (Number.isNaN(dataConsulta.getTime())) {
     return NextResponse.json({ error: "Data invalida" }, { status: 400 });
   }

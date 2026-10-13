@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Trash2, Clock, X } from "lucide-react";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { FUSO, partesNoFuso } from "@/lib/fuso";
 
 type Item = {
   id: string;
@@ -86,7 +87,7 @@ function faixaHorario(iso: string, duracaoMin: number) {
   const inicio = new Date(iso);
   const fim = new Date(inicio.getTime() + duracaoMin * 60000);
   const hm = (d: Date) =>
-    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO });
   return `${hm(inicio)} – ${hm(fim)}`;
 }
 
@@ -314,7 +315,7 @@ export function HistoricoLista({
 function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => void }) {
   const data = new Date(item.dataHoraISO);
   const mes = data
-    .toLocaleDateString("pt-BR", { month: "short" })
+    .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
     .replace(".", "")
     .toUpperCase();
   const cat = item.cat;
@@ -332,8 +333,8 @@ function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => vo
           }
         >
           <span className="text-[0.6rem] font-medium opacity-70">{mes}</span>
-          <span className="text-lg font-bold leading-none">{data.getDate()}</span>
-          <span className="text-[0.55rem] opacity-50">{data.getFullYear()}</span>
+          <span className="text-lg font-bold leading-none">{partesNoFuso(data).dia}</span>
+          <span className="text-[0.55rem] opacity-50">{partesNoFuso(data).ano}</span>
         </div>
       </td>
 
@@ -388,11 +389,10 @@ function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => vo
 function Card({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => void }) {
   const data = new Date(item.dataHoraISO);
   const mes = data
-    .toLocaleDateString("pt-BR", { month: "short" })
+    .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
     .replace(".", "")
     .toUpperCase();
-  const dia = data.getDate();
-  const ano = data.getFullYear();
+  const { dia, ano } = partesNoFuso(data);
   const cat = item.cat;
   const badge = BADGE[cat];
   const proximo = cat === "proximo";
@@ -474,14 +474,15 @@ function ModalCancelar({
   onConfirmar: () => void;
 }) {
   const data = new Date(item.dataHoraISO);
-  const diaSemana = data.toLocaleDateString("pt-BR", { weekday: "long" });
+  const diaSemana = data.toLocaleDateString("pt-BR", { weekday: "long", timeZone: FUSO });
   const diaMes = data.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
+    timeZone: FUSO,
   });
   const faixa = faixaHorario(item.dataHoraISO, item.duracaoMin);
   const mes = data
-    .toLocaleDateString("pt-BR", { month: "short" })
+    .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
     .replace(".", "")
     .toUpperCase();
 
@@ -520,7 +521,7 @@ function ModalCancelar({
           <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-astro-bg py-1.5 text-white">
             <span className="text-[0.55rem] opacity-70">{mes}</span>
             <span className="text-lg font-bold leading-none">
-              {data.getDate()}
+              {partesNoFuso(data).dia}
             </span>
           </div>
           <div className="min-w-0 flex-1">

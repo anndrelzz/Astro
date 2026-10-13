@@ -10,6 +10,7 @@ import {
   Minilinha,
   formatarReal,
 } from "./graficos";
+import { FUSO } from "@/lib/fuso";
 
 // RF12, UC11 — dashboard financeiro.
 
@@ -28,6 +29,7 @@ function dataCurta(iso: string) {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: FUSO,
   });
 }
 

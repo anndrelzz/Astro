@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { InputPlaca } from "@/components/ui/input-placa";
+import { callbackUrlSeguro } from "@/lib/callback-url";
 
 // Os tipos de veiculo agora sao da estetica (RN01 revisada), entao chegam do
 // servidor em vez de estarem escritos aqui. Cada uma define os seus: uma pode
@@ -40,7 +41,8 @@ export function NovoVeiculoForm({
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? `/${slug}`;
+  // Valor fora da propria estetica e ignorado (ver callback-url.ts).
+  const callbackUrl = callbackUrlSeguro(searchParams.get("callbackUrl"), slug) ?? `/${slug}`;
 
   const [form, setForm] = useState({
     segmentoId: segmentos[0]?.id ?? "",
