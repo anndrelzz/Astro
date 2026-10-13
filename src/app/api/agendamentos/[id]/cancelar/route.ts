@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
-import { dispararNotificacao } from "@/lib/notificacoes";
+import { enviarNotificacao, registrarNotificacao } from "@/lib/notificacoes";
 import { withTenant } from "@/lib/tenant-db";
 
 // UC06, RN11 — cliente so cancela fora da janela configurada pelo Admin;
@@ -52,15 +52,18 @@ export async function POST(
       data: { status: "CANCELADO" },
     });
 
-    // Gatilho 4 (secao 3.4) — disparada imediatamente apos o cancelamento.
-    await dispararNotificacao(tx, id, "CONFIRMACAO_CANCELAMENTO");
+    // Gatilho 4 (secao 3.4) — registrada aqui, enviada so depois do commit.
+    const notificacao = await registrarNotificacao(tx, id, "CONFIRMACAO_CANCELAMENTO");
 
-    return { ok: true } as const;
+    return { ok: true, notificacao } as const;
   });
 
   if ("error" in resultado) {
     return NextResponse.json({ error: resultado.error }, { status: resultado.status });
   }
 
-  return NextResponse.json(resultado);
+  const { notificacao, ...corpo } = resultado;
+  after(() => enviarNotificacao(notificacao));
+
+  return NextResponse.json(corpo);
 }

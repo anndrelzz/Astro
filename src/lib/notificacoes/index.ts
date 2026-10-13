@@ -1,6 +1,7 @@
 import type { TipoNotificacao } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import { FUSO } from "@/lib/fuso";
+import { withTenant } from "@/lib/tenant-db";
 import { enviarEmail } from "./email";
 import { enviarTelegram } from "./telegram";
 
@@ -37,38 +38,81 @@ function montarMensagem(
 
 // Fluxo de Notificacoes (secao 3.4 do RFC) — fila simples com registro de
 // tentativas. E-mail sempre disparado (RN13); Telegram apenas se vinculado.
-// Recebe o client de transacao ja contextualizado por withTenant (RLS) do
-// chamador — nunca importa o `prisma` global.
-export async function dispararNotificacao(
+//
+// Em dois passos, porque o envio NAO pode acontecer dentro da transacao que
+// grava o agendamento. La dentro, um Telegram fora do ar desfazia o
+// agendamento depois de o e-mail ja ter saido, e um envio lento estourava o
+// limite de 5 s da transacao. No cron, o rollback apagava o registro de
+// "lembrete ja enviado" e a rodada seguinte mandava tudo de novo.
+//
+//   1. registrarNotificacao — dentro da transacao do chamador (withTenant),
+//      grava o aviso como PENDENTE. Vai junto com o commit, ou com o rollback.
+//   2. enviarNotificacao — DEPOIS do commit, fora de qualquer transacao,
+//      envia e grava ENVIADA ou FALHA. Nunca lanca erro.
+
+export type NotificacaoPendente = { tenantId: string; notificacaoId: string };
+
+export async function registrarNotificacao(
   tx: Prisma.TransactionClient,
   agendamentoId: string,
   tipo: TipoNotificacao
-) {
+): Promise<NotificacaoPendente | null> {
   const agendamento = await tx.agendamento.findUnique({
     where: { id: agendamentoId },
-    include: { usuario: true, servico: true },
+    select: { tenantId: true },
   });
-  if (!agendamento) return;
+  if (!agendamento) return null;
 
   const notificacao = await tx.notificacao.create({
     data: { tenantId: agendamento.tenantId, agendamentoId, tipo, status: "PENDENTE" },
   });
+  return { tenantId: agendamento.tenantId, notificacaoId: notificacao.id };
+}
 
-  const texto = montarMensagem(tipo, agendamento.servico.nome, agendamento.dataHora);
-  const assunto = ASSUNTOS[tipo];
+export async function enviarNotificacao(pendente: NotificacaoPendente | null) {
+  if (!pendente) return;
+  const { tenantId, notificacaoId } = pendente;
 
-  const resultadoEmail = await enviarEmail(agendamento.usuario.email, assunto, texto);
+  try {
+    const notificacao = await withTenant(tenantId, (tx) =>
+      tx.notificacao.findUnique({
+        where: { id: notificacaoId },
+        include: { agendamento: { include: { usuario: true, servico: true } } },
+      })
+    );
+    if (!notificacao) return;
 
-  if (agendamento.usuario.telegramChatId) {
-    await enviarTelegram(agendamento.usuario.telegramChatId, texto);
+    const { usuario, servico, dataHora } = notificacao.agendamento;
+    const texto = montarMensagem(notificacao.tipo, servico.nome, dataHora);
+
+    let emailEnviado = false;
+    try {
+      const resultado = await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto);
+      emailEnviado = resultado.enviado;
+    } catch (erro) {
+      console.error("[email:ERRO]", erro);
+    }
+
+    if (usuario.telegramChatId) {
+      try {
+        await enviarTelegram(usuario.telegramChatId, texto);
+      } catch (erro) {
+        console.error("[telegram:ERRO]", erro);
+      }
+    }
+
+    await withTenant(tenantId, (tx) =>
+      tx.notificacao.update({
+        where: { id: notificacaoId },
+        data: {
+          status: emailEnviado ? "ENVIADA" : "FALHA",
+          enviadoEm: emailEnviado ? new Date() : null,
+          tentativas: { increment: 1 },
+        },
+      })
+    );
+  } catch (erro) {
+    // O agendamento ja esta salvo; uma falha aqui so deixa o aviso PENDENTE.
+    console.error("[notificacao:ERRO]", notificacaoId, erro);
   }
-
-  await tx.notificacao.update({
-    where: { id: notificacao.id },
-    data: {
-      status: resultadoEmail.enviado ? "ENVIADA" : "FALHA",
-      enviadoEm: resultadoEmail.enviado ? new Date() : null,
-      tentativas: { increment: 1 },
-    },
-  });
 }

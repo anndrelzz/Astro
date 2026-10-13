@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
 import { instanteNoFuso } from "@/lib/fuso";
-import { dispararNotificacao } from "@/lib/notificacoes";
+import { enviarNotificacao, registrarNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { withTenant } from "@/lib/tenant-db";
 import { calcularSlotsDisponiveis } from "@/lib/slots";
@@ -95,13 +95,15 @@ export async function POST(request: Request) {
       },
     });
 
-    // RF08, Gatilho 1 (secao 3.4) — disparada imediatamente apos confirmacao.
-    await dispararNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
+    // RF08, Gatilho 1 (secao 3.4) — registrada aqui, enviada so depois do
+    // commit (ver lib/notificacoes).
+    const notificacao = await registrarNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
 
     return {
       id: agendamento.id,
       status: agendamento.status,
       pixChaveCopiaCola: tenant.pixChaveCopiaCola,
+      notificacao,
     } as const;
   });
 
@@ -109,5 +111,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: resultado.error }, { status: resultado.httpStatus });
   }
 
-  return NextResponse.json(resultado, { status: 201 });
+  const { notificacao, ...corpo } = resultado;
+  after(() => enviarNotificacao(notificacao));
+
+  return NextResponse.json(corpo, { status: 201 });
 }
