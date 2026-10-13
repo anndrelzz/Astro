@@ -114,10 +114,11 @@ export default async function AdminDashboardPage({
       }),
     ]);
 
-    // RF12 — receita conta apenas pagamento confirmado.
+    // RF12 — receita conta apenas pagamento confirmado. Soma tambem o acrescimo
+    // lancado na avaliacao presencial, como o financeiro: e o que entrou no caixa.
     const [receitaDia, receitaMes] = await Promise.all([
       tx.agendamento.aggregate({
-        _sum: { valor: true },
+        _sum: { valor: true, acrescimoAplicado: true },
         where: {
           tenantId: tenant.id,
           status: { in: [...STATUS_PAGO] },
@@ -125,7 +126,7 @@ export default async function AdminDashboardPage({
         },
       }),
       tx.agendamento.aggregate({
-        _sum: { valor: true },
+        _sum: { valor: true, acrescimoAplicado: true },
         where: {
           tenantId: tenant.id,
           status: { in: [...STATUS_PAGO] },
@@ -156,8 +157,10 @@ export default async function AdminDashboardPage({
       ontem: ontemQtd,
       mes,
       mesPassado,
-      receitaDia: Number(receitaDia._sum.valor ?? 0),
-      receitaMes: Number(receitaMes._sum.valor ?? 0),
+      receitaDia:
+        Number(receitaDia._sum.valor ?? 0) + Number(receitaDia._sum.acrescimoAplicado ?? 0),
+      receitaMes:
+        Number(receitaMes._sum.valor ?? 0) + Number(receitaMes._sum.acrescimoAplicado ?? 0),
       agenda,
       horarioHoje,
     };
@@ -343,7 +346,14 @@ export default async function AdminDashboardPage({
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <p className="font-bold text-white">{formatarReal(Number(a.valor))}</p>
+                  <p className="font-bold text-white">
+                    {formatarReal(Number(a.valor))}
+                    {a.acrescimoAplicado !== null && (
+                      <span className="ml-1 font-normal text-amber-300">
+                        + {formatarReal(Number(a.acrescimoAplicado))}
+                      </span>
+                    )}
+                  </p>
                   <span
                     className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-[0.6rem] uppercase tracking-wider ${estilo.classe}`}
                   >
