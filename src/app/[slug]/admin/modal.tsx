@@ -34,6 +34,16 @@ export function Modal({
       dialog.showModal();
       // Trava a rolagem do fundo enquanto o modal esta aberto.
       document.body.style.overflow = "hidden";
+
+      // O showModal() foca o primeiro elemento focavel, que aqui e o "X" de
+      // fechar — e o atributo autofocus nao vence isso de forma confiavel
+      // quando o dialog e aberto por codigo. Entao a procura e explicita: se o
+      // conteudo tem um campo, ele recebe o foco. Num modal de um campo so,
+      // obrigar um clique antes de digitar e atrito a toa.
+      const campo = dialog.querySelector<HTMLElement>(
+        "input:not([type=hidden]), textarea, select"
+      );
+      campo?.focus();
     } else if (!aberto && dialog.open) {
       dialog.close();
       document.body.style.overflow = "";
@@ -60,10 +70,30 @@ export function Modal({
       // margin:auto, mas o reset do Tailwind zera a margem de todo elemento
       // (`*, ::before, ::after { margin: 0 }`) e o modal cai no canto superior
       // esquerdo. Sem esta classe, a centralizacao do navegador nao acontece.
-      className="m-auto max-h-[85dvh] w-[min(34rem,92vw)] rounded-2xl border border-admin-border bg-admin-surface p-0 text-slate-100 shadow-2xl shadow-black/60 backdrop:bg-black/70 backdrop:backdrop-blur-sm"
+      //
+      // Vidro fosco: o painel e quase transparente (bg-white/[0.06]) e quem da
+      // corpo a ele e o backdrop-blur-2xl, que desfoca o conteudo atras. Isso
+      // so funciona porque o fundo e escuro — a borda clara de 1px e o anel
+      // interno sao o que desenha a "quina" do vidro e separa o painel da tela.
+      //
+      // O ::backdrop escurece antes de desfocar: sem ele, o modal aberto sobre
+      // uma area clara (o banner azul do Dashboard) perderia contraste do texto.
+      className="m-auto max-h-[85dvh] w-[min(34rem,92vw)] overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] p-0 text-slate-100 shadow-2xl shadow-black/70 ring-1 ring-inset ring-white/5 backdrop-blur-2xl backdrop:bg-black/60 backdrop:backdrop-blur-md"
     >
-      <div className="flex max-h-[85dvh] flex-col">
-        <header className="flex items-start justify-between gap-4 border-b border-admin-border px-5 py-4">
+      {/* Brilho superior tingido pela cor do tenant (RF13), como na faixa do
+          Catalogo e no painel de marca do login. E o que impede o vidro de
+          parecer um retangulo cinza generico. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-28"
+        style={{
+          backgroundImage:
+            "linear-gradient(180deg, color-mix(in srgb, var(--color-astro-blue) 28%, transparent) 0%, transparent 100%)",
+        }}
+      />
+
+      <div className="relative flex max-h-[85dvh] flex-col">
+        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
           <div className="min-w-0">
             <h2 id="titulo-modal" className="text-lg font-semibold text-white">
               {titulo}
@@ -73,7 +103,7 @@ export function Modal({
             type="button"
             onClick={onFechar}
             aria-label="Fechar"
-            className="shrink-0 rounded-md p-1 text-astro-muted transition hover:bg-white/5 hover:text-white"
+            className="shrink-0 rounded-md p-1 text-astro-muted transition hover:bg-white/10 hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -82,7 +112,9 @@ export function Modal({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {rodape && (
-          <footer className="flex flex-wrap items-center gap-2 border-t border-admin-border px-5 py-4">
+          // Rodape um tom mais escuro que o corpo: assenta os botoes e evita
+          // que eles flutuem no vidro sem base.
+          <footer className="flex flex-wrap items-center gap-2 border-t border-white/10 bg-black/20 px-5 py-4">
             {rodape}
           </footer>
         )}

@@ -15,22 +15,50 @@ type Item = {
   veiculoMarcaModelo: string;
   segmento: string;
   valor: number;
+  // Acrescimo cobrado na avaliacao presencial. O cliente aceitou a
+  // possibilidade ao agendar; esconder o que foi cobrado seria estranho.
+  acrescimoAplicado: number | null;
   status: string;
   formaPagamento: string;
-  podeCancelar: boolean;
 };
 
 type Categoria = "todos" | "proximo" | "concluido" | "cancelado";
+
+// Item com as duas decisoes que dependem da hora ja resolvidas pelo componente
+// pai. As linhas e os cartoes recebem isto pronto e nao olham o relogio.
+type ItemComEstado = Item & {
+  cat: Exclude<Categoria, "todos">;
+  cancelavel: boolean;
+};
+
+// As duas funcoes abaixo dependem da hora atual, e recebem esse instante como
+// argumento em vez de chamar Date.now() por conta propria. Antes o "pode
+// cancelar" vinha decidido pelo servidor (congelado no render) e a categoria
+// era calculada aqui: dois relogios decidindo sobre a mesma linha, o que
+// permitia o selo dizer "Concluido" com o botao "Cancelar" ainda ativo.
+// Recebendo `agora` de fora, as duas respondem sobre o mesmo instante.
 
 // Categoriza pelo status persistido, mas "concluido" tambem cobre qualquer
 // agendamento ativo cujo horario ja passou — nenhuma rota do sistema atribui
 // esse status automaticamente, entao sem isso um agendamento antigo nunca
 // cancelado ficaria em "Proximo" para sempre.
-function categoria(item: Pick<Item, "status" | "dataHoraISO" | "duracaoMin">): Exclude<Categoria, "todos"> {
+function categoria(
+  item: Pick<Item, "status" | "dataHoraISO" | "duracaoMin">,
+  agora: number
+): Exclude<Categoria, "todos"> {
   if (item.status === "CANCELADO") return "cancelado";
   const fim = new Date(item.dataHoraISO).getTime() + item.duracaoMin * 60000;
-  if (item.status === "CONCLUIDO" || fim < Date.now()) return "concluido";
+  if (item.status === "CONCLUIDO" || fim < agora) return "concluido";
   return "proximo";
+}
+
+// RN11 — o cliente so cancela fora da janela configurada pelo Admin. A rota
+// revalida isso antes de gravar; aqui e so para nao oferecer um botao que vai
+// ser recusado.
+function podeCancelar(item: Item, horasLimite: number, agora: number) {
+  if (item.status === "CANCELADO" || item.status === "CONCLUIDO") return false;
+  const horasAte = (new Date(item.dataHoraISO).getTime() - agora) / (1000 * 60 * 60);
+  return horasAte >= horasLimite;
 }
 
 const FILTROS: { chave: Categoria; label: string }[] = [
@@ -79,24 +107,48 @@ export function HistoricoLista({
   const [cancelando, setCancelando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Um unico Date.now() alimenta a categoria E o "pode cancelar" de todas as
+  // linhas — era a divergencia entre esses dois que deixava o selo dizer
+  // "Concluido" com o botao "Cancelar" ainda ativo.
+  //
+  // react-hooks/purity reclama porque useMemo roda durante a renderizacao, e
+  // ler o relogio ali torna o componente nao-idempotente. A regra esta certa no
+  // geral; aqui a lista E sobre tempo, e as tres saidas que o React oferece
+  // saem pior: guardar em estado e atualizar por efeito cai na regra irma
+  // (set-state-in-effect); comecar em zero marca todo agendamento como
+  // cancelavel no primeiro minuto; e useSyncExternalStore exige um cache de
+  // modulo que, no servidor, congela na hora em que o processo subiu e
+  // reintroduz divergencia de hidratacao.
+  //
+  // O risco que a regra protege — valor mudar sozinho entre renders — e o
+  // comportamento desejado aqui, e a rota de cancelamento revalida a janela
+  // antes de gravar (RN11), entao a tela nunca e a unica guarda.
+  const comEstado = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity
+    const agora = Date.now();
+    return itens.map((i) => ({
+      ...i,
+      cat: categoria(i, agora),
+      cancelavel: podeCancelar(i, horasLimite, agora),
+    }));
+  }, [itens, horasLimite]);
+
   const visiveis = useMemo(() => {
     const filtrados =
-      filtro === "todos"
-        ? itens
-        : itens.filter((i) => categoria(i) === filtro);
+      filtro === "todos" ? comEstado : comEstado.filter((i) => i.cat === filtro);
 
     // A pagina ja entrega em ordem decrescente; inverter cobre "Mais antigos"
     // sem uma segunda consulta ao banco.
     return ordem === "recentes" ? filtrados : [...filtrados].reverse();
-  }, [itens, filtro, ordem]);
+  }, [comEstado, filtro, ordem]);
 
   // Contadores dos quatro indicadores do topo (tela 13). Contam sobre a lista
   // inteira, nao sobre o filtro — eles sao o panorama que orienta o filtro.
   const contagem = useMemo(() => {
-    const c = { todos: itens.length, proximo: 0, concluido: 0, cancelado: 0 };
-    for (const i of itens) c[categoria(i)]++;
+    const c = { todos: comEstado.length, proximo: 0, concluido: 0, cancelado: 0 };
+    for (const i of comEstado) c[i.cat]++;
     return c;
-  }, [itens]);
+  }, [comEstado]);
 
   const INDICADORES = [
     { rotulo: "Total", valor: contagem.todos, cls: "text-zinc-900" },
@@ -260,13 +312,13 @@ export function HistoricoLista({
 }
 
 // Linha da tabela do desktop. Mesmos dados do Card, dispostos em colunas.
-function Linha({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
+function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => void }) {
   const data = new Date(item.dataHoraISO);
   const mes = data
     .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
     .replace(".", "")
     .toUpperCase();
-  const cat = categoria(item);
+  const cat = item.cat;
   const badge = BADGE[cat];
   const proximo = cat === "proximo";
 
@@ -309,12 +361,17 @@ function Linha({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
 
       <td className="whitespace-nowrap px-4 py-3 font-semibold text-zinc-900">
         {BRL(item.valor)}
+        {item.acrescimoAplicado !== null && (
+          <span className="ml-1 text-xs font-normal text-amber-600">
+            + {BRL(item.acrescimoAplicado)}
+          </span>
+        )}
       </td>
 
       <td className="px-4 py-3">
         {/* So aparece quando o cancelamento e permitido (RF18). Fora do prazo
             a celula fica vazia: um botao desabilitado convidaria ao clique. */}
-        {item.podeCancelar && (
+        {item.cancelavel && (
           <button
             onClick={onCancelar}
             aria-label={`Cancelar ${item.servicoNome}`}
@@ -329,14 +386,14 @@ function Linha({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
 }
 
 // Card de agendamento (data + status + servico + preco).
-function Card({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
+function Card({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => void }) {
   const data = new Date(item.dataHoraISO);
   const mes = data
     .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
     .replace(".", "")
     .toUpperCase();
   const { dia, ano } = partesNoFuso(data);
-  const cat = categoria(item);
+  const cat = item.cat;
   const badge = BADGE[cat];
   const proximo = cat === "proximo";
 
@@ -377,12 +434,17 @@ function Card({ item, onCancelar }: { item: Item; onCancelar: () => void }) {
           <span>{faixaHorario(item.dataHoraISO, item.duracaoMin)}</span>
           <span className="font-semibold text-zinc-900">
             {BRL(item.valor)}
+        {item.acrescimoAplicado !== null && (
+          <span className="ml-1 text-xs font-normal text-amber-600">
+            + {BRL(item.acrescimoAplicado)}
+          </span>
+        )}
           </span>
         </div>
       </div>
 
       {/* Acao cancelar (so em proximos dentro do prazo) */}
-      {item.podeCancelar && (
+      {item.cancelavel && (
         <button
           onClick={onCancelar}
           aria-label="Cancelar agendamento"
@@ -473,6 +535,11 @@ function ModalCancelar({
           </div>
           <span className="shrink-0 font-bold text-zinc-900">
             {BRL(item.valor)}
+        {item.acrescimoAplicado !== null && (
+          <span className="ml-1 text-xs font-normal text-amber-600">
+            + {BRL(item.acrescimoAplicado)}
+          </span>
+        )}
           </span>
         </div>
 
