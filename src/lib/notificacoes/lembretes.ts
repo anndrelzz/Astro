@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
-import { dispararNotificacao } from "./index";
+import { enviarNotificacao, registrarNotificacao, type NotificacaoPendente } from "./index";
 
 const HORA_EM_MS = 1000 * 60 * 60;
 
@@ -8,9 +8,7 @@ const HORA_EM_MS = 1000 * 60 * 60;
 // disparados apenas se o agendamento foi feito com antecedencia suficiente
 // para cada intervalo, e apenas uma vez por tipo. Roda tenant por tenant
 // (RLS exige o contexto de app.tenant_id setado para ler agendamento).
-export async function verificarEEnviarLembretes() {
-  const agora = new Date();
-
+export async function verificarEEnviarLembretes(agora = new Date()) {
   let lembretes24h = 0;
   let lembretes2h = 0;
   let verificados = 0;
@@ -20,46 +18,69 @@ export async function verificarEEnviarLembretes() {
   const tenants = await prisma.tenant.findMany({ select: { id: true } });
 
   for (const tenant of tenants) {
-    await withTenant(tenant.id, async (tx) => {
-      const agendamentosAtivos = await tx.agendamento.findMany({
-        where: {
-          status: { in: ["PENDENTE_PAGAMENTO", "PIX_PENDENTE", "CONFIRMADO"] },
-          dataHora: { gt: agora },
-        },
-        include: { notificacoes: true },
-      });
-      verificados += agendamentosAtivos.length;
-
-      for (const agendamento of agendamentosAtivos) {
-        const horasAte = (agendamento.dataHora.getTime() - agora.getTime()) / HORA_EM_MS;
-        const horasDeAntecedenciaNaCriacao =
-          (agendamento.dataHora.getTime() - agendamento.criadoEm.getTime()) / HORA_EM_MS;
-
-        const jaTem24h = agendamento.notificacoes.some((n) => n.tipo === "LEMBRETE_24H");
-        const jaTem2h = agendamento.notificacoes.some((n) => n.tipo === "LEMBRETE_2H");
-
-        if (
-          horasAte <= 24 &&
-          horasAte > 2 &&
-          horasDeAntecedenciaNaCriacao >= 24 &&
-          !jaTem24h
-        ) {
-          await dispararNotificacao(tx, agendamento.id, "LEMBRETE_24H");
-          lembretes24h++;
-        }
-
-        if (
-          horasAte <= 2 &&
-          horasAte > 0 &&
-          horasDeAntecedenciaNaCriacao >= 2 &&
-          !jaTem2h
-        ) {
-          await dispararNotificacao(tx, agendamento.id, "LEMBRETE_2H");
-          lembretes2h++;
-        }
-      }
-    });
+    const r = await verificarLembretesDoTenant(tenant.id, agora);
+    lembretes24h += r.lembretes24h;
+    lembretes2h += r.lembretes2h;
+    verificados += r.verificados;
   }
+
+  return { lembretes24h, lembretes2h, verificados };
+}
+
+// Primeiro registra, numa transacao curta e so de banco, todos os lembretes
+// devidos; depois envia um por um, fora dela. O registro e o que impede o
+// reenvio: como ele ja esta salvo antes do envio, um e-mail lento ou um erro
+// do Telegram nao o desfaz, e a proxima rodada nao manda o lembrete de novo.
+// Um envio que falha fica como FALHA — o lembrete se perde, mas nao se repete.
+export async function verificarLembretesDoTenant(tenantId: string, agora = new Date()) {
+  let lembretes24h = 0;
+  let lembretes2h = 0;
+
+  const { pendentes, verificados } = await withTenant(tenantId, async (tx) => {
+    const agendamentosAtivos = await tx.agendamento.findMany({
+      where: {
+        tenantId,
+        status: { in: ["PENDENTE_PAGAMENTO", "PIX_PENDENTE", "CONFIRMADO"] },
+        dataHora: { gt: agora },
+      },
+      include: { notificacoes: true },
+    });
+
+    const pendentes: (NotificacaoPendente | null)[] = [];
+
+    for (const agendamento of agendamentosAtivos) {
+      const horasAte = (agendamento.dataHora.getTime() - agora.getTime()) / HORA_EM_MS;
+      const horasDeAntecedenciaNaCriacao =
+        (agendamento.dataHora.getTime() - agendamento.criadoEm.getTime()) / HORA_EM_MS;
+
+      const jaTem24h = agendamento.notificacoes.some((n) => n.tipo === "LEMBRETE_24H");
+      const jaTem2h = agendamento.notificacoes.some((n) => n.tipo === "LEMBRETE_2H");
+
+      if (
+        horasAte <= 24 &&
+        horasAte > 2 &&
+        horasDeAntecedenciaNaCriacao >= 24 &&
+        !jaTem24h
+      ) {
+        pendentes.push(await registrarNotificacao(tx, agendamento.id, "LEMBRETE_24H"));
+        lembretes24h++;
+      }
+
+      if (
+        horasAte <= 2 &&
+        horasAte > 0 &&
+        horasDeAntecedenciaNaCriacao >= 2 &&
+        !jaTem2h
+      ) {
+        pendentes.push(await registrarNotificacao(tx, agendamento.id, "LEMBRETE_2H"));
+        lembretes2h++;
+      }
+    }
+
+    return { pendentes, verificados: agendamentosAtivos.length };
+  });
+
+  for (const pendente of pendentes) await enviarNotificacao(pendente);
 
   return { lembretes24h, lembretes2h, verificados };
 }
