@@ -1,5 +1,5 @@
 import type { Prisma, Servico, Tenant } from "@/generated/prisma/client";
-import { fimDoDia, inicioDoDia, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
+import { chaveDia, fimDoDia, inicioDoDia, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
 
 // RF02, RN06, RNF02 — calcula os slots de horario disponiveis para um dia,
 // respeitando a grade de funcionamento, o intervalo configurado e a
@@ -57,4 +57,23 @@ export async function calcularSlotsDisponiveis(
   }
 
   return slots;
+}
+
+// RN06 — sem esta trava, duas confirmacoes para o mesmo dia podem ler a mesma
+// vaga livre e gravar as duas: o agendamento de uma so fica visivel para a
+// outra no commit, e ate la a transacao ainda espera o envio do e-mail.
+//
+// A trava coloca em fila as confirmacoes da mesma estetica no mesmo dia (o
+// mesmo recorte que calcularSlotsDisponiveis consulta); dias diferentes nao
+// esperam um pelo outro. E de transacao: o Postgres a solta sozinho no commit
+// ou no rollback. Chamar ANTES de calcularSlotsDisponiveis, dentro do mesmo
+// withTenant. Uma colisao do hashtext so faz duas filas virarem uma — nunca
+// libera um horario lotado.
+export async function travarDiaParaAgendamento(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  data: Date
+) {
+  const chave = `agendamento:${tenantId}:${chaveDia(data)}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${chave}::text))`;
 }
