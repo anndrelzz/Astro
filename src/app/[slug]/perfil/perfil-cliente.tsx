@@ -22,6 +22,7 @@ import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { iniciais } from "@/lib/iniciais";
 import { VincularTelegram } from "./vincular-telegram";
+import { LIMITES } from "@/lib/validations/limites";
 
 type Veiculo = {
   id: string;
@@ -548,6 +549,7 @@ function ModalEditar({
               <input
                 className={inputCls}
                 value={form.nome}
+                maxLength={LIMITES.nomePessoa}
                 onChange={(e) =>
                   setForm((a) => ({ ...a, nome: e.target.value }))
                 }
