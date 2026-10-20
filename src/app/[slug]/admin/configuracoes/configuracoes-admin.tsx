@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Eye, EyeOff, Lock } from "lucide-react";
 import { AdminHeader } from "../admin-header";
+import { LIMITES } from "@/lib/validations/limites";
 
 // UC13, UC14, RF13, RF17, RF18, RN06 — configuracoes gerais da estetica.
 //
@@ -255,6 +256,7 @@ export function ConfiguracoesAdmin({
               <input
                 type="email"
                 value={config.emailContato}
+                maxLength={LIMITES.email}
                 onChange={(e) => campo("emailContato", e.target.value)}
                 placeholder="contato@suaestetica.com.br"
                 className={ENTRADA}
@@ -274,6 +276,7 @@ export function ConfiguracoesAdmin({
                 <input
                   type={mostrarChave ? "text" : "password"}
                   value={config.pixChaveCopiaCola}
+                  maxLength={LIMITES.pixCopiaCola}
                   onChange={(e) => campo("pixChaveCopiaCola", e.target.value)}
                   placeholder="Cole aqui a chave gerada pelo seu banco"
                   className="min-w-0 flex-1 bg-transparent font-mono text-sm text-slate-100 outline-none placeholder:text-astro-muted"

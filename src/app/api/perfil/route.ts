@@ -4,12 +4,17 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
 import { withTenant } from "@/lib/tenant-db";
+import { LIMITES } from "@/lib/validations/limites";
 
 // Tela 05 (Editar perfil) — o cliente atualiza os proprios dados de contato.
 // E-mail nao e alterado aqui: e a credencial de login (unique por tenant) e
 // trocá-lo invalidaria a sessao ativa; por isso o modal o mantem somente leitura.
 const perfilSchema = z.object({
-  nome: z.string().trim().min(1, "Informe o nome completo"),
+  nome: z
+    .string()
+    .trim()
+    .min(1, "Informe o nome completo")
+    .max(LIMITES.nomePessoa, `Nome muito longo - use ate ${LIMITES.nomePessoa} caracteres`),
   telefone: z
     .string()
     .transform((v) => v.replace(/\D/g, ""))
