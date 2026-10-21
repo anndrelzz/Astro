@@ -48,6 +48,10 @@ export function HomeServicos({
   const [semVeiculo, setSemVeiculo] = useState(false);
 
   const nomeSegmento = segmentos.find((s) => s.id === segmento)?.nome ?? "";
+  // So entra o que tem preco para o tipo escolhido. Falta de preco acontece na
+  // janela entre o Admin criar um tipo novo e preencher a tabela; ate la, quem
+  // tem esse tipo de carro nao ve o servico, e os outros tipos seguem normais.
+  const servicosDoSegmento = servicos.filter((s) => s.precos[segmento] !== undefined);
 
   // Destino do agendamento conforme estado do usuario.
   function hrefAgendar(servicoId: string) {
@@ -95,7 +99,7 @@ export function HomeServicos({
           catalogo inteiro sem rolar. As colunas acompanham a largura da tela
           para nao esticar o card quando a estetica tem poucos servicos. */}
       <div className="mt-4 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] lg:gap-5 lg:overflow-visible">
-        {servicos.map((servico) => (
+        {servicosDoSegmento.map((servico) => (
           <div
             key={servico.id}
             className="flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition lg:w-auto lg:shrink lg:hover:-translate-y-0.5 lg:hover:shadow-md"
@@ -128,17 +132,8 @@ export function HomeServicos({
                   <p className="text-[0.65rem] uppercase tracking-wide text-zinc-400">
                     {nomeSegmento}
                   </p>
-                  {/* Preco ausente so acontece na janela entre o Admin criar um
-                      tipo novo e precificar os servicos. Melhor dizer que falta
-                      combinar do que exibir R$ 0,00 como se fosse de graca. */}
                   <p className="text-lg font-bold text-zinc-900">
-                    {servico.precos[segmento] === undefined ? (
-                      <span className="text-sm font-medium text-zinc-400">
-                        Sob consulta
-                      </span>
-                    ) : (
-                      formatarPreco(servico.precos[segmento])
-                    )}
+                    {formatarPreco(servico.precos[segmento])}
                   </p>
                 </div>
                 {logado && !temVeiculo ? (
@@ -165,6 +160,12 @@ export function HomeServicos({
 
         {servicos.length === 0 && (
           <p className="text-sm text-zinc-500">Nenhum serviço cadastrado ainda.</p>
+        )}
+
+        {servicos.length > 0 && servicosDoSegmento.length === 0 && (
+          <p className="text-sm text-zinc-500">
+            Nenhum serviço disponível para esse tipo de veículo no momento.
+          </p>
         )}
       </div>
 
