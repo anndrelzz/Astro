@@ -10,9 +10,15 @@ import type { PrecoServico } from "@/generated/prisma/client";
 // para todo segmento ativo — mas pode acontecer numa janela real: o Admin
 // acabou de criar um segmento e ainda nao precificou os servicos. Quem chama
 // decide o que fazer; o que nao pode e inventar um valor.
+//
+// R$ 0 tambem conta como "sem preco": e o valor provisorio que um segmento
+// novo recebe em todos os servicos quando nao copia os precos de outro (rota
+// de segmentos), e nao um preco que a estetica combinou. Sem isso o cliente
+// agendava de graca ate o Admin preencher a tabela.
 export function calcularPreco(
   precos: Pick<PrecoServico, "segmentoId" | "valor">[],
   segmentoId: string
 ) {
-  return precos.find((p) => p.segmentoId === segmentoId)?.valor ?? null;
+  const valor = precos.find((p) => p.segmentoId === segmentoId)?.valor;
+  return valor && valor.gt(0) ? valor : null;
 }
