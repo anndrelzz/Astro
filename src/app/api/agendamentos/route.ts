@@ -7,7 +7,7 @@ import { instanteNoFuso } from "@/lib/fuso";
 import { dispararNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { withTenant } from "@/lib/tenant-db";
-import { calcularSlotsDisponiveis } from "@/lib/slots";
+import { calcularSlotsDisponiveis, travarDiaParaAgendamento } from "@/lib/slots";
 
 const agendamentoSchema = z.object({
   servicoId: z.string().uuid(),
@@ -76,7 +76,9 @@ export async function POST(request: Request) {
     // O horario escolhido e o do relogio da estetica, nao o do servidor.
     const dataHora = instanteNoFuso(ano, mes, dia, h, m);
 
-    // Reconfere disponibilidade no momento da confirmacao (RN06).
+    // Reconfere disponibilidade no momento da confirmacao (RN06). A trava vem
+    // antes: sem ela, duas confirmacoes simultaneas veriam a mesma vaga livre.
+    await travarDiaParaAgendamento(tx, tenant.id, dataHora);
     const slotsDisponiveis = await calcularSlotsDisponiveis(tx, tenant, servico, dataHora);
     if (!slotsDisponiveis.includes(hora)) {
       return { error: "Horario nao esta mais disponivel", httpStatus: 409 } as const;
