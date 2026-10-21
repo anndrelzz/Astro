@@ -82,7 +82,9 @@ export default async function TenantPage({
 
   // Abre no tipo do carro que o cliente ja tem; sem carro, no primeiro da
   // estetica. Antes o padrao era "SUV" fixo, que agora pode nem existir.
-  const segmentoInicial = veiculos[0]?.segmentoId ?? segmentos[0]?.id ?? "";
+  // Carro de um tipo removido nao conta: abriria num tipo que nem esta na lista.
+  const segmentoInicial =
+    veiculos.find((v) => v.segmento.ativo)?.segmentoId ?? segmentos[0]?.id ?? "";
   const primeiroNome = session?.user.name?.split(" ")[0] ?? "";
   const iniciais = tenant.nome
     .split(" ")
