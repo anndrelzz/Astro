@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LIMITES } from "@/lib/validations/limites";
 
 const corHexRegex = /^#([0-9a-fA-F]{6})$/;
 
@@ -39,6 +40,7 @@ export const tenantConfigSchema = z
     emailContato: z
       .string()
       .trim()
+      .max(LIMITES.email, "E-mail muito longo")
       .optional()
       .transform((v) => (v?.length ? v : null))
       .refine((v) => v === null || z.string().email().safeParse(v).success, {
@@ -68,7 +70,11 @@ export const tenantConfigSchema = z
         message: "Estado invalido - use a sigla de 2 letras",
       }),
 
-    pixChaveCopiaCola: z.string().trim().nullable(),
+    pixChaveCopiaCola: z
+      .string()
+      .trim()
+      .max(LIMITES.pixCopiaCola, "Chave PIX muito longa - confira se colou o codigo certo")
+      .nullable(),
     // Nulo (ou vazio) = a estetica nao tem politica de acrescimo e o cliente
     // nao ve aviso nenhum. Teto de 100% porque acima disso o "acrescimo" seria
     // outro servico, e um dedo escorregado em tela nao pode dobrar o aviso.

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { InputPlaca } from "@/components/ui/input-placa";
 import { callbackUrlSeguro } from "@/lib/callback-url";
+import { LIMITES } from "@/lib/validations/limites";
 
 // Os tipos de veiculo agora sao da estetica (RN01 revisada), entao chegam do
 // servidor em vez de estarem escritos aqui. Cada uma define os seus: uma pode
@@ -164,6 +165,7 @@ export function NovoVeiculoForm({
               className={inputCls}
               placeholder="Ex: Jeep"
               value={form.marca}
+              maxLength={LIMITES.marcaVeiculo}
               onChange={(e) => set("marca", e.target.value)}
               required
             />
@@ -175,6 +177,7 @@ export function NovoVeiculoForm({
               className={inputCls}
               placeholder="Ex: Compass Limited"
               value={form.modelo}
+              maxLength={LIMITES.modeloVeiculo}
               onChange={(e) => set("modelo", e.target.value)}
               required
             />
@@ -208,6 +211,7 @@ export function NovoVeiculoForm({
               className={inputCls}
               placeholder="Ex: Preto Carbon"
               value={form.cor}
+              maxLength={LIMITES.corVeiculo}
               onChange={(e) => set("cor", e.target.value)}
               required
             />
