@@ -64,9 +64,10 @@ export default async function TenantPage({
     descricao: s.descricao,
     duracaoMin: s.duracaoMin,
     // Mapa segmentoId -> preco. Servico sem preco para um segmento simplesmente
-    // nao aparece naquele filtro, em vez de aparecer com valor inventado.
+    // nao aparece naquele filtro, em vez de aparecer com valor inventado. R$ 0
+    // fica de fora pelo mesmo motivo (ver calcularPreco).
     precos: Object.fromEntries(
-      s.precos.map((p) => [p.segmentoId, Number(p.valor)])
+      s.precos.filter((p) => p.valor.gt(0)).map((p) => [p.segmentoId, Number(p.valor)])
     ) as Record<string, number>,
   }));
 
