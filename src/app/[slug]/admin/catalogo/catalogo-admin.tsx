@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Clock, Pencil, Plus, Trash2, X } from "lucide-react";
+import { LIMITES } from "@/lib/validations/limites";
 
 type Segmento = { id: string; nome: string; ordem: number };
 
@@ -412,6 +413,7 @@ export function CatalogoAdmin({
                 <label className="astro-label">Nome do serviço</label>
                 <input
                   value={servicoEdit.nome}
+                  maxLength={LIMITES.nomeServico}
                   onChange={(e) =>
                     setServicoEdit({ ...servicoEdit, nome: e.target.value })
                   }

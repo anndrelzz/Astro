@@ -11,6 +11,7 @@ import { ThemeColor } from "@/components/ui/theme-color";
 import { SuccessScreen } from "@/components/ui/success-screen";
 import { callbackUrlSeguro } from "@/lib/callback-url";
 import { PainelMarca, MarcaEstetica, type Estetica } from "./painel-marca";
+import { LIMITES } from "@/lib/validations/limites";
 
 // Regras de senha exibidas ao usuario no cadastro. Precisam bater exatamente
 // com o que /api/auth/cadastro valida — texto que promete uma regra e servidor
@@ -217,6 +218,7 @@ export function AuthForm({
                     icon={<User className="h-4 w-4" />}
                     type="text"
                     placeholder="Seu nome"
+                    maxLength={LIMITES.nomePessoa}
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     required
@@ -234,6 +236,7 @@ export function AuthForm({
                     icon={<Mail className="h-4 w-4" />}
                     type="email"
                     placeholder="voce@email.com"
+                    maxLength={LIMITES.email}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -263,6 +266,8 @@ export function AuthForm({
                   icon={<Lock className="h-4 w-4" />}
                   type={mostrarSenha ? "text" : "password"}
                   placeholder="••••••••"
+                  // So no cadastro: quem ja tem conta com senha maior continua entrando.
+                  maxLength={eLogin ? undefined : LIMITES.senha}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   required
