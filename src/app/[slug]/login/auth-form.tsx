@@ -3,7 +3,7 @@
 import { getSession, signIn } from "next-auth/react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { Logo, Field, FieldLabel, PrimaryButton } from "@/components/ui/astro";
@@ -61,6 +61,11 @@ export function AuthForm({
   // nao roda no servidor. Este e o padrao canonico para o caso.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMontado(true), []);
+
+  // Um id por campo para ligar cada rotulo ao seu input. useId gera um valor
+  // unico e igual no servidor e no navegador, o que um id fixo escrito a mao
+  // nao garante se o formulario aparecer duas vezes na mesma pagina.
+  const id = useId();
 
   const eLogin = modo === "login";
   const atendidas = REGRAS_SENHA.filter((r) => r.ok(senha)).length;
@@ -212,8 +217,10 @@ export function AuthForm({
 
               {!eLogin && (
                 <div className="space-y-1.5">
-                  <FieldLabel>Nome completo</FieldLabel>
+                  <FieldLabel htmlFor={`${id}-nome`}>Nome completo</FieldLabel>
                   <Field
+                    id={`${id}-nome`}
+                    autoComplete="name"
                     claroNoDesktop
                     icon={<User className="h-4 w-4" />}
                     type="text"
@@ -230,8 +237,10 @@ export function AuthForm({
                   (tela 03); no celular continuam empilhados. */}
               <div className={!eLogin ? "space-y-5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0" : ""}>
                 <div className="space-y-1.5">
-                  <FieldLabel>E-mail</FieldLabel>
+                  <FieldLabel htmlFor={`${id}-email`}>E-mail</FieldLabel>
                   <Field
+                    id={`${id}-email`}
+                    autoComplete="email"
                     claroNoDesktop
                     icon={<Mail className="h-4 w-4" />}
                     type="email"
@@ -245,8 +254,10 @@ export function AuthForm({
 
                 {!eLogin && (
                   <div className="space-y-1.5">
-                    <FieldLabel>Telefone</FieldLabel>
+                    <FieldLabel htmlFor={`${id}-telefone`}>Telefone</FieldLabel>
                     <Field
+                      id={`${id}-telefone`}
+                      autoComplete="tel"
                       claroNoDesktop
                       icon={<Phone className="h-4 w-4" />}
                       type="tel"
@@ -260,8 +271,12 @@ export function AuthForm({
               </div>
 
               <div className="space-y-1.5">
-                <FieldLabel>Senha</FieldLabel>
+                <FieldLabel htmlFor={`${id}-senha`}>Senha</FieldLabel>
                 <Field
+                  id={`${id}-senha`}
+                  // No login o navegador oferece a senha salva; no cadastro,
+                  // sugere uma nova e guarda junto com o e-mail.
+                  autoComplete={eLogin ? "current-password" : "new-password"}
                   claroNoDesktop
                   icon={<Lock className="h-4 w-4" />}
                   type={mostrarSenha ? "text" : "password"}
