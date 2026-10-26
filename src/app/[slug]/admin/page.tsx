@@ -1,7 +1,5 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import {
   CalendarCheck,
   CalendarDays,
@@ -16,6 +14,9 @@ import { withTenant } from "@/lib/tenant-db";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
 
 // RF11, UC10 — Dashboard do painel (tela inicial do mockup do admin).
+//
+// A identidade da estetica (logo, nome, aberto/fechado, site publico) mora na
+// barra lateral (admin-sidebar.tsx); por isso esta tela nao tem capa.
 //
 // Os indicadores saem dos dados que ja existem. O mockup mostra tambem nota de
 // avaliacao e endereco da estetica: nenhum dos dois existe no modelo de dados,
@@ -184,82 +185,10 @@ export default async function AdminDashboardPage({
     : 0;
   const vagasLivres = Math.max(0, vagasDoDia - dados.hoje);
 
-  const iniciais = tenant.nome
-    .split(" ")
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join("")
-    .toUpperCase();
-
   return (
     <>
-      {/* Capa + identidade da estetica */}
-      <section className="overflow-hidden rounded-2xl border border-admin-border">
-        <div
-          className="relative flex h-36 items-center justify-center lg:h-48"
-          style={{
-            backgroundImage:
-              "radial-gradient(120% 140% at 50% -20%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 35%, var(--color-admin-bg) 100%)",
-          }}
-        >
-          {/* Listras diagonais sutis, como na capa do mockup */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-40"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 22px)",
-            }}
-          />
-          {/* A capa carrega a marca da PLATAFORMA, como no wireframe. A
-              identidade da estetica (avatar, nome, slug) fica no card abaixo. */}
-          <Image
-            src="/logo-astro-branco.png"
-            alt="Astro"
-            width={712}
-            height={219}
-            priority
-            className="relative h-auto w-56 drop-shadow-lg lg:w-72"
-          />
-        </div>
-
-        {/* Card sobreposto */}
-        <div className="relative -mt-8 mx-4 mb-4 flex flex-wrap items-center gap-4 rounded-2xl border border-admin-border bg-admin-surface px-5 py-4 shadow-xl shadow-black/40 lg:mx-5">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-astro-blue text-xl font-bold text-white shadow-lg shadow-astro-blue/30">
-            {iniciais}
-          </span>
-
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-bold text-white lg:text-2xl">{tenant.nome}</h2>
-              <span
-                className={
-                  aberto
-                    ? "flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-emerald-300"
-                    : "flex items-center gap-1.5 rounded-full bg-admin-surface-2 px-2.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-astro-muted"
-                }
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${aberto ? "bg-emerald-400" : "bg-astro-muted"}`}
-                />
-                {aberto ? "Aberto" : "Fechado"}
-              </span>
-            </div>
-            <p className="mt-1 font-mono text-xs text-astro-muted">
-              astro.app/{tenant.slug}
-            </p>
-          </div>
-
-          <Link
-            href={`/${slug}`}
-            className="shrink-0 rounded-lg border border-admin-border px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-astro-blue hover:text-white"
-          >
-            Ver site publico
-          </Link>
-        </div>
-      </section>
-
       {/* Cabecalho da secao */}
-      <div className="mb-5 mt-7">
+      <div className="mb-5">
         <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">
           Dashboard
         </h1>
