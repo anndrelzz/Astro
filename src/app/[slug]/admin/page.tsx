@@ -1,12 +1,13 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { CalendarDays, Car, Clock, Droplets, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { CalendarDays, Car, Clock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { FUSO, fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
+import { FUSO, chaveDia, fimDoDia, horaMinuto, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
-import type { StatusAgendamento } from "@/generated/prisma/enums";
+import { AgendaHoje } from "./agenda-hoje";
 import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "./cartao-faturamento";
+import { EsperandoVoce } from "./esperando-voce";
 
 // RF11, UC10 — Dashboard do painel (tela inicial do mockup do admin).
 //
@@ -21,36 +22,6 @@ const STATUS_PAGO = ["CONFIRMADO", "CONCLUIDO"] as const;
 // O que ainda nao entrou no caixa: PIX esperando confirmacao e pagamento no
 // local (cobrado na hora do servico).
 const STATUS_A_RECEBER = ["PIX_PENDENTE", "PENDENTE_PAGAMENTO"] as const;
-
-// Cada status ganha cor propria, como no mockup - status e a informacao que o
-// admin le mais rapido na tela.
-const ESTILO_STATUS: Record<StatusAgendamento, { rotulo: string; classe: string; ponto: string }> = {
-  CONFIRMADO: {
-    rotulo: "Confirmado",
-    classe: "bg-emerald-500/15 text-emerald-300",
-    ponto: "bg-emerald-400",
-  },
-  PIX_PENDENTE: {
-    rotulo: "PIX pendente",
-    classe: "bg-amber-500/15 text-amber-300",
-    ponto: "bg-amber-400",
-  },
-  PENDENTE_PAGAMENTO: {
-    rotulo: "Aguardando pagamento",
-    classe: "bg-sky-500/15 text-sky-300",
-    ponto: "bg-sky-400",
-  },
-  CONCLUIDO: {
-    rotulo: "Concluido",
-    classe: "bg-admin-surface-2 text-astro-muted",
-    ponto: "bg-astro-muted",
-  },
-  CANCELADO: {
-    rotulo: "Cancelado",
-    classe: "bg-red-500/15 text-red-300",
-    ponto: "bg-red-400",
-  },
-};
 
 export default async function AdminDashboardPage({
   params,
@@ -154,6 +125,14 @@ export default async function AdminDashboardPage({
       orderBy: { dataHora: "asc" },
     });
 
+    // "Esperando voce": PIX de hoje em diante que o dono ainda nao confirmou.
+    const esperando = await tx.agendamento.findMany({
+      where: { tenantId: tenant.id, status: "PIX_PENDENTE", dataHora: { gte: inicioDoDia(agora) } },
+      include: { usuario: true, veiculo: true, servico: true },
+      orderBy: { dataHora: "asc" },
+      take: 5,
+    });
+
     // "Aberto agora" e "horarios livres" saem da grade de funcionamento (RF02).
     const horarioHoje = await tx.horarioFuncionamento.findUnique({
       where: {
@@ -170,15 +149,10 @@ export default async function AdminDashboardPage({
       resumoMes,
       pixPendentes,
       agenda,
+      esperando,
       horarioHoje,
     };
   });
-
-  const minutosAgora = relogio.hora * 60 + relogio.minuto;
-  const aberto =
-    !!dados.horarioHoje &&
-    minutosAgora >= dados.horarioHoje.horaInicioMin &&
-    minutosAgora < dados.horarioHoje.horaFimMin;
 
   // Vagas do dia = quantos horarios a grade oferece x capacidade simultanea.
   const vagasDoDia = dados.horarioHoje
@@ -210,6 +184,39 @@ export default async function AdminDashboardPage({
     mes: { rotulo: `Faturamento de ${nomeMes(agora)}`, ...dados.resumoMes },
   };
 
+  const eventos = dados.agenda.map((a) => {
+    const inicioMin = minutosNoFuso(a.dataHora);
+    return {
+      id: a.id,
+      inicioMin,
+      fimMin: inicioMin + a.servico.duracaoMin,
+      cliente: a.usuario.nome,
+      detalhe: `${a.servico.nome} · ${a.veiculo.modelo}`,
+      status: a.status,
+    };
+  });
+  const expediente = dados.horarioHoje
+    ? `${tenant.capacidadeSimultanea} carro${tenant.capacidadeSimultanea === 1 ? "" : "s"} por vez · ${minParaHora(dados.horarioHoje.horaInicioMin)} às ${minParaHora(dados.horarioHoje.horaFimMin)}`
+    : "fechado hoje";
+
+  const hojeChave = chaveDia(agora);
+  const amanhaChave = chaveDia(inicioDoDia(agora, 1));
+  const esperando = dados.esperando.map((a) => {
+    const dia = chaveDia(a.dataHora);
+    return {
+      id: a.id,
+      hora: horaMinuto(a.dataHora),
+      dia:
+        dia === hojeChave
+          ? "hoje"
+          : dia === amanhaChave
+            ? "amanhã"
+            : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
+      cliente: a.usuario.nome,
+      detalhe: `${a.servico.nome} · ${a.veiculo.modelo} · ${a.veiculo.placa} · ${formatarReal(Number(a.valor))}`,
+    };
+  });
+
   // Ticket medio do mes: quanto entrou, dividido pelos atendimentos pagos.
   const ticketMedio = dados.resumoMes.pagos > 0 ? dados.resumoMes.recebido / dados.resumoMes.pagos : 0;
 
@@ -240,118 +247,47 @@ export default async function AdminDashboardPage({
         </span>
       </div>
 
-      {/* Faturamento + indicadores */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <CartaoFaturamento periodos={periodos} />
+      {/* Esquerda: faturamento, indicadores e PIX para confirmar.
+          Direita: a agenda de hoje em linha do tempo. */}
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-5">
+          <CartaoFaturamento periodos={periodos} />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Mini rotulo="Carros hoje" valor={String(dados.hoje)} icone={<Car className="h-4 w-4" />} />
-          <Mini
-            rotulo="Vagas livres hoje"
-            valor={dados.horarioHoje ? String(vagasLivres) : "Fechado"}
-            icone={<Clock className="h-4 w-4" />}
-          />
-          <Mini
-            rotulo="Agendamentos no mês"
-            valor={String(dados.mes)}
-            icone={<CalendarDays className="h-4 w-4" />}
-            nota={comparacaoMes}
-            notaPositiva={deltaMes >= 0}
-          />
-          <Mini rotulo="Ticket médio" valor={formatarReal(ticketMedio)} icone={<Wallet className="h-4 w-4" />} />
-        </div>
-      </div>
-
-      {/* Agenda do dia */}
-      <section className="mt-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-lg font-semibold text-white lg:text-xl">
-            Agendamentos de hoje
-          </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 rounded-full bg-astro-blue/15 px-3 py-1 font-mono text-[0.65rem] uppercase tracking-wider text-astro-blue-bright">
-              <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
-              {dados.hoje} agendado{dados.hoje === 1 ? "" : "s"}
-            </span>
-            <span className="rounded-full bg-admin-surface-2 px-3 py-1 font-mono text-[0.65rem] uppercase tracking-wider text-astro-muted">
-              {aberto || vagasDoDia > 0
-                ? `${vagasLivres} vaga${vagasLivres === 1 ? "" : "s"} livre${vagasLivres === 1 ? "" : "s"}`
-                : "fechado hoje"}
-            </span>
+          <div className="grid grid-cols-2 gap-3">
+            <Mini rotulo="Carros hoje" valor={String(dados.hoje)} icone={<Car className="h-4 w-4" />} />
+            <Mini
+              rotulo="Vagas livres hoje"
+              valor={dados.horarioHoje ? String(vagasLivres) : "Fechado"}
+              icone={<Clock className="h-4 w-4" />}
+            />
+            <Mini
+              rotulo="Agendamentos no mês"
+              valor={String(dados.mes)}
+              icone={<CalendarDays className="h-4 w-4" />}
+              nota={comparacaoMes}
+              notaPositiva={deltaMes >= 0}
+            />
+            <Mini rotulo="Ticket médio" valor={formatarReal(ticketMedio)} icone={<Wallet className="h-4 w-4" />} />
           </div>
+
+          <EsperandoVoce itens={esperando} />
         </div>
 
-        <ul className="mt-4 space-y-2">
-          {dados.agenda.map((a) => {
-            const estilo = ESTILO_STATUS[a.status];
-            const fim = new Date(a.dataHora.getTime() + a.servico.duracaoMin * 60000);
-
-            return (
-              <li
-                key={a.id}
-                className="flex flex-wrap items-center gap-4 rounded-xl border border-admin-border bg-admin-surface px-4 py-3.5 transition hover:border-astro-blue/40"
-              >
-                <div className="w-20 shrink-0">
-                  <p className="font-mono text-lg font-bold text-astro-blue-bright">
-                    {formatarHora(a.dataHora)}
-                  </p>
-                  <p className="font-mono text-[0.65rem] text-astro-muted">
-                    ate {formatarHora(fim)}
-                  </p>
-                </div>
-
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-admin-surface-2 text-astro-blue-bright">
-                  <Droplets className="h-5 w-5" />
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-white">{a.usuario.nome}</p>
-                  <p className="truncate text-xs text-astro-muted">
-                    {a.servico.nome} · {a.veiculo.marca} {a.veiculo.modelo} ·{" "}
-                    <span className="font-mono">{a.veiculo.placa}</span>
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="font-bold text-white">
-                    {formatarReal(Number(a.valor))}
-                    {a.acrescimoAplicado !== null && (
-                      <span className="ml-1 font-normal text-amber-300">
-                        + {formatarReal(Number(a.acrescimoAplicado))}
-                      </span>
-                    )}
-                  </p>
-                  <span
-                    className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-mono text-[0.6rem] uppercase tracking-wider ${estilo.classe}`}
-                  >
-                    <span className={`h-1.5 w-1.5 rounded-full ${estilo.ponto}`} />
-                    {estilo.rotulo}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-
-          {dados.agenda.length === 0 && (
-            <li className="rounded-xl border border-dashed border-admin-border p-10 text-center">
-              <p className="text-sm font-semibold text-white">
-                Nenhum agendamento para hoje.
-              </p>
-              <p className="mt-1 text-sm text-astro-muted">
-                {dados.horarioHoje
-                  ? "A agenda esta livre — os horarios continuam abertos para os clientes."
-                  : "A estetica esta fechada hoje pela grade de horarios."}
-              </p>
-            </li>
-          )}
-        </ul>
-      </section>
+        <AgendaHoje
+          eventos={eventos}
+          abreMin={dados.horarioHoje?.horaInicioMin ?? null}
+          fechaMin={dados.horarioHoje?.horaFimMin ?? null}
+          agoraMin={relogio.hora * 60 + relogio.minuto}
+          expediente={expediente}
+        />
+      </div>
     </>
   );
 }
 
-function formatarHora(d: Date) {
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO });
+// 540 -> "09:00"
+function minParaHora(min: number) {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
 function formatarReal(valor: number) {
