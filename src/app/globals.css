@@ -29,6 +29,22 @@
   --color-admin-surface: #09090b;
   --color-admin-surface-2: #18181b;
   --color-admin-border: #27272a;
+
+  /* Landing de vendas do Astro (pagina inicial). Preto e branco com detalhes
+     em azul — o mesmo principio das telas do app (base neutra, so o azul
+     carrega cor). E a marca da plataforma, nao a de uma estetica — por isso
+     nao usa os tokens astro-*, que o tenant sobrescreve. */
+  --color-landing-night: #09090b;
+  --color-landing-surface: #111113;
+  --color-landing-card: #18181b;
+  --color-landing-card-2: #27272a;
+  --color-landing-line: rgba(255, 255, 255, 0.1);
+  --color-landing-line-strong: rgba(255, 255, 255, 0.2);
+  --color-landing-ink: #fafafa;
+  --color-landing-muted: #a1a1aa;
+  --color-landing-blue: #2563eb;
+  --color-landing-blue-dark: #1d4ed8;
+  --color-landing-glow: #60a5fa;
 }
 
 :root {
@@ -96,4 +112,74 @@ body {
   letter-spacing: 0.12em;
   font-size: 0.7rem;
   color: var(--color-astro-muted);
+}
+
+/* Landing (pagina inicial): largura do conteudo e botoes. Ficam aqui, e nao
+   repetidos em cada componente, porque aparecem em varios arquivos de
+   src/app/_landing. A margem lateral soma a area segura do celular. */
+.landing-wrap {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.landing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.8rem 1.5rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+.landing-btn:hover { transform: translateY(-1px); }
+.landing-btn:focus-visible { outline: 2px solid var(--color-landing-glow); outline-offset: 3px; }
+.landing-btn-primary {
+  color: #fff;
+  background-image: linear-gradient(135deg, var(--color-landing-blue), var(--color-landing-blue-dark));
+  box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.8);
+}
+.landing-btn-primary:hover { filter: brightness(1.08); }
+.landing-btn-ghost {
+  color: var(--color-landing-ink);
+  background-color: rgba(17, 17, 19, 0.55);
+  border-color: var(--color-landing-line-strong);
+}
+.landing-btn-ghost:hover { border-color: var(--color-landing-glow); }
+.landing-btn-light { color: #18181b; background-color: #fff; }
+.landing-btn-light:hover { background-color: #e4e4e7; }
+.landing-btn-sm { min-height: 40px; padding: 0.55rem 1.1rem; font-size: 0.92rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-btn:hover { transform: none; }
+}
+
+/* Entrada do topo da landing: sobe e aparece. "both" mantem o estado inicial
+   durante o atraso (animation-delay de cada elemento), para nada piscar. */
+@keyframes landing-subir {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+/* Na camada components: assim as utilitarias [animation-delay:...] dos
+   elementos (camada utilities) vencem o "animation" daqui. */
+@layer components {
+  .landing-subir { animation: landing-subir 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-subir { animation: none; }
+}
+
+/* Links da landing que levam a uma secao da propria pagina (#preco etc.)
+   descem rolando suave em vez de pular. So vale enquanto a landing esta na
+   tela (:has) — as telas do app continuam com a rolagem padrao — e so para
+   quem nao pediu menos movimento no aparelho. */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.landing) { scroll-behavior: smooth; }
 }
