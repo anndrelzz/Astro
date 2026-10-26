@@ -121,7 +121,7 @@ export function AdminSidebar({
       </div>
 
       {/* Estetica: logo, nome, aberto/fechado e site publico */}
-      <div className="mx-4 mt-5 grid gap-3 rounded-2xl bg-white/10 p-3">
+      <div className="borda-viva mx-4 mt-5 grid gap-3 rounded-2xl bg-white/10 p-3">
         <div className="flex items-center gap-3">
           {tenantLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
