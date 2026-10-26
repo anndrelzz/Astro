@@ -40,10 +40,15 @@ const ESTILO: Record<string, { rotulo: string; caixa: string; selo: string }> = 
   },
   FEITO: {
     rotulo: "Concluído",
-    caixa: "border-zinc-500 bg-admin-surface-2 opacity-70",
-    selo: "bg-white/10 text-astro-muted",
+    caixa: "border-emerald-400 bg-emerald-400/10",
+    selo: "bg-emerald-400/15 text-emerald-300",
   },
 };
+
+// Mesma regra da tela de Agendamentos: a cor da caixa segue o horario
+// (concluido em verde, em andamento na cor da situacao com a luz na borda,
+// o que ainda vai acontecer na cor da estetica). O selo diz a situacao.
+const FUTURO = "border-astro-blue-bright bg-[color-mix(in_srgb,var(--color-astro-blue)_16%,transparent)]";
 
 function hhmm(min: number) {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
@@ -130,13 +135,15 @@ export function AgendaHoje({
 
           {emFaixas(eventos).map(({ ev, faixa, total }) => {
             const passou = ev.fimMin <= agoraMin;
+            const andando = !passou && ev.inicioMin <= agoraMin;
             const estilo = ESTILO[passou ? "FEITO" : ev.status] ?? ESTILO.CONFIRMADO;
+            const caixa = passou ? estilo.caixa : andando ? `borda-viva ${estilo.caixa}` : FUTURO;
             const altura = Math.max(y(ev.fimMin) - y(ev.inicioMin) - 4, 30);
             const curto = altura < 46;
             return (
               <div
                 key={ev.id}
-                className={`absolute overflow-hidden rounded-xl border-l-[3px] px-2.5 ${curto ? "flex items-center" : "py-1.5"} ${estilo.caixa}`}
+                className={`absolute overflow-hidden rounded-xl border-l-[3px] px-2.5 ${curto ? "flex items-center" : "py-1.5"} ${caixa}`}
                 style={{
                   top: y(ev.inicioMin) + 2,
                   height: altura,
@@ -154,7 +161,7 @@ export function AgendaHoje({
                   <span
                     className={`absolute top-1.5 right-2 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${estilo.selo}`}
                   >
-                    {estilo.rotulo}
+                    {andando ? "Em andamento" : estilo.rotulo}
                   </span>
                 )}
               </div>
@@ -173,10 +180,8 @@ export function AgendaHoje({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-3 text-[0.7rem] text-astro-muted">
-        <Legenda cor="bg-emerald-400" texto="Confirmado" />
-        <Legenda cor="bg-amber-400" texto="PIX pendente" />
-        <Legenda cor="bg-sky-300" texto="Paga no local" />
-        <Legenda cor="bg-zinc-500" texto="Já passou" />
+        <Legenda cor="bg-emerald-400" texto="Concluído" />
+        <Legenda cor="bg-astro-blue-bright" texto="A seguir" />
       </div>
     </Moldura>
   );
