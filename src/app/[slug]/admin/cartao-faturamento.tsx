@@ -29,7 +29,6 @@ export function CartaoFaturamento({ periodos }: { periodos: Record<Periodo, Resu
   const [oculto, setOculto] = useState(false);
 
   const atual = periodos[periodo];
-  const [reais, centavos] = formatarPartes(atual.recebido);
 
   return (
     <section
@@ -66,8 +65,7 @@ export function CartaoFaturamento({ periodos }: { periodos: Record<Periodo, Resu
 
       <p className="relative mt-4 flex items-baseline gap-1.5 font-extrabold tracking-tight tabular-nums">
         <span className="text-xl text-white/70">R$</span>
-        <span className="text-5xl leading-none">{oculto ? "••••" : reais}</span>
-        {!oculto && <span className="text-2xl text-white/80">,{centavos}</span>}
+        <span className="text-5xl leading-none">{oculto ? "••••" : formatarValor(atual.recebido)}</span>
       </p>
 
       <div className="relative mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -103,9 +101,7 @@ function formatarReal(valor: number) {
   return `R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// "1.234,50" -> ["1.234", "50"]: os centavos aparecem menores ao lado.
-function formatarPartes(valor: number): [string, string] {
-  const texto = valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const [inteiro, decimal] = texto.split(",");
-  return [inteiro, decimal];
+// 1234.5 -> "1.234,50"
+function formatarValor(valor: number) {
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
