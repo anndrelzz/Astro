@@ -1,36 +1,48 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Ban,
-  CalendarDays,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  TrendingUp,
-} from "lucide-react";
+import { Ban, Car, Check, ChevronLeft, ChevronRight, MessageCircle, MoreHorizontal, Search, TrendingUp } from "lucide-react";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
-import { FUSO } from "@/lib/fuso";
 import { Modal } from "../modal";
 
-// RF11, UC10 — tabela de agendamentos do painel (mockup do admin).
+// RF11, UC10 — agenda do painel em linha do tempo.
 //
-// Abas, busca e paginacao rodam aqui, sobre o conjunto que o servidor ja
-// enviou: respondem instantaneamente e nao geram consulta a cada tecla. O
-// periodo, esse sim, e filtrado no servidor — e ele que limita o volume.
+// Cada dia vira uma lista vertical: um agendamento embaixo do outro, na ordem
+// em que a estetica atende, com os espacos livres entre eles. O cartao poe o
+// SERVICO em destaque (e o que o dono prepara), com o cliente embaixo.
+//
+// Troca de dia (dentro da semana), filtro por situacao e busca rodam aqui,
+// sobre a semana que o servidor ja enviou. Trocar de semana navega
+// (?dia=AAAA-MM-DD).
+//
+// As acoes sao as mesmas de antes: confirmar o pagamento, confirmar com
+// acrescimo (RN — politica de acrescimo da estetica) e cancelar.
 
-export type Periodo = "hoje" | "7dias" | "mes" | "todos";
+export type DiaSemana = {
+  chave: string;
+  sigla: string;
+  numero: number;
+  nome: string;
+  /** null = a estetica nao abre neste dia da semana */
+  abreMin: number | null;
+  fechaMin: number | null;
+};
 
 export type ItemAgendamento = {
   id: string;
-  dataHoraISO: string;
+  /** "AAAA-MM-DD" no fuso da estetica */
+  dia: string;
+  /** minutos desde a meia-noite, no fuso da estetica */
+  inicioMin: number;
+  fimMin: number;
+  fimISO: string;
   duracaoMin: number;
   clienteNome: string;
   clienteTelefone: string;
+  clienteEmail: string;
   veiculo: string;
+  veiculoAno: number;
   placa: string;
   servicoNome: string;
   valor: number;
@@ -39,109 +51,78 @@ export type ItemAgendamento = {
   status: StatusAgendamento;
 };
 
-const POR_PAGINA = 10;
+type Filtro = "todos" | StatusAgendamento;
 
-const PERIODOS: { valor: Periodo; rotulo: string }[] = [
-  { valor: "hoje", rotulo: "Hoje" },
-  { valor: "7dias", rotulo: "7 dias" },
-  { valor: "mes", rotulo: "Este mes" },
-  { valor: "todos", rotulo: "Todos" },
-];
-
-const ABAS: { chave: "todos" | StatusAgendamento; rotulo: string }[] = [
+const FILTROS: { chave: Filtro; rotulo: string }[] = [
   { chave: "todos", rotulo: "Todos" },
   { chave: "CONFIRMADO", rotulo: "Confirmados" },
   { chave: "PIX_PENDENTE", rotulo: "PIX pendente" },
-  { chave: "PENDENTE_PAGAMENTO", rotulo: "Pagamento no local" },
-  { chave: "CONCLUIDO", rotulo: "Concluidos" },
+  { chave: "PENDENTE_PAGAMENTO", rotulo: "No local" },
+  { chave: "CONCLUIDO", rotulo: "Concluídos" },
   { chave: "CANCELADO", rotulo: "Cancelados" },
 ];
 
 // Nenhuma rota do sistema atribui o status CONCLUIDO (nem automatico, nem
-// botao do admin) — sem isso a aba "Concluidos" mostraria zero para sempre.
+// botao do admin) — sem isso o filtro "Concluidos" mostraria zero para sempre.
 // Mesmo truque do historico do cliente (UC05): um agendamento ativo cujo
 // horario final ja passou e tratado como concluido so para exibicao/filtro,
-// sem tocar o status gravado no banco.
-function statusEfetivo(
-  item: Pick<ItemAgendamento, "status" | "dataHoraISO" | "duracaoMin">
-): StatusAgendamento {
-  if (item.status === "CANCELADO" || item.status === "CONCLUIDO") {
-    return item.status;
-  }
-  const fim = new Date(item.dataHoraISO).getTime() + item.duracaoMin * 60000;
-  return fim < Date.now() ? "CONCLUIDO" : item.status;
+// sem tocar o status gravado no banco. O "agora" vem do servidor, para a tela
+// toda usar o mesmo relogio.
+function statusEfetivo(item: ItemAgendamento, agoraMs: number): StatusAgendamento {
+  if (item.status === "CANCELADO" || item.status === "CONCLUIDO") return item.status;
+  return new Date(item.fimISO).getTime() < agoraMs ? "CONCLUIDO" : item.status;
 }
 
-const ESTILO_STATUS: Record<
-  StatusAgendamento,
-  { rotulo: string; classe: string; ponto: string }
-> = {
+const ESTILO: Record<StatusAgendamento, { rotulo: string; borda: string; fundo: string; selo: string }> = {
   CONFIRMADO: {
     rotulo: "Confirmado",
-    classe: "bg-emerald-500/15 text-emerald-300",
-    ponto: "bg-emerald-400",
+    borda: "border-l-emerald-400",
+    fundo: "bg-[linear-gradient(90deg,rgba(52,211,153,0.10),transparent_60%)]",
+    selo: "bg-emerald-400/15 text-emerald-300",
   },
   PIX_PENDENTE: {
     rotulo: "PIX pendente",
-    classe: "bg-amber-500/15 text-amber-300",
-    ponto: "bg-amber-400",
+    borda: "border-l-amber-400",
+    fundo: "bg-[linear-gradient(90deg,rgba(251,191,36,0.10),transparent_60%)]",
+    selo: "bg-amber-400/15 text-amber-300",
   },
   PENDENTE_PAGAMENTO: {
-    rotulo: "Pagamento no local",
-    classe: "bg-sky-500/15 text-sky-300",
-    ponto: "bg-sky-400",
+    rotulo: "Paga no local",
+    borda: "border-l-sky-300",
+    fundo: "bg-[linear-gradient(90deg,rgba(125,211,252,0.10),transparent_60%)]",
+    selo: "bg-sky-400/15 text-sky-300",
   },
   CONCLUIDO: {
-    rotulo: "Concluido",
-    classe: "bg-admin-surface-2 text-astro-muted",
-    ponto: "bg-astro-muted",
+    rotulo: "Concluído",
+    borda: "border-l-zinc-500",
+    fundo: "opacity-70",
+    selo: "bg-white/10 text-astro-muted",
   },
   CANCELADO: {
     rotulo: "Cancelado",
-    classe: "bg-red-500/15 text-red-300",
-    ponto: "bg-red-400",
+    borda: "border-l-red-400",
+    fundo: "opacity-70",
+    selo: "bg-red-400/15 text-red-300",
   },
 };
 
-// Cor do avatar derivada do nome: a mesma pessoa recebe sempre a mesma cor,
-// o que ajuda a reconhecer clientes recorrentes ao correr os olhos pela lista.
-const CORES_AVATAR = [
-  "bg-blue-500/25 text-blue-200",
-  "bg-emerald-500/25 text-emerald-200",
-  "bg-violet-500/25 text-violet-200",
-  "bg-amber-500/25 text-amber-200",
-  "bg-rose-500/25 text-rose-200",
-  "bg-teal-500/25 text-teal-200",
-];
+// Menor servico que costuma caber num espaco livre; abaixo disso o espaco e
+// so um intervalo.
+const MENOR_SERVICO_MIN = 40;
 
-function corDoNome(nome: string) {
-  let soma = 0;
-  for (const c of nome) soma += c.charCodeAt(0);
-  return CORES_AVATAR[soma % CORES_AVATAR.length];
-}
-
-function iniciais(nome: string) {
-  return nome
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join("")
-    .toUpperCase();
+function hhmm(min: number) {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
 function formatarReal(v: number) {
-  return `R$ ${v.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatarDuracao(min: number) {
-  if (min < 60) return `${min} min`;
+  if (min < 60) return `${min}min`;
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return m ? `${h}h ${String(m).padStart(2, "0")}` : `${h}h`;
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
 function formatarTelefone(t: string) {
@@ -151,28 +132,50 @@ function formatarTelefone(t: string) {
   return t;
 }
 
+// Link do WhatsApp do cliente (wa.me so aceita digitos, com o 55 do Brasil).
+function linkWhatsApp(telefone: string) {
+  const d = telefone.replace(/\D/g, "");
+  if (d.length < 10) return null;
+  return `https://wa.me/${d.length <= 11 ? `55${d}` : d}`;
+}
+
 export function AgendamentosLista({
   slug,
+  dias,
+  diaInicial,
+  semanaAnterior,
+  proximaSemana,
+  hoje,
+  agoraISO,
+  agoraMin,
+  capacidade,
   itens,
-  periodo,
   acrescimoCondicaoPercent,
 }: {
   slug: string;
+  dias: DiaSemana[];
+  diaInicial: string;
+  semanaAnterior: string;
+  proximaSemana: string;
+  hoje: string;
+  agoraISO: string;
+  agoraMin: number;
+  capacidade: number;
   itens: ItemAgendamento[];
-  periodo: Periodo;
   // Politica de acrescimo da estetica. Nulo = nao cobra acrescimo, e o botao
   // de lancar nem aparece.
   acrescimoCondicaoPercent: number | null;
 }) {
   const router = useRouter();
+  const agoraMs = new Date(agoraISO).getTime();
 
-  const [aba, setAba] = useState<"todos" | StatusAgendamento>("todos");
+  const [diaSel, setDiaSel] = useState(diaInicial);
+  const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
-  const [pagina, setPagina] = useState(1);
-  const [expandido, setExpandido] = useState<string | null>(null);
+  const [aberto, setAberto] = useState<string | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  // Agendamento com o modal de acrescimo aberto, e o percentual digitado.
+  // Agendamento com o modal de acrescimo aberto.
   const [acrescimoAlvo, setAcrescimoAlvo] = useState<ItemAgendamento | null>(null);
   // O Admin pode digitar pelo percentual OU pelo total cobrado — na correria
   // ele viu "servico de 150, cobrei 180" e nao pensou em porcentagem nenhuma.
@@ -185,69 +188,51 @@ export function AgendamentosLista({
   const [campoEditando, setCampoEditando] = useState<"percent" | "total" | null>(null);
   const [textoDigitado, setTextoDigitado] = useState("");
 
+  const dia = dias.find((d) => d.chave === diaSel) ?? dias[0];
+  const doDia = useMemo(() => itens.filter((i) => i.dia === dia.chave), [itens, dia.chave]);
+
   const contagens = useMemo(() => {
-    const m = new Map<string, number>();
-    m.set("todos", itens.length);
-    for (const i of itens) {
-      const s = statusEfetivo(i);
+    const m = new Map<Filtro, number>();
+    m.set("todos", doDia.filter((i) => i.status !== "CANCELADO").length);
+    for (const i of doDia) {
+      const s = statusEfetivo(i, agoraMs);
       m.set(s, (m.get(s) ?? 0) + 1);
     }
     return m;
-  }, [itens]);
+  }, [doDia, agoraMs]);
 
-  const filtrados = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-    return itens.filter((i) => {
-      if (aba !== "todos" && statusEfetivo(i) !== aba) return false;
+  const termo = busca.trim().toLowerCase();
+  const lista = doDia
+    .filter((i) => {
+      const s = statusEfetivo(i, agoraMs);
+      // "Todos" e a agenda do dia: cancelados so aparecem no filtro proprio.
+      if (filtro === "todos" ? s === "CANCELADO" : s !== filtro) return false;
       if (!termo) return true;
-      return (
-        i.clienteNome.toLowerCase().includes(termo) ||
-        i.placa.toLowerCase().includes(termo) ||
-        i.servicoNome.toLowerCase().includes(termo) ||
-        i.veiculo.toLowerCase().includes(termo)
-      );
-    });
-  }, [itens, aba, busca]);
+      return [i.clienteNome, i.placa, i.servicoNome, i.veiculo].some((c) => c.toLowerCase().includes(termo));
+    })
+    .sort((a, b) => a.inicioMin - b.inicioMin);
+  // Os espacos livres so fazem sentido olhando o dia inteiro.
+  const mostrarLivres = filtro === "todos" && !termo && dia.abreMin !== null;
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA));
-  const paginaAtual = Math.min(pagina, totalPaginas);
-  const visiveis = filtrados.slice(
-    (paginaAtual - 1) * POR_PAGINA,
-    paginaAtual * POR_PAGINA
-  );
-
-  function trocarAba(chave: "todos" | StatusAgendamento) {
-    setAba(chave);
-    setPagina(1);
-    setExpandido(null);
+  function irParaSemana(chave: string) {
+    router.push(`/${slug}/admin/agendamentos?dia=${chave}`);
   }
 
-  function trocarPeriodo(valor: Periodo) {
-    router.push(`/${slug}/admin/agendamentos?periodo=${valor}`);
-  }
-
-  async function agir(
-    id: string,
-    acao: "confirmar-pagamento" | "cancelar",
-    acrescimo?: number
-  ) {
+  async function agir(id: string, acao: "confirmar-pagamento" | "cancelar", acrescimo?: number) {
     setProcessando(id);
     setErro(null);
-
     const resposta = await fetch(`/api/agendamentos/${id}/${acao}`, {
       method: "POST",
       headers: acrescimo ? { "Content-Type": "application/json" } : undefined,
       body: acrescimo ? JSON.stringify({ acrescimo }) : undefined,
     });
-
     setProcessando(null);
-
     if (!resposta.ok) {
       const json = await resposta.json().catch(() => null);
-      setErro(json?.error ?? "Nao foi possivel completar a acao.");
+      setErro(json?.error ?? "Não foi possível completar a ação.");
       return;
     }
-    setExpandido(null);
+    setAberto(null);
     router.refresh();
   }
 
@@ -257,21 +242,10 @@ export function AgendamentosLista({
   const valorAcrescimo = acrescimoReais;
   const totalComAcrescimo = base + valorAcrescimo;
   const percentNumero = base > 0 ? (valorAcrescimo / base) * 100 : 0;
-
-  // O campo que NAO esta sendo editado mostra o valor derivado; o que esta
-  // mostra exatamente o que foi digitado.
   const textoPercent =
-    campoEditando === "percent"
-      ? textoDigitado
-      : valorAcrescimo > 0
-        ? String(Math.round(percentNumero * 100) / 100)
-        : "";
+    campoEditando === "percent" ? textoDigitado : valorAcrescimo > 0 ? String(Math.round(percentNumero * 100) / 100) : "";
   const textoTotal =
-    campoEditando === "total"
-      ? textoDigitado
-      : valorAcrescimo > 0
-        ? totalComAcrescimo.toFixed(2)
-        : "";
+    campoEditando === "total" ? textoDigitado : valorAcrescimo > 0 ? totalComAcrescimo.toFixed(2) : "";
 
   function limparAcrescimo() {
     setAcrescimoAlvo(null);
@@ -280,325 +254,171 @@ export function AgendamentosLista({
     setTextoDigitado("");
   }
 
+  // Monta a linha do tempo: cartoes e, entre eles, os espacos livres.
+  const linhas: ({ tipo: "ag"; item: ItemAgendamento } | { tipo: "livre"; de: number; ate: number })[] = [];
+  let cursor = dia.abreMin ?? 0;
+  for (const item of lista) {
+    if (mostrarLivres && item.inicioMin > cursor) linhas.push({ tipo: "livre", de: cursor, ate: item.inicioMin });
+    linhas.push({ tipo: "ag", item });
+    cursor = Math.max(cursor, item.fimMin);
+  }
+  if (mostrarLivres && dia.fechaMin !== null && cursor < dia.fechaMin) {
+    linhas.push({ tipo: "livre", de: cursor, ate: dia.fechaMin });
+  }
+
   return (
-    <div className="space-y-4">
-      {/* Busca + periodo */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-lg border border-admin-border bg-admin-surface px-3 py-2.5">
-          <Search className="h-4 w-4 shrink-0 text-astro-muted" />
-          <input
-            value={busca}
-            onChange={(e) => {
-              setBusca(e.target.value);
-              setPagina(1);
-            }}
-            placeholder="Buscar cliente, placa, servico..."
-            className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-astro-muted"
-          />
-        </div>
+    <div className="grid gap-5">
+      <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">Agendamentos</h1>
 
-        <div className="flex items-center gap-1 rounded-lg border border-admin-border bg-admin-surface p-1">
-          <CalendarDays className="ml-2 h-4 w-4 shrink-0 text-astro-muted" />
-          {PERIODOS.map((p) => (
-            <button
-              key={p.valor}
-              onClick={() => trocarPeriodo(p.valor)}
-              className={
-                periodo === p.valor
-                  ? "rounded-md bg-astro-blue/35 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-inset ring-astro-blue-bright/50"
-                  : "rounded-md px-3 py-1.5 text-xs text-astro-muted transition hover:text-white"
-              }
-            >
-              {p.rotulo}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Abas por status */}
-      <div className="flex flex-wrap gap-2">
-        {ABAS.map((a) => {
-          const ativa = aba === a.chave;
-          const n = contagens.get(a.chave) ?? 0;
+      {/* Filtro por situacao (do dia escolhido) */}
+      <div role="group" aria-label="Situação" className="flex flex-wrap items-center gap-1.5">
+        {FILTROS.map((f) => {
+          const ativo = filtro === f.chave;
           return (
             <button
-              key={a.chave}
-              onClick={() => trocarAba(a.chave)}
+              key={f.chave}
+              type="button"
+              aria-pressed={ativo}
+              onClick={() => {
+                setFiltro(f.chave);
+                setAberto(null);
+              }}
               className={
-                ativa
-                  ? "flex items-center gap-2 rounded-lg border border-astro-blue-bright/50 bg-astro-blue/20 px-4 py-2 text-sm font-semibold text-white"
-                  : "flex items-center gap-2 rounded-lg border border-admin-border px-4 py-2 text-sm text-astro-muted transition hover:text-white"
+                ativo
+                  ? "flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black"
+                  : "flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-astro-muted transition hover:text-white"
               }
             >
-              {a.rotulo}
+              {f.rotulo}
               <span
-                className={
-                  ativa
-                    ? "rounded bg-white/20 px-1.5 py-0.5 font-mono text-[0.65rem]"
-                    : "rounded bg-admin-surface-2 px-1.5 py-0.5 font-mono text-[0.65rem]"
-                }
+                className={`rounded-full px-1.5 py-0.5 font-mono text-[0.6rem] ${ativo ? "bg-black text-white" : "bg-admin-surface-2 text-slate-200"}`}
               >
-                {n}
+                {contagens.get(f.chave) ?? 0}
               </span>
             </button>
           );
         })}
       </div>
 
-      {erro && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
-          {erro}
-        </p>
-      )}
-
-      {/* Tabela com celulas reais, para o navegador alinhar as colunas com o
-          cabecalho. Antes cada linha era uma celula unica com um flex dentro:
-          Valor e Status desalinhavam conforme o tamanho do badge de cada
-          status, e o valor "flutuava" de linha para linha. */}
-      <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-surface">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[58rem] table-fixed text-sm">
-            <thead>
-              <tr className="border-b border-admin-border">
-                <th className="astro-label w-24 px-4 py-3 text-left">Horario</th>
-                <th className="astro-label w-60 px-4 py-3 text-left">Cliente</th>
-                <th className="astro-label hidden w-52 px-4 py-3 text-left md:table-cell">
-                  Veiculo
-                </th>
-                <th className="astro-label hidden px-4 py-3 text-left lg:table-cell">
-                  Servico
-                </th>
-                <th className="astro-label w-32 px-4 py-3 text-right">Valor</th>
-                <th className="astro-label w-52 px-6 py-3 text-left">Status</th>
-                <th className="w-12 px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {visiveis.map((item) => {
-                const d = new Date(item.dataHoraISO);
-                const efetivo = statusEfetivo(item);
-                const estilo = ESTILO_STATUS[efetivo];
-                const aberto = expandido === item.id;
-                const podeConfirmar =
-                  item.status === "PIX_PENDENTE" ||
-                  item.status === "PENDENTE_PAGAMENTO";
-                const podeCancelar =
-                  efetivo !== "CANCELADO" && efetivo !== "CONCLUIDO";
-
-                return (
-                  <Fragment key={item.id}>
-                    <tr
-                      className={
-                        aberto
-                          ? "bg-white/[0.03]"
-                          : "border-b border-admin-border/60 transition hover:bg-white/[0.03]"
-                      }
-                    >
-                      {/* Horario */}
-                      <td className="px-4 py-3.5 align-middle">
-                        <p className="font-mono font-bold text-white">
-                          {d.toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            timeZone: FUSO,
-                          })}
-                        </p>
-                        <p className="font-mono text-[0.65rem] text-astro-muted">
-                          {formatarDuracao(item.duracaoMin)}
-                        </p>
-                      </td>
-
-                      {/* Cliente */}
-                      <td className="px-4 py-3.5 align-middle">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${corDoNome(item.clienteNome)}`}
-                          >
-                            {iniciais(item.clienteNome)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-white">
-                              {item.clienteNome}
-                            </p>
-                            <p className="truncate font-mono text-[0.65rem] text-astro-muted">
-                              {formatarTelefone(item.clienteTelefone) || "sem telefone"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Veiculo */}
-                      <td className="hidden px-4 py-3.5 align-middle md:table-cell">
-                        <p className="truncate text-slate-200">{item.veiculo}</p>
-                        <p className="font-mono text-[0.65rem] text-astro-muted">
-                          {item.placa}
-                        </p>
-                      </td>
-
-                      {/* Servico */}
-                      <td className="hidden px-4 py-3.5 align-middle lg:table-cell">
-                        <p className="truncate text-slate-200">{item.servicoNome}</p>
-                      </td>
-
-                      {/* Valor — largura fixa e alinhado a direita: a coluna nao
-                          se desloca conforme o tamanho do numero nem do badge */}
-                      <td className="whitespace-nowrap px-4 py-3.5 text-right align-middle font-bold text-white">
-                        {formatarReal(item.valor)}
-                        {item.acrescimoAplicado !== null && (
-                          <span className="ml-1 font-normal text-amber-300">
-                            + {formatarReal(item.acrescimoAplicado)}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-3.5 align-middle">
-                        <span
-                          className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-wider ${estilo.classe}`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${estilo.ponto}`}
-                          />
-                          {estilo.rotulo}
-                        </span>
-                      </td>
-
-                      {/* Abrir acoes */}
-                      <td className="px-4 py-3.5 text-right align-middle">
-                        <button
-                          onClick={() => setExpandido(aberto ? null : item.id)}
-                          aria-expanded={aberto}
-                          aria-label={aberto ? "Fechar acoes" : "Abrir acoes"}
-                          className="rounded-md p-1 text-astro-muted transition hover:bg-white/5 hover:text-white"
-                        >
-                          <ChevronDown
-                            className={`h-4 w-4 transition ${aberto ? "rotate-180" : "-rotate-90"}`}
-                          />
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* Acoes da linha */}
-                    {aberto && (
-                      <tr className="border-b border-admin-border/60">
-                        <td colSpan={7} className="bg-admin-bg px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <p className="text-xs text-astro-muted lg:hidden">
-                              {item.veiculo} · {item.placa} · {item.servicoNome}
-                            </p>
-
-                            <div className="ml-auto flex flex-wrap gap-2">
-                              {podeConfirmar && (
-                                <button
-                                  onClick={() => agir(item.id, "confirmar-pagamento")}
-                                  disabled={processando === item.id}
-                                  className="flex items-center gap-2 rounded-lg bg-astro-blue px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                  {processando === item.id
-                                    ? "Confirmando..."
-                                    : item.status === "PIX_PENDENTE"
-                                      ? "Confirmar PIX"
-                                      : "Confirmar pagamento"}
-                                </button>
-                              )}
-                              {/* So aparece quando a estetica tem politica de
-                                  acrescimo configurada: sem ela, o botao seria
-                                  um caminho para cobrar o que nunca foi
-                                  avisado ao cliente. */}
-                              {podeConfirmar && acrescimoCondicaoPercent !== null && (
-                                <button
-                                  onClick={() => setAcrescimoAlvo(item)}
-                                  disabled={processando === item.id}
-                                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 px-3.5 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
-                                >
-                                  <TrendingUp className="h-3.5 w-3.5" />
-                                  Confirmar com acréscimo
-                                </button>
-                              )}
-                              {podeCancelar && (
-                                <button
-                                  onClick={() => agir(item.id, "cancelar")}
-                                  disabled={processando === item.id}
-                                  className="flex items-center gap-2 rounded-lg border border-red-500/40 px-3.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
-                                >
-                                  <Ban className="h-3.5 w-3.5" />
-                                  Cancelar
-                                </button>
-                              )}
-                              {!podeConfirmar && !podeCancelar && (
-                                <span className="text-xs text-astro-muted">
-                                  Nenhuma acao disponivel para este status.
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {visiveis.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-sm font-semibold text-white">
-              Nenhum agendamento encontrado.
-            </p>
-            <p className="mt-1 text-sm text-astro-muted">
-              {busca
-                ? "Tente outro termo de busca."
-                : "Ajuste o filtro de periodo ou a aba de status."}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Rodape */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-astro-muted">
-          Mostrando {visiveis.length} de {filtrados.length} agendamento
-          {filtrados.length === 1 ? "" : "s"}
-        </p>
-
-        {totalPaginas > 1 && (
-          <div className="flex items-center gap-1">
+      <section aria-label="Agenda do dia" className="rounded-3xl border border-admin-border bg-admin-surface p-4 sm:p-5">
+        {/* Topo: dias da semana a esquerda, busca a direita */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-admin-border pb-4">
+          <div className="flex min-w-0 items-center gap-1">
             <button
-              onClick={() => setPagina((p) => Math.max(1, p - 1))}
-              disabled={paginaAtual === 1}
-              aria-label="Pagina anterior"
-              className="rounded-md border border-admin-border p-2 text-astro-muted transition hover:text-white disabled:opacity-30"
+              type="button"
+              onClick={() => irParaSemana(semanaAnterior)}
+              aria-label="Semana anterior"
+              className="rounded-full p-2 text-astro-muted transition hover:bg-white/5 hover:text-white"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
-              <button
-                key={n}
-                onClick={() => setPagina(n)}
-                aria-current={n === paginaAtual ? "page" : undefined}
-                className={
-                  n === paginaAtual
-                    ? "h-9 w-9 rounded-md bg-astro-blue text-sm font-semibold text-white"
-                    : "h-9 w-9 rounded-md border border-admin-border text-sm text-astro-muted transition hover:text-white"
-                }
-              >
-                {n}
-              </button>
-            ))}
+            <div role="group" aria-label="Dia" className="flex gap-0.5 overflow-x-auto [scrollbar-width:none]">
+              {dias.map((d) => {
+                const qtd = itens.filter((i) => i.dia === d.chave && i.status !== "CANCELADO").length;
+                const ativo = d.chave === dia.chave;
+                return (
+                  <button
+                    key={d.chave}
+                    type="button"
+                    aria-pressed={ativo}
+                    aria-label={`${d.nome}${d.abreMin === null ? ", fechado" : `, ${qtd} agendamento${qtd === 1 ? "" : "s"}`}`}
+                    onClick={() => {
+                      setDiaSel(d.chave);
+                      setAberto(null);
+                    }}
+                    className={`flex shrink-0 items-baseline gap-1.5 rounded-full px-3 py-2 text-[0.8rem] transition ${
+                      ativo ? "bg-astro-blue text-white" : "text-astro-muted hover:bg-white/5"
+                    } ${d.abreMin === null ? "opacity-50" : ""}`}
+                  >
+                    {d.sigla}
+                    <b className={`text-[0.95rem] ${ativo ? "text-white" : "text-slate-100"}`}>{d.numero}</b>
+                    {qtd > 0 && (
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 font-mono text-[0.6rem] ${ativo ? "bg-white/25 text-white" : "bg-admin-surface-2"}`}
+                      >
+                        {qtd}
+                      </span>
+                    )}
+                    {d.chave === hoje && !ativo && <span className="h-1.5 w-1.5 self-center rounded-full bg-astro-blue-bright" />}
+                  </button>
+                );
+              })}
+            </div>
             <button
-              onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-              disabled={paginaAtual === totalPaginas}
-              aria-label="Proxima pagina"
-              className="rounded-md border border-admin-border p-2 text-astro-muted transition hover:text-white disabled:opacity-30"
+              type="button"
+              onClick={() => irParaSemana(proximaSemana)}
+              aria-label="Próxima semana"
+              className="rounded-full p-2 text-astro-muted transition hover:bg-white/5 hover:text-white"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+
+          <label className="flex min-w-0 flex-[0_1_18rem] items-center gap-2 rounded-full border border-admin-border bg-admin-bg px-4 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-astro-muted" />
+            <input
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar cliente, placa ou serviço"
+              aria-label="Buscar agendamento"
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-astro-muted"
+            />
+          </label>
+        </div>
+
+        {erro && (
+          <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{erro}</p>
         )}
-      </div>
+
+        {/* Linha do tempo */}
+        <div className="mt-3">
+          {dia.abreMin === null && lista.length === 0 ? (
+            <Vazio texto="A estética não abre neste dia." />
+          ) : linhas.length === 0 ? (
+            <Vazio
+              texto={
+                termo || filtro !== "todos"
+                  ? "Nenhum agendamento com esse filtro neste dia."
+                  : "Nenhum agendamento ainda neste dia."
+              }
+            />
+          ) : (
+            <ol>
+              {linhas.map((l) =>
+                l.tipo === "livre" ? (
+                  <EspacoLivre
+                    key={`livre-${l.de}`}
+                    de={l.de}
+                    ate={l.ate}
+                    agoraMin={dia.chave === hoje ? agoraMin : null}
+                    capacidade={capacidade}
+                  />
+                ) : (
+                  <Cartao
+                    key={l.item.id}
+                    item={l.item}
+                    status={statusEfetivo(l.item, agoraMs)}
+                    emAndamento={
+                      dia.chave === hoje &&
+                      l.item.status !== "CANCELADO" &&
+                      l.item.inicioMin <= agoraMin &&
+                      agoraMin < l.item.fimMin
+                    }
+                    agoraMin={agoraMin}
+                    aberto={aberto === l.item.id}
+                    alternar={() => setAberto(aberto === l.item.id ? null : l.item.id)}
+                    processando={processando === l.item.id}
+                    confirmar={() => agir(l.item.id, "confirmar-pagamento")}
+                    cancelar={() => agir(l.item.id, "cancelar")}
+                    comAcrescimo={acrescimoCondicaoPercent !== null ? () => setAcrescimoAlvo(l.item) : null}
+                  />
+                )
+              )}
+            </ol>
+          )}
+        </div>
+      </section>
 
       {/* Lancamento do acrescimo por condicao do veiculo.
           O Admin digita o percentual e ve o total em reais atualizar, porque e
@@ -632,8 +452,7 @@ export function AgendamentosLista({
           }
         >
           <p className="text-sm text-astro-muted">
-            {acrescimoAlvo.clienteNome} · {acrescimoAlvo.servicoNome} ·{" "}
-            {acrescimoAlvo.veiculo}
+            {acrescimoAlvo.clienteNome} · {acrescimoAlvo.servicoNome} · {acrescimoAlvo.veiculo}
           </p>
 
           {/* Dois caminhos para a mesma informacao. O da direita e o que ele
@@ -700,37 +519,27 @@ export function AgendamentosLista({
           <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-astro-muted">Combinado no agendamento</span>
-              <span className="font-mono text-slate-200">
-                {formatarReal(acrescimoAlvo.valor)}
-              </span>
+              <span className="font-mono text-slate-200">{formatarReal(acrescimoAlvo.valor)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-astro-muted">Acréscimo</span>
-              <span className="font-mono text-amber-300">
-                + {formatarReal(valorAcrescimo)}
-              </span>
+              <span className="font-mono text-amber-300">+ {formatarReal(valorAcrescimo)}</span>
             </div>
             <div className="flex items-center justify-between border-t border-white/10 pt-2">
               <span className="font-semibold text-white">Total cobrado</span>
-              <span className="font-mono text-base font-bold text-white">
-                {formatarReal(totalComAcrescimo)}
-              </span>
+              <span className="font-mono text-base font-bold text-white">{formatarReal(totalComAcrescimo)}</span>
             </div>
           </div>
 
           {/* O cliente viu um teto no agendamento. Passar dele nao e bloqueado
               — quem avalia o carro e o Admin — mas precisa ser uma decisao
               consciente, nao um numero digitado sem contexto. */}
-          {acrescimoCondicaoPercent !== null &&
-            percentNumero > acrescimoCondicaoPercent && (
-              <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                O cliente foi avisado de até {acrescimoCondicaoPercent}% (
-                {formatarReal(
-                  acrescimoAlvo.valor * (1 + acrescimoCondicaoPercent / 100)
-                )}
-                ). Você está cobrando acima disso.
-              </p>
-            )}
+          {acrescimoCondicaoPercent !== null && percentNumero > acrescimoCondicaoPercent && (
+            <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              O cliente foi avisado de até {acrescimoCondicaoPercent}% (
+              {formatarReal(acrescimoAlvo.valor * (1 + acrescimoCondicaoPercent / 100))}). Você está cobrando acima disso.
+            </p>
+          )}
 
           <p className="mt-3 text-xs text-astro-muted">
             {acrescimoAlvo.status === "PIX_PENDENTE"
@@ -739,6 +548,243 @@ export function AgendamentosLista({
           </p>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function Vazio({ texto }: { texto: string }) {
+  return (
+    <p className="mt-2 rounded-2xl border border-dashed border-admin-border px-4 py-10 text-center text-sm text-astro-muted">
+      {texto}
+    </p>
+  );
+}
+
+// Faixa tracejada entre dois agendamentos. A altura cresce um pouco com o
+// tamanho do espaco, sem empurrar o dia para baixo.
+function EspacoLivre({
+  de,
+  ate,
+  agoraMin,
+  capacidade,
+}: {
+  de: number;
+  ate: number;
+  agoraMin: number | null;
+  capacidade: number;
+}) {
+  const min = ate - de;
+  const temAgora = agoraMin !== null && agoraMin >= de && agoraMin < ate;
+  return (
+    <li className="grid grid-cols-[3.5rem_1.25rem_minmax(0,1fr)] sm:grid-cols-[4.25rem_1.5rem_minmax(0,1fr)]">
+      <span className="pt-3 font-mono text-xs text-astro-muted">{hhmm(de)}</span>
+      <span className="relative before:absolute before:inset-y-0 before:left-1/2 before:w-0.5 before:-translate-x-1/2 before:bg-admin-border" />
+      <div
+        className="relative my-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-dashed border-admin-border px-3.5 py-2 text-[0.8rem] text-astro-muted"
+        style={{ minHeight: Math.min(Math.max(min * 0.25, 36), 64) }}
+      >
+        <span>
+          <b className="font-semibold text-slate-100">Livre</b> · {hhmm(de)} às {hhmm(ate)} ({formatarDuracao(min)})
+        </span>
+        <span>
+          {min >= MENOR_SERVICO_MIN
+            ? `cabe mais ${capacidade === 1 ? "um carro" : "carros"}`
+            : "intervalo curto"}
+        </span>
+        {temAgora && (
+          <span
+            className="absolute -left-7 right-0 border-t-2 border-red-500"
+            style={{ top: `${((agoraMin - de) / min) * 100}%` }}
+          >
+            <span className="absolute -top-1.5 -left-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span className="absolute -top-4 right-0 font-mono text-[0.65rem] font-bold text-red-400">
+              agora {hhmm(agoraMin)}
+            </span>
+          </span>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function Cartao({
+  item,
+  status,
+  emAndamento,
+  agoraMin,
+  aberto,
+  alternar,
+  processando,
+  confirmar,
+  cancelar,
+  comAcrescimo,
+}: {
+  item: ItemAgendamento;
+  status: StatusAgendamento;
+  emAndamento: boolean;
+  agoraMin: number;
+  aberto: boolean;
+  alternar: () => void;
+  processando: boolean;
+  confirmar: () => void;
+  cancelar: () => void;
+  comAcrescimo: (() => void) | null;
+}) {
+  const estilo = ESTILO[status];
+  const podeConfirmar = item.status === "PIX_PENDENTE" || item.status === "PENDENTE_PAGAMENTO";
+  const podeCancelar = status !== "CANCELADO" && status !== "CONCLUIDO";
+  const whatsapp = linkWhatsApp(item.clienteTelefone);
+  const progresso = Math.round(((agoraMin - item.inicioMin) / item.duracaoMin) * 100);
+
+  return (
+    <li className="grid grid-cols-[3.5rem_1.25rem_minmax(0,1fr)] sm:grid-cols-[4.25rem_1.5rem_minmax(0,1fr)]">
+      <span className="pt-5 font-mono text-sm font-bold text-white">
+        {hhmm(item.inicioMin)}
+        <small className="block text-[0.65rem] font-medium text-astro-muted">até {hhmm(item.fimMin)}</small>
+      </span>
+      <span className="relative before:absolute before:inset-y-0 before:left-1/2 before:w-0.5 before:-translate-x-1/2 before:bg-admin-border">
+        <span className="absolute top-6 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-[3px] border-astro-blue-bright bg-admin-surface" />
+      </span>
+
+      <article
+        className={`my-1.5 rounded-2xl border border-admin-border border-l-4 bg-admin-surface-2/40 px-4 py-3.5 ${estilo.borda} ${estilo.fundo} ${
+          emAndamento ? "ring-2 ring-astro-blue shadow-[0_18px_50px_-20px_var(--color-astro-blue)]" : ""
+        }`}
+        style={{ minHeight: 70 + Math.round(item.duracaoMin * 0.35) }}
+      >
+        {/* Posicoes fixas por tamanho de tela. Celular: tudo empilhado.
+            Tablet: 2 colunas (servico | situacao; carro | botoes).
+            Computador: 4 colunas numa linha so. */}
+        <div className="grid items-center gap-x-4 gap-y-2 md:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_15rem_8rem_14rem]">
+          {/* Servico em destaque, cliente embaixo */}
+          <div className="min-w-0 md:col-start-1 md:row-start-1">
+            <h3 className="text-base leading-snug font-bold tracking-tight text-white">
+              {item.servicoNome}
+              <small className="ml-2 font-mono text-xs font-medium whitespace-nowrap text-astro-muted">
+                {formatarDuracao(item.duracaoMin)}
+              </small>
+            </h3>
+            <p className="mt-0.5 truncate text-sm font-semibold text-slate-200">{item.clienteNome}</p>
+          </div>
+
+          <p className="flex min-w-0 items-center gap-2 text-xs text-slate-200 md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1">
+            <Car className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
+            <span className="truncate">{item.veiculo}</span>
+            <span className="shrink-0 rounded border border-zinc-300 border-t-[3px] border-t-blue-700 bg-white px-1.5 font-mono text-[0.65rem] font-bold tracking-wider text-zinc-900">
+              {item.placa}
+            </span>
+          </p>
+
+          <div className="flex items-center gap-2 md:col-start-2 md:row-start-1 md:flex-col md:items-end xl:col-start-3 xl:items-center">
+            <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-semibold whitespace-nowrap ${estilo.selo}`}>
+              {emAndamento ? "Em andamento" : estilo.rotulo}
+            </span>
+            <span className="font-mono text-sm font-bold whitespace-nowrap text-white">
+              {formatarReal(item.valor)}
+              {item.acrescimoAplicado !== null && (
+                <span className="block text-[0.7rem] font-semibold text-amber-300">
+                  + {formatarReal(item.acrescimoAplicado)}
+                </span>
+              )}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 md:col-start-2 md:row-start-2 md:justify-end xl:col-start-4 xl:row-start-1">
+            {podeConfirmar && (
+              <button
+                type="button"
+                onClick={confirmar}
+                disabled={processando}
+                className="rounded-full bg-astro-blue px-3.5 py-2 text-xs font-semibold whitespace-nowrap text-white transition hover:brightness-110 disabled:opacity-50"
+              >
+                {processando ? "Confirmando..." : item.status === "PIX_PENDENTE" ? "Confirmar PIX" : "Recebi no local"}
+              </button>
+            )}
+            {whatsapp ? (
+              <a
+                href={whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Conversar com ${item.clienteNome} no WhatsApp`}
+                title="WhatsApp"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-admin-border text-slate-200 transition hover:border-astro-blue-bright hover:text-astro-blue-bright"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </a>
+            ) : null}
+            <button
+              type="button"
+              onClick={alternar}
+              aria-expanded={aberto}
+              aria-label={aberto ? "Fechar detalhes" : "Ver detalhes"}
+              title="Detalhes"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-admin-border text-slate-200 transition hover:border-astro-blue-bright hover:text-astro-blue-bright"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {emAndamento && (
+          <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/10" title="Andamento do serviço">
+            <div className="h-full bg-astro-blue" style={{ width: `${Math.min(Math.max(progresso, 0), 100)}%` }} />
+          </div>
+        )}
+
+        {/* Detalhes e as demais acoes */}
+        {aberto && (
+          <div className="mt-3 grid gap-3 border-t border-admin-border pt-3 text-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <dl className="grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
+              <Detalhe rotulo="Telefone" valor={formatarTelefone(item.clienteTelefone) || "sem telefone"} />
+              <Detalhe rotulo="E-mail" valor={item.clienteEmail} />
+              <Detalhe rotulo="Veículo" valor={`${item.veiculo} ${item.veiculoAno} · ${item.placa}`} />
+              <Detalhe rotulo="Horário" valor={`${hhmm(item.inicioMin)} às ${hhmm(item.fimMin)}`} />
+            </dl>
+            <div className="flex flex-wrap gap-2">
+              {/* So aparece quando a estetica tem politica de acrescimo
+                  configurada: sem ela, o botao seria um caminho para cobrar o
+                  que nunca foi avisado ao cliente. */}
+              {podeConfirmar && comAcrescimo && (
+                <button
+                  type="button"
+                  onClick={comAcrescimo}
+                  disabled={processando}
+                  className="flex items-center gap-2 rounded-full border border-amber-500/40 px-3.5 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Confirmar com acréscimo
+                </button>
+              )}
+              {podeCancelar && (
+                <button
+                  type="button"
+                  onClick={cancelar}
+                  disabled={processando}
+                  className="flex items-center gap-2 rounded-full border border-red-500/40 px-3.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+                >
+                  <Ban className="h-3.5 w-3.5" />
+                  Cancelar
+                </button>
+              )}
+              {!podeConfirmar && !podeCancelar && (
+                <span className="flex items-center gap-1.5 text-xs text-astro-muted">
+                  <Check className="h-3.5 w-3.5" />
+                  Nenhuma ação disponível para esta situação.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </article>
+    </li>
+  );
+}
+
+function Detalhe({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <div className="flex min-w-0 gap-2">
+      <dt className="shrink-0 text-astro-muted">{rotulo}</dt>
+      <dd className="truncate text-slate-200">{valor}</dd>
     </div>
   );
 }
