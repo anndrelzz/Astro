@@ -33,7 +33,7 @@ export function CartaoFaturamento({ periodos }: { periodos: Record<Periodo, Resu
   return (
     <section
       aria-label="Faturamento"
-      className="relative overflow-hidden rounded-3xl p-6 text-white"
+      className="borda-viva relative overflow-hidden rounded-3xl p-6 text-white"
       style={{
         backgroundImage:
           "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",

@@ -648,7 +648,7 @@ function Cartao({
 
       <article
         className={`my-1.5 rounded-2xl border border-admin-border border-l-4 bg-admin-surface-2/40 px-4 py-3.5 ${estilo.borda} ${estilo.fundo} ${
-          emAndamento ? "ring-2 ring-astro-blue shadow-[0_18px_50px_-20px_var(--color-astro-blue)]" : ""
+          emAndamento ? "borda-viva shadow-[0_18px_50px_-20px_var(--color-astro-blue)]" : ""
         }`}
         style={{ minHeight: 70 + Math.round(item.duracaoMin * 0.35) }}
       >
