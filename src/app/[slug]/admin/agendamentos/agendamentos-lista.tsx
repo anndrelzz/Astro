@@ -94,9 +94,9 @@ const ESTILO: Record<StatusAgendamento, { rotulo: string; borda: string; fundo: 
   },
   CONCLUIDO: {
     rotulo: "Concluído",
-    borda: "border-l-zinc-500",
-    fundo: "opacity-70",
-    selo: "bg-white/10 text-astro-muted",
+    borda: "border-l-emerald-400",
+    fundo: "bg-[linear-gradient(90deg,rgba(52,211,153,0.10),transparent_60%)]",
+    selo: "bg-emerald-400/15 text-emerald-300",
   },
   CANCELADO: {
     rotulo: "Cancelado",
@@ -104,6 +104,14 @@ const ESTILO: Record<StatusAgendamento, { rotulo: string; borda: string; fundo: 
     fundo: "opacity-70",
     selo: "bg-red-400/15 text-red-300",
   },
+};
+
+// A cor do cartao segue o horario: concluido em verde (ESTILO.CONCLUIDO),
+// em andamento com a cor da situacao e a luz na borda, e o que ainda vai
+// acontecer na cor da estetica. O selo continua dizendo a situacao.
+const FUTURO = {
+  borda: "border-l-astro-blue-bright",
+  fundo: "bg-[linear-gradient(90deg,color-mix(in_srgb,var(--color-astro-blue)_14%,transparent),transparent_60%)]",
 };
 
 // Menor servico que costuma caber num espaco livre; abaixo disso o espaco e
@@ -631,6 +639,8 @@ function Cartao({
   comAcrescimo: (() => void) | null;
 }) {
   const estilo = ESTILO[status];
+  const futuro = !emAndamento && status !== "CONCLUIDO" && status !== "CANCELADO";
+  const tom = futuro ? FUTURO : estilo;
   const podeConfirmar = item.status === "PIX_PENDENTE" || item.status === "PENDENTE_PAGAMENTO";
   const podeCancelar = status !== "CANCELADO" && status !== "CONCLUIDO";
   const whatsapp = linkWhatsApp(item.clienteTelefone);
@@ -647,7 +657,7 @@ function Cartao({
       </span>
 
       <article
-        className={`my-1.5 rounded-2xl border border-admin-border border-l-4 bg-admin-surface-2/40 px-4 py-3.5 ${estilo.borda} ${estilo.fundo} ${
+        className={`my-1.5 rounded-2xl border border-admin-border border-l-4 bg-admin-surface-2/40 px-4 py-3.5 ${tom.borda} ${tom.fundo} ${
           emAndamento ? "borda-viva shadow-[0_18px_50px_-20px_var(--color-astro-blue)]" : ""
         }`}
         style={{ minHeight: 70 + Math.round(item.duracaoMin * 0.35) }}
