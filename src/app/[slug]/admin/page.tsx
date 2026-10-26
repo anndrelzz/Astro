@@ -1,17 +1,12 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import {
-  CalendarCheck,
-  CalendarDays,
-  Droplets,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { CalendarDays, Car, Clock, Droplets, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { FUSO, fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
+import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "./cartao-faturamento";
 
 // RF11, UC10 — Dashboard do painel (tela inicial do mockup do admin).
 //
@@ -23,6 +18,9 @@ import type { StatusAgendamento } from "@/generated/prisma/enums";
 // entao nao entram como numero inventado.
 
 const STATUS_PAGO = ["CONFIRMADO", "CONCLUIDO"] as const;
+// O que ainda nao entrou no caixa: PIX esperando confirmacao e pagamento no
+// local (cobrado na hora do servico).
+const STATUS_A_RECEBER = ["PIX_PENDENTE", "PENDENTE_PAGAMENTO"] as const;
 
 // Cada status ganha cor propria, como no mockup - status e a informacao que o
 // admin le mais rapido na tela.
@@ -74,29 +72,23 @@ export default async function AdminDashboardPage({
 
   // Dia, mes e hora do relogio da estetica (lib/fuso.ts), nao do servidor.
   const agora = new Date();
-  const ontem = inicioDoDia(agora, -1);
   const relogio = partesNoFuso(agora);
 
   const inicioMes = instanteNoFuso(relogio.ano, relogio.mes, 1);
+  // "7 dias" = hoje e os 6 dias anteriores.
+  const inicioSemana = inicioDoDia(agora, -6);
   const inicioMesPassado = instanteNoFuso(relogio.ano, relogio.mes - 1, 1);
   const fimMesPassado = new Date(inicioMes.getTime() - 1);
 
   const dados = await withTenant(tenant.id, async (tx) => {
     const naoCancelado = { not: "CANCELADO" } as const;
 
-    const [hoje, ontemQtd, mes, mesPassado] = await Promise.all([
+    const [hoje, mes, mesPassado] = await Promise.all([
       tx.agendamento.count({
         where: {
           tenantId: tenant.id,
           status: naoCancelado,
           dataHora: { gte: inicioDoDia(agora), lte: fimDoDia(agora) },
-        },
-      }),
-      tx.agendamento.count({
-        where: {
-          tenantId: tenant.id,
-          status: naoCancelado,
-          dataHora: { gte: inicioDoDia(ontem), lte: fimDoDia(ontem) },
         },
       }),
       tx.agendamento.count({
@@ -117,23 +109,39 @@ export default async function AdminDashboardPage({
 
     // RF12 — receita conta apenas pagamento confirmado. Soma tambem o acrescimo
     // lancado na avaliacao presencial, como o financeiro: e o que entrou no caixa.
-    const [receitaDia, receitaMes] = await Promise.all([
-      tx.agendamento.aggregate({
-        _sum: { valor: true, acrescimoAplicado: true },
-        where: {
-          tenantId: tenant.id,
-          status: { in: [...STATUS_PAGO] },
-          dataHora: { gte: inicioDoDia(agora), lte: fimDoDia(agora) },
-        },
-      }),
-      tx.agendamento.aggregate({
-        _sum: { valor: true, acrescimoAplicado: true },
-        where: {
-          tenantId: tenant.id,
-          status: { in: [...STATUS_PAGO] },
-          dataHora: { gte: inicioMes, lte: fimDoDia(agora) },
-        },
-      }),
+    // Para o cartao de faturamento, cada periodo (hoje, 7 dias, mes) tem o
+    // recebido, o que falta receber e quantos atendimentos teve.
+    const fimHoje = fimDoDia(agora);
+    const resumo = async (inicio: Date) => {
+      const periodo = { gte: inicio, lte: fimHoje };
+      const [pago, pendente, qtd, qtdPago] = await Promise.all([
+        tx.agendamento.aggregate({
+          _sum: { valor: true, acrescimoAplicado: true },
+          where: { tenantId: tenant.id, status: { in: [...STATUS_PAGO] }, dataHora: periodo },
+        }),
+        tx.agendamento.aggregate({
+          _sum: { valor: true },
+          where: { tenantId: tenant.id, status: { in: [...STATUS_A_RECEBER] }, dataHora: periodo },
+        }),
+        tx.agendamento.count({
+          where: { tenantId: tenant.id, status: naoCancelado, dataHora: periodo },
+        }),
+        tx.agendamento.count({
+          where: { tenantId: tenant.id, status: { in: [...STATUS_PAGO] }, dataHora: periodo },
+        }),
+      ]);
+      return {
+        recebido: Number(pago._sum.valor ?? 0) + Number(pago._sum.acrescimoAplicado ?? 0),
+        aReceber: Number(pendente._sum.valor ?? 0),
+        atendimentos: qtd,
+        pagos: qtdPago,
+      };
+    };
+    const [resumoHoje, resumoSemana, resumoMes, pixPendentes] = await Promise.all([
+      resumo(inicioDoDia(agora)),
+      resumo(inicioSemana),
+      resumo(inicioMes),
+      tx.agendamento.count({ where: { tenantId: tenant.id, status: "PIX_PENDENTE" } }),
     ]);
 
     const agenda = await tx.agendamento.findMany({
@@ -155,13 +163,12 @@ export default async function AdminDashboardPage({
 
     return {
       hoje,
-      ontem: ontemQtd,
       mes,
       mesPassado,
-      receitaDia:
-        Number(receitaDia._sum.valor ?? 0) + Number(receitaDia._sum.acrescimoAplicado ?? 0),
-      receitaMes:
-        Number(receitaMes._sum.valor ?? 0) + Number(receitaMes._sum.acrescimoAplicado ?? 0),
+      resumoHoje,
+      resumoSemana,
+      resumoMes,
+      pixPendentes,
       agenda,
       horarioHoje,
     };
@@ -185,47 +192,78 @@ export default async function AdminDashboardPage({
     : 0;
   const vagasLivres = Math.max(0, vagasDoDia - dados.hoje);
 
+  // Saudacao pelo horario da estetica e so o primeiro nome ("Rafael (Admin)"
+  // vira "Rafael").
+  const saudacao = relogio.hora < 12 ? "Bom dia" : relogio.hora < 18 ? "Boa tarde" : "Boa noite";
+  const primeiroNome = (session.user.name ?? "").split(" ")[0] || "Admin";
+  const dataHoje = agora.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: FUSO,
+  });
+  const nomeMes = (d: Date) => d.toLocaleDateString("pt-BR", { month: "long", timeZone: FUSO });
+
+  const periodos: Record<Periodo, ResumoPeriodo> = {
+    hoje: { rotulo: "Faturamento de hoje", ...dados.resumoHoje },
+    semana: { rotulo: "Faturamento dos últimos 7 dias", ...dados.resumoSemana },
+    mes: { rotulo: `Faturamento de ${nomeMes(agora)}`, ...dados.resumoMes },
+  };
+
+  // Ticket medio do mes: quanto entrou, dividido pelos atendimentos pagos.
+  const ticketMedio = dados.resumoMes.pagos > 0 ? dados.resumoMes.recebido / dados.resumoMes.pagos : 0;
+
+  // "23 a mais que setembro": so com mes passado para comparar.
+  const deltaMes = dados.mes - dados.mesPassado;
+  const comparacaoMes =
+    dados.mesPassado > 0
+      ? `${Math.abs(deltaMes)} a ${deltaMes >= 0 ? "mais" : "menos"} que ${nomeMes(inicioMesPassado)}`
+      : null;
+
   return (
     <>
-      {/* Cabecalho da secao */}
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">
-          Dashboard
-        </h1>
+      {/* Saudacao */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">
+            {saudacao}, {primeiroNome}
+          </h1>
+          <p className="mt-1 text-astro-muted">
+            {dados.hoje} carro{dados.hoje === 1 ? "" : "s"} hoje
+            {dados.pixPendentes > 0 &&
+              `, ${dados.pixPendentes} PIX esperando sua confirmação`}
+            .
+          </p>
+        </div>
+        <span className="rounded-full border border-admin-border bg-admin-surface px-3.5 py-2 font-mono text-xs text-astro-muted">
+          {dataHoje}
+        </span>
       </div>
 
-      {/* Indicadores */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Indicador
-          rotulo="Agendamentos hoje"
-          valor={String(dados.hoje)}
-          variacao={comparar(dados.hoje, dados.ontem, "vs ontem")}
-          icone={<CalendarDays className="h-4 w-4" />}
-          corIcone="bg-astro-blue/15 text-astro-blue-bright"
-        />
-        <Indicador
-          rotulo="Agendamentos · mes"
-          valor={String(dados.mes)}
-          variacao={comparar(dados.mes, dados.mesPassado, "vs mes passado")}
-          icone={<CalendarCheck className="h-4 w-4" />}
-          corIcone="bg-violet-500/15 text-violet-300"
-        />
-        <Indicador
-          rotulo="Receita do dia"
-          valor={formatarReal(dados.receitaDia)}
-          icone={<Wallet className="h-4 w-4" />}
-          corIcone="bg-emerald-500/15 text-emerald-300"
-        />
-        <Indicador
-          rotulo="Receita · mes"
-          valor={formatarReal(dados.receitaMes)}
-          icone={<TrendingUp className="h-4 w-4" />}
-          corIcone="bg-amber-500/15 text-amber-300"
-        />
+      {/* Faturamento + indicadores */}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <CartaoFaturamento periodos={periodos} />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Mini rotulo="Carros hoje" valor={String(dados.hoje)} icone={<Car className="h-4 w-4" />} />
+          <Mini
+            rotulo="Vagas livres hoje"
+            valor={dados.horarioHoje ? String(vagasLivres) : "Fechado"}
+            icone={<Clock className="h-4 w-4" />}
+          />
+          <Mini
+            rotulo="Agendamentos no mês"
+            valor={String(dados.mes)}
+            icone={<CalendarDays className="h-4 w-4" />}
+            nota={comparacaoMes}
+            notaPositiva={deltaMes >= 0}
+          />
+          <Mini rotulo="Ticket médio" valor={formatarReal(ticketMedio)} icone={<Wallet className="h-4 w-4" />} />
+        </div>
       </div>
 
       {/* Agenda do dia */}
-      <section className="mt-7">
+      <section className="mt-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-lg font-semibold text-white lg:text-xl">
             Agendamentos de hoje
@@ -323,57 +361,36 @@ function formatarReal(valor: number) {
   })}`;
 }
 
-// Devolve a variacao so quando ha base de comparacao — sem periodo anterior,
-// "+100%" seria enganoso.
-function comparar(atual: number, anterior: number, sufixo: string) {
-  if (anterior === 0) return null;
-  const delta = atual - anterior;
-  const pct = Math.round((delta / anterior) * 100);
-  const sinal = delta >= 0 ? "+" : "";
-  return `${sinal}${pct}% ${sufixo}`;
-}
-
-function Indicador({
+// Mini indicador do Dashboard: rotulo pequeno com icone e um numero.
+function Mini({
   rotulo,
   valor,
-  variacao,
   icone,
-  corIcone,
+  nota,
+  notaPositiva,
 }: {
   rotulo: string;
   valor: string;
-  variacao?: string | null;
   icone: React.ReactNode;
-  corIcone: string;
+  nota?: string | null;
+  notaPositiva?: boolean;
 }) {
-  const positiva = variacao?.startsWith("+");
-
   return (
-    <div className="rounded-2xl border border-admin-border bg-admin-surface p-5">
-      <div className="flex items-start justify-between gap-2">
-        <p className="astro-label">{rotulo}</p>
-        <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${corIcone}`}
-        >
-          {icone}
-        </span>
-      </div>
-      <p className="mt-3 text-3xl font-bold tracking-tight text-white lg:text-4xl">
-        {valor}
+    <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-admin-border bg-admin-surface px-4 py-3.5">
+      <p className="flex items-center gap-1.5 text-xs text-astro-muted">
+        <span className="text-astro-blue-bright">{icone}</span>
+        {rotulo}
       </p>
-      {variacao && (
-        <span
-          className={
-            positiva
-              ? "mt-3 inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-0.5 font-mono text-[0.65rem] text-emerald-300"
-              : "mt-3 inline-flex items-center gap-1 rounded-md bg-red-500/15 px-2 py-0.5 font-mono text-[0.65rem] text-red-300"
-          }
+      <p className="truncate text-2xl font-bold tracking-tight text-white tabular-nums">{valor}</p>
+      {nota && (
+        <p
+          className={`flex items-center gap-1 text-[0.7rem] font-semibold ${
+            notaPositiva ? "text-emerald-400" : "text-red-400"
+          }`}
         >
-          <TrendingUp
-            className={`h-3 w-3 ${positiva ? "" : "rotate-180"}`}
-          />
-          {variacao}
-        </span>
+          {notaPositiva ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {nota}
+        </p>
       )}
     </div>
   );
