@@ -28,7 +28,9 @@ import {
 //
 // O item ativo vira uma "aba" na cor do fundo do conteudo, que se funde com a
 // area da direita: as duas curvas para dentro, em cima e embaixo do item, sao
-// pseudo-elementos com sombra na cor do fundo (before/after).
+// pseudo-elementos (before/after) pintados com um gradiente radial que deixa
+// um quarto de circulo transparente. Com sombra (box-shadow) a curva saia
+// serrilhada com zoom do navegador diferente de 100%.
 //
 // Client component por causa do usePathname, que marca o item ativo.
 
@@ -281,8 +283,8 @@ function Grupo({
                 className={
                   ativo
                     ? // Aba: fundo do conteudo + as duas curvas para dentro.
-                      "relative flex items-center gap-3 rounded-l-2xl bg-admin-bg py-3 pr-4 pl-3 text-sm font-semibold text-white before:pointer-events-none before:absolute before:-top-5 before:right-0 before:h-5 before:w-5 before:rounded-br-2xl before:shadow-[6px_6px_0_6px_var(--color-admin-bg)] after:pointer-events-none after:absolute after:-bottom-5 after:right-0 after:h-5 after:w-5 after:rounded-tr-2xl after:shadow-[6px_-6px_0_6px_var(--color-admin-bg)]"
-                    : "mr-4 flex items-center gap-3 rounded-2xl py-3 pr-3 pl-3 text-sm text-white/85 transition hover:bg-white/10 hover:text-white"
+                      "relative flex items-center gap-3 rounded-l-2xl bg-admin-bg py-3 pr-4 pl-3 text-sm font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-white/70 before:pointer-events-none before:absolute before:-top-5 before:right-0 before:h-5 before:w-5 before:bg-[radial-gradient(circle_at_0_0,transparent_19.5px,var(--color-admin-bg)_20px)] after:pointer-events-none after:absolute after:-bottom-5 after:right-0 after:h-5 after:w-5 after:bg-[radial-gradient(circle_at_0_100%,transparent_19.5px,var(--color-admin-bg)_20px)]"
+                    : "mr-4 flex items-center gap-3 rounded-2xl py-3 pr-3 pl-3 text-sm text-white/85 outline-none transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70"
                 }
               >
                 <Icone
