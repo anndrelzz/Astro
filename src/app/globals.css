@@ -108,6 +108,11 @@ body {
   inherits: false;
   initial-value: 0deg;
 }
+/* Entrada dos avisos do painel (ConfirmarSaida): sobe e cresce de leve. */
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+
 @keyframes girar-borda {
   to { --angulo-borda: 360deg; }
 }

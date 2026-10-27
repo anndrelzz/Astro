@@ -76,6 +76,7 @@ export default async function AdminLayout({
         <AdminMobileNav
           slug={slug}
           tenantNome={tenant.nome}
+          usuarioNome={usuarioNome}
           pixPendentes={pixPendentes}
         />
         <main className="min-w-0 flex-1 px-5 py-6 lg:px-8 lg:py-7">{children}</main>
