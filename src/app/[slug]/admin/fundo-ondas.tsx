@@ -32,21 +32,21 @@ function faixa(centro: number, amplitude: number, espessura: number, periodo: nu
 
 // Dois grupos que andam em sentidos e velocidades diferentes: quando as
 // faixas se cruzam, os pontos acendem mais.
-const PARA_ESQUERDA = [faixa(250, 80, 120, 1440, 0), faixa(690, 60, 90, 720, 2.1)];
-const PARA_DIREITA = [faixa(470, 100, 80, 1440, 1.4)];
+const PARA_ESQUERDA = [faixa(260, 80, 55, 1440, 0), faixa(690, 60, 45, 720, 2.1)];
+const PARA_DIREITA = [faixa(480, 100, 40, 1440, 1.4)];
 
 function Ondas({ caminhos, sentido }: { caminhos: string[]; sentido: "esquerda" | "direita" }) {
   return (
     <svg
       className={`absolute inset-y-0 left-0 h-full w-[200%] will-change-transform ${
-        sentido === "esquerda" ? "animate-[ondas-esquerda_38s_linear_infinite]" : "animate-[ondas-direita_55s_linear_infinite]"
+        sentido === "esquerda" ? "animate-[ondas-esquerda_22s_linear_infinite]" : "animate-[ondas-direita_32s_linear_infinite]"
       } motion-reduce:animate-none`}
       viewBox={`0 0 ${2 * LARGURA} ${ALTURA}`}
       preserveAspectRatio="none"
     >
       <defs>
         <filter id={`desfoque-${sentido}`} x="-10%" y="-50%" width="120%" height="200%">
-          <feGaussianBlur stdDeviation="30" />
+          <feGaussianBlur stdDeviation="22" />
         </filter>
       </defs>
       <g filter={`url(#desfoque-${sentido})`}>
@@ -65,7 +65,7 @@ export function FundoOndas() {
       <div className="pontos-base absolute inset-0" />
 
       {/* Luz em ondas, vista so atraves dos pontos */}
-      <div className="pontos-luz absolute inset-0">
+      <div className="pontos-luz absolute inset-0 opacity-75">
         <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" />
         <Ondas caminhos={PARA_DIREITA} sentido="direita" />
       </div>
