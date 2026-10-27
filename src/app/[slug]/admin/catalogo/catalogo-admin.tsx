@@ -164,9 +164,9 @@ export function CatalogoAdmin({
           Tipos de veiculo. Ficam em cima porque definem os precos: sem
           tipo nenhum, nao ha onde por preco.
           --------------------------------------------------------------- */}
-      <section className="vidro mb-8 rounded-3xl p-5 sm:p-6">
+      <section className="cartao-azul mb-8 rounded-3xl p-5 sm:p-6">
         <h2 className="text-base font-semibold text-white">Tipos de veículo</h2>
-        <p className="mt-0.5 text-sm text-astro-muted">
+        <p className="mt-0.5 text-sm text-white/75">
           O cliente escolhe um deles ao cadastrar o carro, e é ele que define o preço.
         </p>
 
@@ -208,14 +208,14 @@ export function CatalogoAdmin({
               // o nome e o que se le o tempo todo.
               <span
                 key={s.id}
-                className="group flex min-h-10 items-center rounded-full border border-white/10 bg-white/[0.06] py-1.5 pr-2 pl-4 text-sm font-semibold text-slate-100 transition hover:border-astro-blue/40"
+                className="group flex min-h-10 items-center rounded-full border border-white/20 bg-white/[0.12] py-1.5 pr-2 pl-4 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/[0.18]"
               >
                 {s.nome}
                 <span className="ml-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
                   <button
                     onClick={() => setRenomeando({ id: s.id, nome: s.nome })}
                     aria-label={`Renomear ${s.nome}`}
-                    className="rounded-full p-1 text-astro-muted transition hover:bg-white/10 hover:text-white"
+                    className="rounded-full p-1 text-white/70 transition hover:bg-white/10 hover:text-white"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -223,7 +223,7 @@ export function CatalogoAdmin({
                     onClick={() => chamar(`/api/segmentos/${s.id}`, "DELETE")}
                     disabled={salvando}
                     aria-label={`Remover ${s.nome}`}
-                    className="rounded-full p-1 text-astro-muted transition hover:bg-red-500/15 hover:text-red-400 disabled:opacity-40"
+                    className="rounded-full p-1 text-white/70 transition hover:bg-red-500/25 hover:text-red-200 disabled:opacity-40"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -235,7 +235,7 @@ export function CatalogoAdmin({
           {novoSegmento === null ? (
             <button
               onClick={() => setNovoSegmento("")}
-              className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-white/20 px-4 py-1.5 text-sm text-astro-muted transition hover:border-astro-blue hover:text-white"
+              className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-white/40 px-4 py-1.5 text-sm text-white/80 transition hover:border-white hover:text-white"
             >
               <Plus className="h-3.5 w-3.5" />
               Adicionar tipo
