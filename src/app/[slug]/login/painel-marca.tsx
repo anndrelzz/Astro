@@ -1,13 +1,11 @@
 import { Check } from "lucide-react";
-import { Logo } from "@/components/ui/astro";
 
 export type Estetica = { nome: string; logoUrl: string | null };
 
 // Identidade da estetica (RF14). O cliente chega aqui por um link que a
 // propria estetica divulgou; sem o nome e o logo na tela, ele nao tem como
-// confirmar que caiu no lugar certo. Sempre sobre fundo escuro — no desktop
-// vive no painel de marca, no celular no topo do formulario.
-export function MarcaEstetica({ estetica }: { estetica: Estetica }) {
+// confirmar que caiu no lugar certo. Sempre sobre fundo colorido/escuro.
+export function MarcaEstetica({ estetica, grande = false }: { estetica: Estetica; grande?: boolean }) {
   const iniciais = estetica.nome
     .split(" ")
     .slice(0, 2)
@@ -16,102 +14,74 @@ export function MarcaEstetica({ estetica }: { estetica: Estetica }) {
     .toUpperCase();
 
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-white/5">
+    <div className={`flex items-center ${grande ? "gap-3.5" : "gap-2.5"}`}>
+      <div
+        className={`flex shrink-0 items-center justify-center overflow-hidden border border-white/20 bg-white/10 ${
+          grande ? "h-14 w-14 rounded-2xl" : "h-9 w-9 rounded-lg"
+        }`}
+      >
         {estetica.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={estetica.logoUrl}
-            alt={`Logo ${estetica.nome}`}
-            className="h-full w-full object-contain"
-          />
+          <img src={estetica.logoUrl} alt={`Logo ${estetica.nome}`} className="h-full w-full object-contain" />
         ) : (
-          <span className="text-xs font-semibold tracking-wide text-white">{iniciais}</span>
+          <span className={`font-semibold tracking-wide text-white ${grande ? "text-base" : "text-xs"}`}>{iniciais}</span>
         )}
       </div>
-      <span className="truncate text-sm font-semibold text-white">{estetica.nome}</span>
+      <span className={`truncate font-semibold text-white ${grande ? "text-lg" : "text-sm"}`}>{estetica.nome}</span>
     </div>
   );
 }
 
-// Painel escuro de marca das telas 02 (login) e 03 (cadastro). No mockup ele
-// ocupa um terco da tela: a esquerda no login, a direita no cadastro. So
-// existe no desktop — no celular a tela inteira ja e escura e ele seria
-// repeticao.
-//
-// O fundo tem duas camadas sobre o azul-escuro da marca: listras diagonais
-// muito sutis (dao textura sem virar padrao chamativo) e um brilho radial
-// azul deslocado do centro, que e o que da profundidade no desenho.
-export function PainelMarca({
-  modo,
-  estetica,
-}: {
-  modo: "login" | "cadastro";
-  estetica: Estetica;
-}) {
+// Painel de marca das telas de login e cadastro: o lado colorido do cartao,
+// na cor da estetica (RF13), com o mesmo degrade e os mesmos aneis do cartao
+// de faturamento do painel. A borda que encosta no formulario e uma curva
+// (.painel-auth, em globals.css). No celular vira a faixa do topo do cartao.
+export function PainelMarca({ modo, estetica }: { modo: "login" | "cadastro"; estetica: Estetica }) {
   const eLogin = modo === "login";
 
   return (
     <aside
-      className={`relative hidden overflow-hidden bg-astro-bg lg:flex lg:flex-col lg:justify-between lg:p-10 ${
-        eLogin ? "" : "lg:order-2"
-      }`}
+      className="painel-auth relative overflow-hidden px-6 pt-7 pb-20 text-white lg:absolute lg:inset-y-0 lg:left-0 lg:flex lg:w-[56%] lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]"
+      style={{
+        backgroundImage:
+          "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
+      }}
     >
-      <div
+      {/* Aneis e bolhas de vidro, decorativos */}
+      <span
         aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(115deg, rgba(255,255,255,0.028) 0px, rgba(255,255,255,0.028) 2px, transparent 2px, transparent 20px)",
-        }}
+        className="pointer-events-none absolute -top-24 -right-10 h-72 w-72 rounded-full border border-white/20 shadow-[0_0_0_44px_rgba(255,255,255,0.04),0_0_0_100px_rgba(255,255,255,0.03)]"
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(60% 45% at 78% 34%, color-mix(in srgb, var(--color-astro-blue) 42%, transparent) 0%, transparent 70%)",
-        }}
-      />
+      <span aria-hidden className="bolha absolute top-[34%] left-[10%] hidden h-14 w-14 lg:block" />
+      <span aria-hidden className="bolha absolute top-[5%] right-[7%] h-9 w-9 lg:top-[38%] lg:right-[22%] lg:h-10 lg:w-10" />
+      <span aria-hidden className="bolha absolute top-[48%] left-[38%] hidden h-8 w-8 lg:block" />
 
-      {/* Topo: de quem e esta pagina. A estetica vem primeiro, a marca da
-          plataforma fica discreta ao lado. */}
-      <div className="relative flex items-center justify-between gap-4">
-        <MarcaEstetica estetica={estetica} />
-        {eLogin && <Logo className="h-7 shrink-0" />}
+      <div className="relative">
+        <MarcaEstetica estetica={estetica} grande />
       </div>
 
-      {/* Rodape */}
-      <div className="relative">
+      <div className="relative mt-8 lg:mt-0">
         {eLogin ? (
           <>
-            <h2 className="mt-3 text-3xl font-bold leading-tight text-white">
-              Bom ter você de{" "}
-              <span className="italic text-astro-blue-bright">volta</span>.
-            </h2>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-astro-muted">
-              Entre para acompanhar seus agendamentos, veículos e histórico de
-              serviços.
+            <h2 className="text-3xl leading-tight font-bold lg:text-4xl">Bom ter você de volta.</h2>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/80">
+              Entre para acompanhar seus agendamentos, veículos e histórico de serviços.
             </p>
           </>
         ) : (
           <>
-            <h2 className="mt-3 text-3xl font-bold leading-tight text-white">
-              Profissionais certificados, agendamento direto.
-            </h2>
-            <ul className="mt-6 space-y-3">
-              {[
-                "Sem ligações ou retornos lentos",
-                "Receba lembretes automáticos",
-                "Pagamento via PIX ou no local",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm text-white">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-astro-blue">
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                  </span>
-                  {item}
-                </li>
-              ))}
+            <h2 className="text-3xl leading-tight font-bold lg:text-4xl">Agende sem ligar nem esperar.</h2>
+            <ul className="mt-5 hidden space-y-3 lg:block">
+              {["Sem ligações ou retornos lentos", "Receba lembretes automáticos", "Pagamento via PIX ou no local"].map(
+                (item) => (
+                  <li key={item} className="flex items-center gap-3 text-sm">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/20">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    {item}
+                  </li>
+                )
+              )}
             </ul>
           </>
         )}

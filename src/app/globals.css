@@ -177,3 +177,29 @@ body {
     mask-size: 14px 14px;
   }
 }
+
+/* Painel de marca do login e do cadastro: a borda que encosta no formulario
+   e uma curva organica, feita por mascara (corta o degrade, os aneis e as
+   bolhas juntos). No celular a curva fica embaixo; no computador, a direita. */
+.painel-auth {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V82C84 94 70 74 52 86S18 100 0 90Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V82C84 94 70 74 52 86S18 100 0 90Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+@media (min-width: 1024px) {
+  .painel-auth {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H74C92 14 66 34 82 52S94 84 80 100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H74C92 14 66 34 82 52S94 84 80 100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  }
+}
+
+/* Bolha de vidro decorativa (login e cadastro). */
+@layer components {
+  .bolha {
+    pointer-events: none;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.06) 60%);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+}

@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
-import { Logo, Field, FieldLabel, PrimaryButton } from "@/components/ui/astro";
+import { ArrowRight, Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
+import type { ComponentProps, ReactNode } from "react";
+import { Logo } from "@/components/ui/astro";
+import { FundoOndas } from "../admin/fundo-ondas";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { SuccessScreen } from "@/components/ui/success-screen";
 import { callbackUrlSeguro } from "@/lib/callback-url";
-import { PainelMarca, MarcaEstetica, type Estetica } from "./painel-marca";
+import { PainelMarca, type Estetica } from "./painel-marca";
 import { LIMITES } from "@/lib/validations/limites";
 
 // Regras de senha exibidas ao usuario no cadastro. Precisam bater exatamente
@@ -26,9 +28,9 @@ const REGRAS_SENHA = [
 // (/login e /cadastro), como no mockup: assim o "Criar agora" e uma navegacao
 // real (funciona antes mesmo do JS hidratar) e nao um toggle client-side.
 //
-// Layout: no celular e uma coluna escura unica. A partir de lg vira a tela
-// dividida do mockup — painel de marca de um lado, formulario claro do outro,
-// com os lados invertidos entre login e cadastro.
+// Layout: um cartao sobre o fundo de pontos com ondas (o mesmo do painel). O
+// lado colorido, na cor da estetica, tem a borda em curva; o formulario fica
+// no lado escuro. No celular o lado colorido vira a faixa do topo.
 export function AuthForm({
   modo,
   estetica,
@@ -84,7 +86,7 @@ export function AuthForm({
       redirect: false,
     });
     if (resultado?.error) {
-      setErro("E-mail ou senha invalidos.");
+      setErro("E-mail ou senha inválidos.");
       return false;
     }
     return true;
@@ -103,7 +105,7 @@ export function AuthForm({
       });
       if (!resposta.ok) {
         const json = await resposta.json().catch(() => null);
-        setErro(json?.error ?? "Nao foi possivel criar a conta.");
+        setErro(json?.error ?? "Não foi possível criar a conta.");
         setCarregando(false);
         return;
       }
@@ -137,92 +139,50 @@ export function AuthForm({
   }
 
   return (
-    <div className="astro-dark min-h-dvh lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <ThemeColor color="#09090b" />
+    <div className="relative isolate flex min-h-dvh items-center justify-center bg-black px-4 py-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:p-10">
+      <ThemeColor color="#000000" />
+      <FundoOndas />
 
       {/* Animacao de sucesso (login/cadastro) */}
       <AnimatePresence>
-        {sucesso && (
-          <SuccessScreen title={eLogin ? "Login realizado!" : "Cadastro realizado!"} />
-        )}
+        {sucesso && <SuccessScreen title={eLogin ? "Login realizado!" : "Cadastro realizado!"} />}
       </AnimatePresence>
 
-      <PainelMarca modo={modo} estetica={estetica} />
+      <div className="relative w-full max-w-5xl">
+        {/* Bolhas fora do cartao, ligando o cartao ao fundo */}
+        <span aria-hidden className="bolha absolute -top-6 left-[38%] hidden h-14 w-14 lg:block" style={{ backgroundColor: "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)" }} />
+        <span aria-hidden className="bolha absolute -bottom-5 left-[12%] hidden h-9 w-9 lg:block" style={{ backgroundColor: "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)" }} />
 
-      {/* Coluna do formulario */}
-      <div
-        className={`flex min-h-dvh flex-col px-6 pb-8 pt-[calc(env(safe-area-inset-top)+2rem)] lg:min-h-dvh lg:bg-white lg:px-12 lg:pb-8 lg:pt-8 ${
-          eLogin ? "" : "lg:order-1"
-        }`}
-      >
-        {/* Topo. No celular mostra de quem e a pagina — a estetica em primeiro
-            plano, a marca da plataforma discreta ao lado. No desktop essa
-            identidade ja esta no painel escuro, entao aqui sobra o atalho para
-            a outra rota. */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3 lg:hidden">
-            <MarcaEstetica estetica={estetica} />
-          </div>
-          <span className={`shrink-0 ${eLogin ? "lg:hidden" : ""}`}>
-            <Logo className="h-5 lg:hidden" />
-            <Logo variant="preto" className="hidden h-7 lg:block" />
-          </span>
-          <p className="hidden text-sm text-zinc-500 lg:block">
-            {eLogin ? "Ainda não tem conta? " : "Já tem conta? "}
-            <Link
-              href={outraRota}
-              className="font-semibold text-astro-blue underline-offset-4 hover:underline"
-            >
-              {eLogin ? "Criar agora" : "Entrar"} →
-            </Link>
-          </p>
-        </div>
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[38rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <PainelMarca modo={modo} estetica={estetica} />
+          {/* Coluna 1 vazia no computador: o painel colorido fica por baixo, absoluto */}
+          <div aria-hidden className="hidden lg:block" />
 
-        {/* Bloco central */}
-        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">
-          <div className="lg:mx-auto lg:w-full lg:max-w-md">
-            <div className="mt-10 lg:mt-0">
-              <h1 className="text-3xl font-bold leading-tight text-white lg:mt-2 lg:text-zinc-900">
-                {eLogin ? (
-                  <>
-                    <span className="lg:hidden">
-                      Bom ter você
-                      <br />
-                      de <span className="italic text-astro-blue-bright">volta</span>.
-                    </span>
-                    <span className="hidden lg:inline">Acesse sua conta</span>
-                  </>
-                ) : (
-                  <>
-                    Crie sua conta
-                    <br className="lg:hidden" />{" "}
-                    em <span className="italic text-astro-blue-bright">minutos</span>.
-                  </>
-                )}
-              </h1>
-              <p className="mt-3 text-sm text-astro-muted lg:text-zinc-500">
-                {eLogin
-                  ? "Use o e-mail e a senha cadastrados."
-                  : "Comece a agendar seus serviços automotivos premium."}
-              </p>
+          {/* Formulario */}
+          <div className="relative flex flex-col px-6 pt-2 pb-8 lg:px-12 lg:py-10">
+            <div className="hidden justify-end lg:flex">
+              <Logo className="h-6" />
             </div>
 
-            {/* Formulario */}
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              {erro && (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300 lg:border-red-200 lg:bg-red-50 lg:text-red-600">
-                  {erro}
-                </p>
-              )}
+            <div className="lg:my-auto">
+              <h1 className="text-2xl font-bold text-white lg:text-3xl">{eLogin ? "Entrar" : "Criar conta"}</h1>
+              <p className="mt-1.5 text-sm text-astro-muted">
+                {eLogin ? "Use o e-mail e a senha cadastrados." : "Leva menos de um minuto."}
+              </p>
 
-              {!eLogin && (
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor={`${id}-nome`}>Nome completo</FieldLabel>
-                  <Field
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                {erro && (
+                  <p role="alert" className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+                    {erro}
+                  </p>
+                )}
+
+                {!eLogin && (
+                  <CampoAuth
                     id={`${id}-nome`}
+                    rotulo="Nome completo"
+                    icone={<User className="h-4 w-4" />}
                     autoComplete="name"
-                    claroNoDesktop
-                    icon={<User className="h-4 w-4" />}
                     type="text"
                     placeholder="Seu nome"
                     maxLength={LIMITES.nomePessoa}
@@ -230,158 +190,148 @@ export function AuthForm({
                     onChange={(e) => setNome(e.target.value)}
                     required
                   />
-                </div>
-              )}
-
-              {/* No cadastro, e-mail e telefone dividem a linha no desktop
-                  (tela 03); no celular continuam empilhados. */}
-              <div className={!eLogin ? "space-y-5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0" : ""}>
-                <div className="space-y-1.5">
-                  <FieldLabel htmlFor={`${id}-email`}>E-mail</FieldLabel>
-                  <Field
-                    id={`${id}-email`}
-                    autoComplete="email"
-                    claroNoDesktop
-                    icon={<Mail className="h-4 w-4" />}
-                    type="email"
-                    placeholder="voce@email.com"
-                    maxLength={LIMITES.email}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {!eLogin && (
-                  <div className="space-y-1.5">
-                    <FieldLabel htmlFor={`${id}-telefone`}>Telefone</FieldLabel>
-                    <Field
-                      id={`${id}-telefone`}
-                      autoComplete="tel"
-                      claroNoDesktop
-                      icon={<Phone className="h-4 w-4" />}
-                      type="tel"
-                      placeholder="(00) 00000-0000"
-                      value={telefone}
-                      onChange={(e) => setTelefone(e.target.value)}
-                      required
-                    />
-                  </div>
                 )}
-              </div>
 
-              <div className="space-y-1.5">
-                <FieldLabel htmlFor={`${id}-senha`}>Senha</FieldLabel>
-                <Field
-                  id={`${id}-senha`}
-                  // No login o navegador oferece a senha salva; no cadastro,
-                  // sugere uma nova e guarda junto com o e-mail.
-                  autoComplete={eLogin ? "current-password" : "new-password"}
-                  claroNoDesktop
-                  icon={<Lock className="h-4 w-4" />}
-                  type={mostrarSenha ? "text" : "password"}
-                  placeholder="••••••••"
-                  // So no cadastro: quem ja tem conta com senha maior continua entrando.
-                  maxLength={eLogin ? undefined : LIMITES.senha}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
+                <CampoAuth
+                  id={`${id}-email`}
+                  rotulo="E-mail"
+                  icone={<Mail className="h-4 w-4" />}
+                  autoComplete="email"
+                  type="email"
+                  placeholder="voce@email.com"
+                  maxLength={LIMITES.email}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
-                  minLength={eLogin ? undefined : 8}
-                  right={
-                    <button
-                      type="button"
-                      onClick={() => setMostrarSenha((v) => !v)}
-                      className="text-astro-muted hover:text-white lg:hover:text-zinc-600"
-                      aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-                    >
-                      {mostrarSenha ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  }
                 />
 
-                {/* Medidor de forca (tela 03). Uma barra por regra atendida —
-                    o usuario ve exatamente o que falta, e o texto lista as
-                    mesmas regras que o servidor exige. */}
                 {!eLogin && (
-                  <div className="pt-1">
-                    <div className="flex gap-1.5" aria-hidden>
-                      {REGRAS_SENHA.map((regra, i) => (
-                        <span
-                          key={regra.rotulo}
-                          className={`h-1 flex-1 rounded-full ${
-                            senha.length === 0
-                              ? "bg-white/10 lg:bg-zinc-200"
-                              : i < atendidas
-                                ? "bg-astro-blue"
-                                : "bg-white/10 lg:bg-zinc-200"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="mt-1.5 text-xs text-astro-muted lg:text-zinc-500">
-                      Mínimo de {REGRAS_SENHA.map((r) => r.rotulo).join(", ")}.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {!eLogin && (
-                <label className="flex cursor-pointer items-start gap-2.5 text-sm text-astro-muted lg:text-zinc-600">
-                  <input
-                    type="checkbox"
-                    checked={aceitouTermos}
-                    onChange={(e) => setAceitouTermos(e.target.checked)}
+                  <CampoAuth
+                    id={`${id}-telefone`}
+                    rotulo="Telefone"
+                    icone={<Phone className="h-4 w-4" />}
+                    autoComplete="tel"
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
                     required
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-astro-blue"
                   />
-                  <span>
-                    Li e aceito os{" "}
-                    <strong className="font-semibold text-white lg:text-zinc-900">
-                      Termos de uso
-                    </strong>{" "}
-                    e a{" "}
-                    <strong className="font-semibold text-white lg:text-zinc-900">
-                      Política de privacidade
-                    </strong>{" "}
-                    da Astro.
-                  </span>
-                </label>
-              )}
+                )}
 
-              <PrimaryButton type="submit" disabled={carregando || !montado}>
-                {carregando
-                  ? "Aguarde..."
-                  : !montado
-                    ? "Carregando…"
-                    : eLogin
-                      ? "Entrar"
-                      : "Criar conta"}
-              </PrimaryButton>
-            </form>
+                <div>
+                  <CampoAuth
+                    id={`${id}-senha`}
+                    rotulo="Senha"
+                    icone={<Lock className="h-4 w-4" />}
+                    // No login o navegador oferece a senha salva; no cadastro,
+                    // sugere uma nova e guarda junto com o e-mail.
+                    autoComplete={eLogin ? "current-password" : "new-password"}
+                    type={mostrarSenha ? "text" : "password"}
+                    placeholder="••••••••"
+                    // So no cadastro: quem ja tem conta com senha maior continua entrando.
+                    maxLength={eLogin ? undefined : LIMITES.senha}
+                    minLength={eLogin ? undefined : 8}
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    required
+                    direita={
+                      <button
+                        type="button"
+                        onClick={() => setMostrarSenha((v) => !v)}
+                        className="grid h-8 w-8 place-items-center rounded-full text-astro-muted hover:text-white"
+                        aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                      >
+                        {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                  />
 
-            {/* Alternar login/cadastro — no celular fica no rodape;
-                no desktop essa navegacao ja esta no topo da coluna. */}
-            <div className="mt-8 text-center text-sm text-astro-muted lg:hidden">
-              {eLogin ? "Ainda não tem conta? " : "Já tem conta? "}
-              <Link
-                href={outraRota}
-                className="font-semibold text-white underline-offset-4 hover:underline"
-              >
-                {eLogin ? "Criar agora" : "Entrar"}
-              </Link>
+                  {/* Medidor de forca: uma barra por regra atendida, com as
+                      mesmas regras que o servidor exige. */}
+                  {!eLogin && (
+                    <div className="pt-2">
+                      <div className="flex gap-1.5" aria-hidden>
+                        {REGRAS_SENHA.map((regra, i) => (
+                          <span
+                            key={regra.rotulo}
+                            className={`h-1 flex-1 rounded-full ${senha.length > 0 && i < atendidas ? "bg-astro-blue-bright" : "bg-white/10"}`}
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-1.5 text-xs text-astro-muted">Mínimo de {REGRAS_SENHA.map((r) => r.rotulo).join(", ")}.</p>
+                    </div>
+                  )}
+                </div>
+
+                {!eLogin && (
+                  <label className="flex cursor-pointer items-start gap-2.5 text-sm text-astro-muted">
+                    <input
+                      type="checkbox"
+                      checked={aceitouTermos}
+                      onChange={(e) => setAceitouTermos(e.target.checked)}
+                      required
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-astro-blue"
+                    />
+                    <span>
+                      Li e aceito os <strong className="font-semibold text-white">Termos de uso</strong> e a{" "}
+                      <strong className="font-semibold text-white">Política de privacidade</strong> da Astro.
+                    </span>
+                  </label>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={carregando || !montado}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-astro-blue px-5 py-3.5 text-sm font-semibold text-white shadow-[0_14px_30px_-12px_var(--color-astro-blue)] transition hover:brightness-110 disabled:opacity-50"
+                >
+                  {carregando ? "Aguarde..." : !montado ? "Carregando…" : eLogin ? "Entrar" : "Criar conta"}
+                  {!carregando && montado && <ArrowRight className="h-4 w-4" />}
+                </button>
+              </form>
+
+              <p className="mt-6 text-center text-sm text-astro-muted">
+                {eLogin ? "Ainda não tem conta? " : "Já tem conta? "}
+                <Link href={outraRota} className="font-semibold text-astro-blue-bright underline-offset-4 hover:underline">
+                  {eLogin ? "Criar agora" : "Entrar"}
+                </Link>
+              </p>
             </div>
+
+            {/* Sem "voltar a vitrine": /[slug] redireciona quem nao esta
+                logado para ca, entao o link seria um laco. */}
+            <p className="mt-8 text-center text-xs text-astro-muted/70 lg:mt-0 lg:text-right">
+              © {new Date().getFullYear()} Astro Estética Automotiva
+            </p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Rodape (so desktop, como no mockup). Sem "voltar a vitrine": /[slug]
-            redireciona quem nao esta logado para ca, entao o link seria um laco. */}
-        <div className="hidden items-center justify-between text-xs text-zinc-400 lg:flex">
-          <span>© {new Date().getFullYear()} Astro Estética Automotiva</span>
-        </div>
+// Campo do login e do cadastro: rotulo visivel, icone a esquerda e formato
+// de pilula, sobre o lado escuro do cartao.
+function CampoAuth({
+  id,
+  rotulo,
+  icone,
+  direita,
+  ...props
+}: ComponentProps<"input"> & { id: string; rotulo: string; icone: ReactNode; direita?: ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm text-slate-300">
+        {rotulo}
+      </label>
+      <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] py-1 pr-1.5 pl-4 transition focus-within:border-astro-blue-bright/70 focus-within:bg-white/[0.08]">
+        <span className="text-astro-muted">{icone}</span>
+        <input
+          id={id}
+          {...props}
+          className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none"
+        />
+        {direita}
       </div>
     </div>
   );
