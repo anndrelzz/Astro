@@ -42,7 +42,10 @@ export function AuthForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   // Valor fora da propria estetica vira null e e ignorado (ver callback-url.ts).
-  const callbackUrlParam = callbackUrlSeguro(searchParams.get("callbackUrl"), slug);
+  const callbackUrlParam = callbackUrlSeguro(
+    searchParams.get("callbackUrl"),
+    slug,
+  );
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -101,7 +104,13 @@ export function AuthForm({
       const resposta = await fetch("/api/auth/cadastro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantSlug: slug, nome, email, telefone, senha }),
+        body: JSON.stringify({
+          tenantSlug: slug,
+          nome,
+          email,
+          telefone,
+          senha,
+        }),
       });
       if (!resposta.ok) {
         const json = await resposta.json().catch(() => null);
@@ -139,40 +148,72 @@ export function AuthForm({
   }
 
   return (
-    <div className="relative isolate flex min-h-dvh items-center justify-center bg-black px-4 py-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:p-10">
+    <div className="relative isolate flex min-h-dvh items-center justify-center bg-black px-4 py-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:p-6 [@media(min-height:820px)]:lg:p-10">
       <ThemeColor color="#000000" />
       <FundoOndas />
 
       {/* Animacao de sucesso (login/cadastro) */}
       <AnimatePresence>
-        {sucesso && <SuccessScreen title={eLogin ? "Login realizado!" : "Cadastro realizado!"} />}
+        {sucesso && (
+          <SuccessScreen
+            title={eLogin ? "Login realizado!" : "Cadastro realizado!"}
+          />
+        )}
       </AnimatePresence>
 
       <div className="relative w-full max-w-5xl">
         {/* Bolhas fora do cartao, ligando o cartao ao fundo */}
-        <span aria-hidden className="bolha absolute -top-6 left-[38%] hidden h-14 w-14 lg:block" style={{ backgroundColor: "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)" }} />
-        <span aria-hidden className="bolha absolute -bottom-5 left-[12%] hidden h-9 w-9 lg:block" style={{ backgroundColor: "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)" }} />
+        <span
+          aria-hidden
+          className="bolha absolute -top-6 left-[38%] hidden h-14 w-14 lg:block"
+          style={{
+            backgroundColor:
+              "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)",
+          }}
+        />
+        <span
+          aria-hidden
+          className="bolha absolute -bottom-5 left-[12%] hidden h-9 w-9 lg:block"
+          style={{
+            backgroundColor:
+              "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)",
+          }}
+        />
 
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[38rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <PainelMarca modo={modo} estetica={estetica} />
           {/* Coluna 1 vazia no computador: o painel colorido fica por baixo, absoluto */}
           <div aria-hidden className="hidden lg:block" />
 
           {/* Formulario */}
-          <div className="relative flex flex-col px-6 pt-2 pb-8 lg:px-12 lg:py-10">
+          <div
+            className={`relative flex flex-col px-6 pt-2 pb-8 lg:px-12 ${eLogin ? "lg:py-10" : "lg:py-7"}`}
+          >
             <div className="hidden justify-end lg:flex">
               <Logo className="h-6" />
             </div>
 
             <div className="lg:my-auto">
-              <h1 className="text-2xl font-bold text-white lg:text-3xl">{eLogin ? "Entrar" : "Criar conta"}</h1>
+              <h1
+                className={`text-2xl font-bold text-white ${eLogin ? "lg:text-3xl" : ""}`}
+              >
+                {eLogin ? "Entrar" : "Criar conta"}
+              </h1>
               <p className="mt-1.5 text-sm text-astro-muted">
-                {eLogin ? "Use o e-mail e a senha cadastrados." : "Leva menos de um minuto."}
+                {eLogin
+                  ? "Use o e-mail e a senha cadastrados."
+                  : "Leva menos de um minuto."}
               </p>
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <form
+                onSubmit={handleSubmit}
+                className={eLogin ? "mt-6 space-y-4" : "mt-4 space-y-3"}
+              >
                 {erro && (
-                  <p role="alert" className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+                  <p
+                    role="alert"
+                    className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300"
+                  >
                     {erro}
                   </p>
                 )}
@@ -192,32 +233,42 @@ export function AuthForm({
                   />
                 )}
 
-                <CampoAuth
-                  id={`${id}-email`}
-                  rotulo="E-mail"
-                  icone={<Mail className="h-4 w-4" />}
-                  autoComplete="email"
-                  type="email"
-                  placeholder="voce@email.com"
-                  maxLength={LIMITES.email}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-
-                {!eLogin && (
+                {/* No cadastro, e-mail e telefone dividem a linha no computador,
+                    para o formulario caber na tela sem rolar. */}
+                <div
+                  className={
+                    eLogin
+                      ? ""
+                      : "space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0"
+                  }
+                >
                   <CampoAuth
-                    id={`${id}-telefone`}
-                    rotulo="Telefone"
-                    icone={<Phone className="h-4 w-4" />}
-                    autoComplete="tel"
-                    type="tel"
-                    placeholder="(00) 00000-0000"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
+                    id={`${id}-email`}
+                    rotulo="E-mail"
+                    icone={<Mail className="h-4 w-4" />}
+                    autoComplete="email"
+                    type="email"
+                    placeholder="voce@email.com"
+                    maxLength={LIMITES.email}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
-                )}
+
+                  {!eLogin && (
+                    <CampoAuth
+                      id={`${id}-telefone`}
+                      rotulo="Telefone"
+                      icone={<Phone className="h-4 w-4" />}
+                      autoComplete="tel"
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      value={telefone}
+                      onChange={(e) => setTelefone(e.target.value)}
+                      required
+                    />
+                  )}
+                </div>
 
                 <div>
                   <CampoAuth
@@ -240,9 +291,15 @@ export function AuthForm({
                         type="button"
                         onClick={() => setMostrarSenha((v) => !v)}
                         className="grid h-8 w-8 place-items-center rounded-full text-astro-muted hover:text-white"
-                        aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                        aria-label={
+                          mostrarSenha ? "Ocultar senha" : "Mostrar senha"
+                        }
                       >
-                        {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {mostrarSenha ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     }
                   />
@@ -259,7 +316,10 @@ export function AuthForm({
                           />
                         ))}
                       </div>
-                      <p className="mt-1.5 text-xs text-astro-muted">Mínimo de {REGRAS_SENHA.map((r) => r.rotulo).join(", ")}.</p>
+                      <p className="mt-1.5 text-xs text-astro-muted">
+                        Mínimo de {REGRAS_SENHA.map((r) => r.rotulo).join(", ")}
+                        .
+                      </p>
                     </div>
                   )}
                 </div>
@@ -274,8 +334,15 @@ export function AuthForm({
                       className="mt-0.5 h-4 w-4 shrink-0 accent-astro-blue"
                     />
                     <span>
-                      Li e aceito os <strong className="font-semibold text-white">Termos de uso</strong> e a{" "}
-                      <strong className="font-semibold text-white">Política de privacidade</strong> da Astro.
+                      Li e aceito os{" "}
+                      <strong className="font-semibold text-white">
+                        Termos de uso
+                      </strong>{" "}
+                      e a{" "}
+                      <strong className="font-semibold text-white">
+                        Política de privacidade
+                      </strong>{" "}
+                      da Astro.
                     </span>
                   </label>
                 )}
@@ -285,14 +352,25 @@ export function AuthForm({
                   disabled={carregando || !montado}
                   className="flex w-full items-center justify-center gap-2 rounded-full bg-astro-blue px-5 py-3.5 text-sm font-semibold text-white shadow-[0_14px_30px_-12px_var(--color-astro-blue)] transition hover:brightness-110 disabled:opacity-50"
                 >
-                  {carregando ? "Aguarde..." : !montado ? "Carregando…" : eLogin ? "Entrar" : "Criar conta"}
+                  {carregando
+                    ? "Aguarde..."
+                    : !montado
+                      ? "Carregando…"
+                      : eLogin
+                        ? "Entrar"
+                        : "Criar conta"}
                   {!carregando && montado && <ArrowRight className="h-4 w-4" />}
                 </button>
               </form>
 
-              <p className="mt-6 text-center text-sm text-astro-muted">
+              <p
+                className={`text-center text-sm text-astro-muted ${eLogin ? "mt-6" : "mt-4"}`}
+              >
                 {eLogin ? "Ainda não tem conta? " : "Já tem conta? "}
-                <Link href={outraRota} className="font-semibold text-astro-blue-bright underline-offset-4 hover:underline">
+                <Link
+                  href={outraRota}
+                  className="font-semibold text-astro-blue-bright underline-offset-4 hover:underline"
+                >
                   {eLogin ? "Criar agora" : "Entrar"}
                 </Link>
               </p>
@@ -300,7 +378,9 @@ export function AuthForm({
 
             {/* Sem "voltar a vitrine": /[slug] redireciona quem nao esta
                 logado para ca, entao o link seria um laco. */}
-            <p className="mt-8 text-center text-xs text-astro-muted/70 lg:mt-0 lg:text-right">
+            <p
+              className={`mt-8 text-center text-xs text-astro-muted/70 lg:mt-0 lg:text-right ${eLogin ? "" : "lg:hidden"}`}
+            >
               © {new Date().getFullYear()} Astro Estética Automotiva
             </p>
           </div>
@@ -318,7 +398,12 @@ function CampoAuth({
   icone,
   direita,
   ...props
-}: ComponentProps<"input"> & { id: string; rotulo: string; icone: ReactNode; direita?: ReactNode }) {
+}: ComponentProps<"input"> & {
+  id: string;
+  rotulo: string;
+  icone: ReactNode;
+  direita?: ReactNode;
+}) {
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-sm text-slate-300">
