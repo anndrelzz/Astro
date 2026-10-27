@@ -1,4 +1,4 @@
-// Fundo das telas com cards em vidro (.vidro): uma grade de pontinhos sobre o
+// Fundo de todas as telas do Admin (vem do layout): uma grade de pontinhos sobre o
 // preto, e faixas de luz em forma de onda que deslizam devagar por baixo dela.
 // Os pontos so aparecem acesos onde a onda passa, entao o que se ve sao ondas
 // feitas de pontos atravessando a tela. A luz e a cor da estetica

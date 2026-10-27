@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Clock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { LIMITES } from "@/lib/validations/limites";
-import { FundoOndas } from "../fundo-ondas";
 import { Modal } from "../modal";
 
 type Segmento = { id: string; nome: string; ordem: number };
@@ -132,8 +131,6 @@ export function CatalogoAdmin({
 
   return (
     <div>
-      <FundoOndas />
-
       {/* Topo no padrao do Dashboard: titulo direto, sem capa. */}
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
