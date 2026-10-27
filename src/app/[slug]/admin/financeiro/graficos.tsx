@@ -333,7 +333,9 @@ export function LinhaAcumulada({ valores, rotulo }: { valores: number[]; rotulo:
   const L = 300;
   const A = 100;
   const max = Math.max(...valores, 1);
-  const pontos = valores.map((v, i) => [(i / (valores.length - 1)) * L, A - 4 - (v / max) * (A - 8)] as const);
+  // O ponto mais alto para a 36% do topo: a faixa livre acima dele e onde o
+  // rotulo fica, sem invadir o valor grande do cartao.
+  const pontos = valores.map((v, i) => [(i / (valores.length - 1)) * L, A - 4 - (v / max) * (A * 0.6)] as const);
   const linha = pontos.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const fimY = (pontos[pontos.length - 1][1] / A) * 100;
 
@@ -362,8 +364,8 @@ export function LinhaAcumulada({ valores, rotulo }: { valores: number[]; rotulo:
         style={{ top: `${fimY}%` }}
       />
       <span
-        className="absolute right-0 rounded-full bg-black/30 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-white backdrop-blur-sm"
-        style={{ top: `calc(${fimY}% + 10px)` }}
+        className="absolute right-0 -translate-y-full rounded-full bg-black/30 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-white backdrop-blur-sm"
+        style={{ top: `calc(${fimY}% - 10px)` }}
       >
         {rotulo}
       </span>
