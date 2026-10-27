@@ -162,24 +162,6 @@ export function AuthForm({
       </AnimatePresence>
 
       <div className="relative w-full max-w-5xl">
-        {/* Bolhas fora do cartao, ligando o cartao ao fundo */}
-        <span
-          aria-hidden
-          className="bolha absolute -top-6 left-[38%] hidden h-14 w-14 lg:block"
-          style={{
-            backgroundColor:
-              "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)",
-          }}
-        />
-        <span
-          aria-hidden
-          className="bolha absolute -bottom-5 left-[12%] hidden h-9 w-9 lg:block"
-          style={{
-            backgroundColor:
-              "color-mix(in srgb, var(--color-astro-blue) 35%, transparent)",
-          }}
-        />
-
         <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <PainelMarca modo={modo} estetica={estetica} />
           {/* Coluna 1 vazia no computador: o painel colorido fica por baixo, absoluto */}

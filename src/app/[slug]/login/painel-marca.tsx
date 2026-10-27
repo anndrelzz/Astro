@@ -80,22 +80,10 @@ export function PainelMarca({
             "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
         }}
       >
-        {/* Aneis e bolhas de vidro, decorativos */}
+        {/* Aneis decorativos */}
         <span
           aria-hidden
           className="pointer-events-none absolute -top-24 -right-10 h-72 w-72 rounded-full border border-white/20 shadow-[0_0_0_44px_rgba(255,255,255,0.04),0_0_0_100px_rgba(255,255,255,0.03)]"
-        />
-        <span
-          aria-hidden
-          className="bolha absolute top-[34%] left-[10%] hidden h-14 w-14 lg:block"
-        />
-        <span
-          aria-hidden
-          className="bolha absolute top-[5%] right-[7%] h-9 w-9 lg:top-[38%] lg:right-[22%] lg:h-10 lg:w-10"
-        />
-        <span
-          aria-hidden
-          className="bolha absolute top-[48%] left-[38%] hidden h-8 w-8 lg:block"
         />
 
         <div className="relative">
