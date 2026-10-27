@@ -70,22 +70,37 @@ function situacaoAgora(grade: HorarioDia[], agora: { diaSemana: number; minuto: 
   return { aberto: false, titulo: "Fechado", detalhe: "Nenhum dia aberto na semana. O cliente não consegue agendar." };
 }
 
+// Como os horarios sao oferecidos ao cliente (RF02, RN06): quantos carros ao
+// mesmo tempo e de quantos em quantos minutos. Moravam em Configuracoes; ficam
+// aqui porque e onde o dono pensa em horario. Salvam pela rota de
+// configuracoes (PATCH /api/tenant), junto com a grade, num botao so.
+type Oferta = { capacidade: number; intervalo: number };
+const INTERVALOS = [15, 30, 60];
+
 export function HorariosAdmin({
   horariosIniciais,
   agora,
+  ofertaInicial,
 }: {
   horariosIniciais: HorarioDia[];
   agora: { diaSemana: number; minuto: number };
+  ofertaInicial: Oferta;
 }) {
   const router = useRouter();
   const [horarios, setHorarios] = useState(horariosIniciais);
   const [salvos, setSalvos] = useState(horariosIniciais);
+  const [oferta, setOferta] = useState(ofertaInicial);
+  const [ofertaSalva, setOfertaSalva] = useState(ofertaInicial);
+  const [intervaloLivre, setIntervaloLivre] = useState(!INTERVALOS.includes(ofertaInicial.intervalo));
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [copiandoDe, setCopiandoDe] = useState<number | null>(null);
 
-  const alterado = JSON.stringify(horarios) !== JSON.stringify(salvos);
-  const temErro = horarios.some(invalido);
+  const gradeAlterada = JSON.stringify(horarios) !== JSON.stringify(salvos);
+  const ofertaAlterada = JSON.stringify(oferta) !== JSON.stringify(ofertaSalva);
+  const alterado = gradeAlterada || ofertaAlterada;
+  const ofertaInvalida = !(oferta.capacidade >= 1) || !(oferta.intervalo >= 5);
+  const temErro = horarios.some(invalido) || ofertaInvalida;
 
   // Fechar ou recarregar a aba com alteracao pendente pede confirmacao.
   useEffect(() => {
@@ -116,22 +131,39 @@ export function HorariosAdmin({
     setErro(null);
     setSalvando(true);
 
-    const resposta = await fetch("/api/tenant/horarios", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        horarios.map(({ diaSemana, ativo, horaInicio, horaFim }) => ({ diaSemana, ativo, horaInicio, horaFim }))
-      ),
-    });
+    // So envia o que mudou: a grade e a oferta sao rotas diferentes.
+    if (gradeAlterada) {
+      const resposta = await fetch("/api/tenant/horarios", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          horarios.map(({ diaSemana, ativo, horaInicio, horaFim }) => ({ diaSemana, ativo, horaInicio, horaFim }))
+        ),
+      });
+      if (!resposta.ok) {
+        const json = await resposta.json().catch(() => null);
+        setErro(json?.error ?? "Não foi possível salvar a grade.");
+        setSalvando(false);
+        return;
+      }
+      setSalvos(horarios);
+    }
+    if (ofertaAlterada) {
+      const resposta = await fetch("/api/tenant", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ capacidadeSimultanea: oferta.capacidade, intervaloMinutos: oferta.intervalo }),
+      });
+      if (!resposta.ok) {
+        const json = await resposta.json().catch(() => null);
+        setErro(json?.error ?? "Não foi possível salvar a capacidade e o intervalo.");
+        setSalvando(false);
+        return;
+      }
+      setOfertaSalva(oferta);
+    }
 
     setSalvando(false);
-
-    if (!resposta.ok) {
-      const json = await resposta.json().catch(() => null);
-      setErro(json?.error ?? "Não foi possível salvar a grade.");
-      return;
-    }
-    setSalvos(horarios);
     router.refresh();
   }
 
@@ -356,8 +388,108 @@ export function HorariosAdmin({
           })}
         </ul>
       </section>
+
+      {/* Como os horarios sao oferecidos */}
+      <section className="mt-6 rounded-3xl border border-admin-border bg-admin-surface p-4 sm:p-6">
+        <h2 className="text-base font-semibold text-white">Como os horários são oferecidos</h2>
+        <p className="mt-0.5 text-sm text-astro-muted">Vale para todos os dias abertos.</p>
+
+        <div className="mt-5 grid gap-6 md:grid-cols-2">
+          <div>
+            <p className="text-sm font-semibold text-white">Carros ao mesmo tempo</p>
+            <p className="mt-0.5 text-sm text-astro-muted">Quantos veículos a estética atende num mesmo horário.</p>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Diminuir"
+                disabled={oferta.capacidade <= 1}
+                onClick={() => setOferta({ ...oferta, capacidade: Math.max(1, oferta.capacidade - 1) })}
+                className="grid h-11 w-11 place-items-center rounded-full border border-admin-border text-lg text-white transition hover:border-astro-blue disabled:opacity-40"
+              >
+                −
+              </button>
+              <span className="w-12 text-center text-2xl font-bold text-white" aria-live="polite">
+                {oferta.capacidade}
+              </span>
+              <button
+                type="button"
+                aria-label="Aumentar"
+                onClick={() => setOferta({ ...oferta, capacidade: oferta.capacidade + 1 })}
+                className="grid h-11 w-11 place-items-center rounded-full border border-admin-border text-lg text-white transition hover:border-astro-blue"
+              >
+                +
+              </button>
+              <span className="text-sm text-astro-muted">{oferta.capacidade === 1 ? "carro por vez" : "carros por vez"}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-white">Intervalo entre horários</p>
+            <p className="mt-0.5 text-sm text-astro-muted">De quantos em quantos minutos o cliente pode marcar.</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {INTERVALOS.map((m) => {
+                const marcado = !intervaloLivre && oferta.intervalo === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={marcado}
+                    onClick={() => {
+                      setIntervaloLivre(false);
+                      setOferta({ ...oferta, intervalo: m });
+                    }}
+                    className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition ${
+                      marcado ? "border-transparent bg-astro-blue text-white" : "border-admin-border text-astro-muted hover:text-white"
+                    }`}
+                  >
+                    {m === 60 ? "1 hora" : `${m} min`}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                aria-pressed={intervaloLivre}
+                onClick={() => setIntervaloLivre(true)}
+                className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition ${
+                  intervaloLivre ? "border-transparent bg-astro-blue text-white" : "border-admin-border text-astro-muted hover:text-white"
+                }`}
+              >
+                Outro
+              </button>
+            </div>
+            {intervaloLivre && (
+              <label className="mt-3 flex items-center gap-2 text-sm text-astro-muted">
+                <input
+                  type="number"
+                  min={5}
+                  step={5}
+                  value={oferta.intervalo}
+                  onChange={(e) => setOferta({ ...oferta, intervalo: Number(e.target.value) })}
+                  className="w-24 rounded-xl border border-admin-border bg-admin-bg px-3 py-2 text-right font-mono text-sm text-white outline-none focus:border-astro-blue"
+                />
+                minutos
+              </label>
+            )}
+            {oferta.intervalo >= 5 ? (
+              <p className="mt-3 text-sm text-astro-muted">
+                O cliente verá:{" "}
+                <span className="font-mono text-slate-200">{previaHorarios(horarios, oferta.intervalo)}</span>
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-red-300">Use um intervalo de pelo menos 5 minutos.</p>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
+}
+
+// "09:00, 09:30, 10:00..." a partir da abertura do primeiro dia aberto.
+function previaHorarios(grade: HorarioDia[], intervalo: number) {
+  const dia = grade.find((h) => h.ativo && !invalido(h));
+  const inicio = dia ? paraMinutos(dia.horaInicio) : 8 * 60;
+  return [0, 1, 2].map((i) => hhmm(inicio + i * intervalo)).join(", ") + "…";
 }
 
 function MenuCopiar({

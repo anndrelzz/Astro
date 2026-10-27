@@ -74,6 +74,7 @@ export default async function AdminHorariosPage({
     <HorariosAdmin
       horariosIniciais={horariosPorDia}
       agora={{ diaSemana: relogio.diaSemana, minuto: relogio.hora * 60 + relogio.minuto }}
+      ofertaInicial={{ capacidade: tenant.capacidadeSimultanea, intervalo: tenant.intervaloMinutos }}
     />
   );
 }
