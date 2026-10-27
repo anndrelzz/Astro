@@ -172,7 +172,7 @@ export function AuthForm({
             className={`relative flex flex-col px-6 pt-2 pb-8 lg:px-12 ${eLogin ? "lg:py-10" : "lg:py-7"}`}
           >
             <div className="hidden justify-end lg:flex">
-              <Logo className="h-6" />
+              <Logo className="h-9" />
             </div>
 
             <div className="lg:my-auto">
