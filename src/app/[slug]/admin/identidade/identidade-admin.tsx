@@ -63,7 +63,7 @@ export function IdentidadeAdmin({
 
     if (!resposta.ok) {
       const json = await resposta.json().catch(() => null);
-      setErro(json?.error ?? "Nao foi possivel enviar o logo.");
+      setErro(json?.error ?? "Não foi possível enviar o logo.");
       return;
     }
 
@@ -90,7 +90,7 @@ export function IdentidadeAdmin({
 
     if (!resposta.ok) {
       const json = await resposta.json().catch(() => null);
-      setErro(json?.error ?? "Nao foi possivel salvar a cor.");
+      setErro(json?.error ?? "Não foi possível salvar a cor.");
       return;
     }
     setSucesso("Identidade visual publicada.");
@@ -118,17 +118,19 @@ export function IdentidadeAdmin({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-astro-muted">
-          Aplicada no site publico que o cliente enxerga.
-        </p>
+      {/* Topo no padrao das outras telas: titulo direto e a acao ao lado */}
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white lg:text-4xl">Identidade visual</h1>
+          <p className="mt-1.5 text-astro-muted">Aplicada no site público que o cliente enxerga.</p>
+        </div>
         <button
           onClick={salvarCor}
           disabled={salvando}
-          className="flex items-center gap-2 rounded-lg bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-full bg-astro-blue px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_-14px_var(--color-astro-blue)] transition hover:brightness-110 disabled:opacity-50"
         >
           <Check className="h-4 w-4" />
-          {salvando ? "Publicando..." : "Publicar alteracoes"}
+          {salvando ? "Publicando..." : "Publicar alterações"}
         </button>
       </div>
 
@@ -146,7 +148,7 @@ export function IdentidadeAdmin({
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Logo */}
         <section className="borda-viva rounded-2xl border border-admin-border bg-admin-surface p-5 shadow-[0_24px_60px_-30px_var(--color-astro-blue),0_0_44px_-18px_var(--color-astro-blue-bright)] lg:p-6">
-          <p className="astro-label">Logo</p>
+          <h2 className="text-base font-semibold text-white">Logo</h2>
 
           <div className="mt-4 flex items-center justify-center rounded-xl border border-admin-border bg-admin-bg p-8">
             {logoUrl ? (
@@ -163,7 +165,7 @@ export function IdentidadeAdmin({
                 </span>
                 <div>
                   <p className="font-semibold text-white">{tenantNome}</p>
-                  <p className="astro-label">Sem logo enviado</p>
+                  <p className="text-sm text-astro-muted">Sem logo enviado</p>
                 </div>
               </div>
             )}
@@ -179,21 +181,21 @@ export function IdentidadeAdmin({
           <button
             onClick={() => inputArquivo.current?.click()}
             disabled={enviandoLogo}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-admin-border bg-admin-surface-2 py-2.5 text-sm font-semibold text-slate-100 disabled:opacity-50"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-admin-border bg-admin-surface-2 py-3 text-sm font-semibold text-slate-100 transition hover:border-astro-blue disabled:opacity-50"
           >
             <Upload className="h-4 w-4" />
             {enviandoLogo ? "Enviando..." : logoUrl ? "Substituir logo" : "Enviar logo"}
           </button>
-          <p className="mt-2 text-center font-mono text-[0.65rem] uppercase tracking-wider text-astro-muted">
-            PNG, JPG ou WEBP · ate 2MB · fundo transparente recomendado
+          <p className="mt-2 text-center text-xs text-astro-muted">
+            PNG, JPG ou WEBP, até 2 MB. Fundo transparente fica melhor.
           </p>
         </section>
 
         {/* Cor primaria */}
         <section className="borda-viva rounded-2xl border border-admin-border bg-admin-surface p-5 shadow-[0_24px_60px_-30px_var(--color-astro-blue),0_0_44px_-18px_var(--color-astro-blue-bright)] lg:p-6">
-          <p className="astro-label">Cor primaria</p>
+          <h2 className="text-base font-semibold text-white">Cor principal</h2>
           <p className="mt-1 text-sm text-astro-muted">
-            Aplicada em botoes, links e destaques, no site do cliente e no Admin.
+            Aplicada em botões, links e destaques, no site do cliente e no Admin.
           </p>
 
           <label className="mt-4 flex cursor-pointer items-center gap-4 rounded-xl border border-admin-border bg-admin-bg p-4 transition hover:border-astro-blue/50">
@@ -201,7 +203,7 @@ export function IdentidadeAdmin({
               type="color"
               value={cor}
               onChange={(e) => setCor(e.target.value)}
-              aria-label="Escolher cor primaria"
+              aria-label="Escolher a cor principal"
               className="h-16 w-16 shrink-0 cursor-pointer rounded-xl border border-white/10 bg-transparent p-0"
             />
             <div className="min-w-0 flex-1">
@@ -214,14 +216,14 @@ export function IdentidadeAdmin({
             </div>
           </label>
 
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
-            <span className="astro-label">Hex</span>
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-admin-border bg-admin-bg px-3 py-2">
+            <span className="text-xs text-astro-muted">Código</span>
             <span className="flex-1 font-mono text-sm text-slate-100">
               {cor.toUpperCase()}
             </span>
             <button
               onClick={copiarHex}
-              className="flex items-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-astro-muted hover:text-white"
+              className="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold text-astro-muted transition hover:text-white"
             >
               {copiado ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               {copiado ? "Copiado" : "Copiar"}
