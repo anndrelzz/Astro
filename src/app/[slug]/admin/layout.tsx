@@ -58,7 +58,7 @@ export default async function AdminLayout({
   const usuarioNome = session.user.name ?? "Admin";
 
   return (
-    <div className="flex min-h-dvh bg-admin-bg text-slate-100">
+    <div className="isolate flex min-h-dvh bg-admin-bg text-slate-100">
       <AdminSidebar
         slug={slug}
         tenantNome={tenant.nome}
