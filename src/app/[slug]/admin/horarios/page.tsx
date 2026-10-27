@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { HorariosAdmin } from "./horarios-admin";
@@ -65,5 +66,14 @@ export default async function AdminHorariosPage({
 
   // O cabecalho e renderizado DENTRO do componente cliente porque o botao
   // "Salvar grade" fica no topo e depende do estado do formulario.
-  return <HorariosAdmin horariosIniciais={horariosPorDia} />;
+  // Dia e hora no relogio da estetica, para o cartao "aberto agora" e a
+  // marca do "agora" na barra de hoje.
+  const relogio = partesNoFuso(new Date());
+
+  return (
+    <HorariosAdmin
+      horariosIniciais={horariosPorDia}
+      agora={{ diaSemana: relogio.diaSemana, minuto: relogio.hora * 60 + relogio.minuto }}
+    />
+  );
 }
