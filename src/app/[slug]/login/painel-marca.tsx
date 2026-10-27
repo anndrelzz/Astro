@@ -64,15 +64,7 @@ export function PainelMarca({
   const eLogin = modo === "login";
 
   return (
-    // Brilho branco suave contornando a curva. Fica no elemento de fora: a
-    // mascara do de dentro cortaria a sombra junto com o resto.
-    <aside
-      className="relative lg:absolute lg:inset-y-0 lg:left-0 lg:w-[56%]"
-      style={{
-        filter:
-          "drop-shadow(0 0 10px rgba(255,255,255,0.28)) drop-shadow(0 0 2px rgba(255,255,255,0.35))",
-      }}
-    >
+    <aside className="relative lg:absolute lg:inset-y-0 lg:left-0 lg:w-[56%]">
       <div
         className="painel-auth relative h-full overflow-hidden px-6 pt-7 pb-20 text-white lg:flex lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]"
         style={{
@@ -123,6 +115,14 @@ export function PainelMarca({
             </>
           )}
         </div>
+      </div>
+
+      {/* Sombra preta sobre o azul, ao longo da curva: o lado escuro do
+          formulario parece uma folha por cima do azul. E o recorte inverso
+          da curva, na cor do cartao, com a sombra projetada para o lado do
+          azul (o filtro fica no elemento de fora, a mascara no de dentro). */}
+      <div aria-hidden className="painel-auth-sombra pointer-events-none absolute inset-0">
+        <div className="painel-auth-inverso h-full w-full bg-[#0b0b0f]" />
       </div>
     </aside>
   );
