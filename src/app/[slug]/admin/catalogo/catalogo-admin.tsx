@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Clock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { LIMITES } from "@/lib/validations/limites";
+import { FundoOndas } from "../fundo-ondas";
 import { Modal } from "../modal";
 
 type Segmento = { id: string; nome: string; ordem: number };
@@ -131,6 +132,8 @@ export function CatalogoAdmin({
 
   return (
     <div>
+      <FundoOndas />
+
       {/* Topo no padrao do Dashboard: titulo direto, sem capa. */}
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -161,7 +164,7 @@ export function CatalogoAdmin({
           Tipos de veiculo. Ficam em cima porque definem os precos: sem
           tipo nenhum, nao ha onde por preco.
           --------------------------------------------------------------- */}
-      <section className="mb-8 rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
+      <section className="vidro mb-8 rounded-3xl p-5 sm:p-6">
         <h2 className="text-base font-semibold text-white">Tipos de veículo</h2>
         <p className="mt-0.5 text-sm text-astro-muted">
           O cliente escolhe um deles ao cadastrar o carro, e é ele que define o preço.
@@ -205,7 +208,7 @@ export function CatalogoAdmin({
               // o nome e o que se le o tempo todo.
               <span
                 key={s.id}
-                className="group flex min-h-10 items-center rounded-full border border-admin-border bg-admin-surface-2 py-1.5 pr-2 pl-4 text-sm font-semibold text-slate-100 transition hover:border-astro-blue/40"
+                className="group flex min-h-10 items-center rounded-full border border-white/10 bg-white/[0.06] py-1.5 pr-2 pl-4 text-sm font-semibold text-slate-100 transition hover:border-astro-blue/40"
               >
                 {s.nome}
                 <span className="ml-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
@@ -232,7 +235,7 @@ export function CatalogoAdmin({
           {novoSegmento === null ? (
             <button
               onClick={() => setNovoSegmento("")}
-              className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-admin-border px-4 py-1.5 text-sm text-astro-muted transition hover:border-astro-blue hover:text-white"
+              className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-white/20 px-4 py-1.5 text-sm text-astro-muted transition hover:border-astro-blue hover:text-white"
             >
               <Plus className="h-3.5 w-3.5" />
               Adicionar tipo
@@ -314,9 +317,9 @@ export function CatalogoAdmin({
             <button
               type="button"
               onClick={() => editar(servicoVazio)}
-              className="group flex min-h-56 flex-col items-center justify-center gap-2.5 rounded-3xl border border-dashed border-admin-border font-semibold text-astro-muted transition hover:border-astro-blue/60 hover:text-white"
+              className="group flex min-h-56 flex-col items-center justify-center gap-2.5 rounded-3xl border border-dashed border-white/20 bg-black/20 font-semibold backdrop-blur-sm text-astro-muted transition hover:border-astro-blue/60 hover:text-white"
             >
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-admin-surface-2 transition group-hover:bg-astro-blue group-hover:text-white">
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-white/[0.08] transition group-hover:bg-astro-blue group-hover:text-white">
                 <Plus className="h-5 w-5" />
               </span>
               Novo serviço
@@ -516,18 +519,18 @@ function CardServico({
       type="button"
       onClick={onEditar}
       aria-label={`Editar ${s.nome}`}
-      className={`group relative flex min-h-56 flex-col gap-3.5 rounded-3xl border border-admin-border bg-admin-surface p-5 text-left transition hover:-translate-y-0.5 hover:border-astro-blue/50 ${
+      className={`vidro group relative flex min-h-56 flex-col gap-3.5 rounded-3xl p-5 text-left transition hover:-translate-y-0.5 hover:!border-astro-blue-bright/60 ${
         s.ativo ? "" : "opacity-55 hover:opacity-85"
       }`}
     >
-      <span className="absolute top-4 right-4 grid h-9 w-9 place-items-center rounded-full border border-admin-border text-astro-muted transition group-hover:border-transparent group-hover:bg-astro-blue group-hover:text-white">
+      <span className="absolute top-4 right-4 grid h-9 w-9 place-items-center rounded-full border border-white/15 text-astro-muted transition group-hover:border-transparent group-hover:bg-astro-blue group-hover:text-white">
         <Pencil className="h-4 w-4" />
       </span>
 
       <span className="block pr-11">
         <span className="block text-[1.05rem] leading-snug font-bold tracking-tight text-white">{s.nome}</span>
         <span className="mt-1.5 flex flex-wrap gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-admin-surface-2 px-2 py-0.5 font-mono text-xs font-semibold text-astro-muted">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-xs font-semibold text-astro-muted">
             <Clock className="h-3 w-3" />
             {formatarDuracao(s.duracaoMin)}
           </span>
@@ -559,7 +562,7 @@ function CardServico({
 
       {/* Zero aqui quase sempre significa "tipo recem-criado e ainda nao
           precificado", nao "de graca" — por isso aparece como "a definir". */}
-      <span className="flex flex-wrap gap-x-3 gap-y-1 border-t border-dashed border-admin-border pt-3 text-xs text-astro-muted">
+      <span className="flex flex-wrap gap-x-3 gap-y-1 border-t border-dashed border-white/15 pt-3 text-xs text-astro-muted">
         {segmentos.map((seg) => {
           const valor = s.precos[seg.id] ?? 0;
           return (
