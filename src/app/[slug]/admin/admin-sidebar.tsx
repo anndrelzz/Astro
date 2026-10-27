@@ -3,9 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { useState } from "react";
-import { Modal } from "./modal";
+import { ConfirmarSaida } from "./confirmar-saida";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -177,7 +176,12 @@ export function AdminSidebar({
           <p className="truncate text-sm font-semibold">{usuarioNome}</p>
           <p className="truncate font-mono text-[0.65rem] text-white/70">dono · admin</p>
         </div>
-        <BotaoSair slug={slug} className="shrink-0 text-white/70 hover:text-white" />
+        <BotaoSair
+          slug={slug}
+          usuarioNome={usuarioNome}
+          tenantNome={tenantNome}
+          className="shrink-0 text-white/70 hover:text-white"
+        />
       </div>
     </aside>
   );
@@ -190,10 +194,12 @@ export function AdminSidebar({
 export function AdminMobileNav({
   slug,
   tenantNome,
+  usuarioNome,
   pixPendentes,
 }: {
   slug: string;
   tenantNome: string;
+  usuarioNome: string;
   pixPendentes: number;
 }) {
   const pathname = usePathname();
@@ -221,7 +227,7 @@ export function AdminMobileNav({
           />
           <span className="text-xs text-astro-muted">{tenantNome}</span>
         </span>
-        <BotaoSair slug={slug} className="text-astro-muted hover:text-white" />
+        <BotaoSair slug={slug} usuarioNome={usuarioNome} tenantNome={tenantNome} className="text-astro-muted hover:text-white" />
       </div>
 
       <nav className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -326,9 +332,18 @@ function Grupo({
 // O Modal usa <dialog> nativo, entao o desfoque do fundo vem do ::backdrop —
 // nao de uma div empilhada por cima — e Esc, clique fora e foco preso vem de
 // graca.
-function BotaoSair({ slug, className = "" }: { slug: string; className?: string }) {
+function BotaoSair({
+  slug,
+  usuarioNome,
+  tenantNome,
+  className = "",
+}: {
+  slug: string;
+  usuarioNome?: string;
+  tenantNome?: string;
+  className?: string;
+}) {
   const [confirmando, setConfirmando] = useState(false);
-  const [saindo, setSaindo] = useState(false);
 
   return (
     <>
@@ -336,46 +351,18 @@ function BotaoSair({ slug, className = "" }: { slug: string; className?: string 
         type="button"
         onClick={() => setConfirmando(true)}
         aria-label="Sair"
-        className={`transition ${className}`}
+        className={`grid h-9 w-9 place-items-center rounded-full transition hover:bg-white/10 ${className}`}
       >
         <LogOut className="h-4 w-4" />
       </button>
 
-      <Modal
+      <ConfirmarSaida
         aberto={confirmando}
         onFechar={() => setConfirmando(false)}
-        titulo="Sair da conta"
-        rodape={
-          <>
-            <button
-              type="button"
-              onClick={() =>
-                // callbackUrl para o login DESTA estetica: a raiz do dominio
-                // nao pertence a nenhuma (RN09).
-                signOut({ callbackUrl: `/${slug}/login` }).then(() =>
-                  setSaindo(true)
-                )
-              }
-              disabled={saindo}
-              className="rounded-lg bg-astro-blue px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-            >
-              {saindo ? "Saindo..." : "Sair"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmando(false)}
-              className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
-            >
-              Cancelar
-            </button>
-          </>
-        }
-      >
-        <p className="text-sm text-astro-muted">
-          Tem certeza que deseja sair? Você precisará entrar novamente para
-          acessar o painel.
-        </p>
-      </Modal>
+        slug={slug}
+        usuarioNome={usuarioNome}
+        tenantNome={tenantNome}
+      />
     </>
   );
 }

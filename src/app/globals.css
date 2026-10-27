@@ -177,3 +177,8 @@ body {
     mask-size: 14px 14px;
   }
 }
+
+/* Entrada dos avisos do painel (ConfirmarSaida): sobe e cresce de leve. */
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
