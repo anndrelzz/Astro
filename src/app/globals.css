@@ -159,3 +159,21 @@ body {
     }
   }
 }
+
+/* Grade de pontos do FundoOndas. .pontos-base desenha os pontos apagados;
+   .pontos-luz usa a mesma grade como mascara, para a luz das ondas so
+   aparecer dentro dos pontos. */
+@keyframes ondas-esquerda { to { transform: translateX(-50%); } }
+@keyframes ondas-direita { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@layer components {
+  .pontos-base {
+    background-image: radial-gradient(circle, rgb(255 255 255 / 0.09) 1.2px, transparent 1.6px);
+    background-size: 14px 14px;
+  }
+  .pontos-luz {
+    -webkit-mask-image: radial-gradient(circle, #000 1.6px, transparent 2px);
+    mask-image: radial-gradient(circle, #000 1.6px, transparent 2px);
+    -webkit-mask-size: 14px 14px;
+    mask-size: 14px 14px;
+  }
+}
