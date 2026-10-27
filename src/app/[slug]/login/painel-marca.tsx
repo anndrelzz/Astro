@@ -32,74 +32,35 @@ export function MarcaEstetica({ estetica, grande = false }: { estetica: Estetica
   );
 }
 
-// Fundo do cartao de login e cadastro: o degrade da cor da estetica (RF13),
-// o mesmo do cartao de faturamento do painel.
-export const FUNDO_ESTETICA =
-  "radial-gradient(120% 140% at 0% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)";
-
-// Camadas de "papel recortado" (so no computador). Folhas empilhadas vindas
-// da direita, cada uma com a borda esquerda em curva e uma sombra projetada
-// sobre a de baixo. Da mais funda (cor da estetica escurecida) ate a de cima,
-// que e a superficie escura onde fica o formulario.
-//
-// A sombra fica no elemento de fora (filter) e o recorte no de dentro (mask):
-// se os dois estivessem no mesmo elemento, a mascara cortaria a sombra junto.
-const CURVAS = [
-  "M34 0C14 14 46 30 26 50S10 80 32 100H100V0Z",
-  "M30 0C12 18 42 32 22 52S10 84 28 100H100V0Z",
-  "M24 0C8 16 36 34 18 54S8 86 22 100H100V0Z",
-  "M16 0C2 18 26 34 10 54S4 86 16 100H100V0Z",
-];
-const CAMADAS = [
-  { largura: "82%", cor: "color-mix(in srgb, var(--color-astro-blue) 82%, black)" },
-  { largura: "73%", cor: "color-mix(in srgb, var(--color-astro-blue) 58%, black)" },
-  { largura: "64%", cor: "color-mix(in srgb, var(--color-astro-blue) 32%, #0b0b0f)" },
-  { largura: "56%", cor: "#0b0b0f" },
-];
-
-function mascara(caminho: string) {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${caminho}'/></svg>`;
-  const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-  return { WebkitMaskImage: url, maskImage: url, WebkitMaskSize: "100% 100%", maskSize: "100% 100%" };
-}
-
-export function CamadasPapel() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
-      {CAMADAS.map((c, i) => (
-        <div
-          key={c.largura}
-          className="absolute inset-y-0 right-0"
-          style={{ width: c.largura, filter: "drop-shadow(-8px 0 10px rgba(0,0,0,0.55))" }}
-        >
-          <div className="h-full w-full" style={{ backgroundColor: c.cor, ...mascara(CURVAS[i]) }} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Conteudo do lado da estetica: logo, nome e a frase. Fica sobre o degrade do
-// cartao; no computador ocupa a coluna da esquerda, no celular o topo.
+// Painel de marca das telas de login e cadastro: o lado colorido do cartao,
+// na cor da estetica (RF13), com o mesmo degrade e os mesmos aneis do cartao
+// de faturamento do painel. A borda que encosta no formulario e uma curva
+// (.painel-auth, em globals.css). No celular vira a faixa do topo do cartao.
 export function PainelMarca({ modo, estetica }: { modo: "login" | "cadastro"; estetica: Estetica }) {
   const eLogin = modo === "login";
 
   return (
-    <aside className="relative z-10 px-6 pt-7 pb-6 text-white lg:flex lg:flex-col lg:justify-between lg:p-10">
+    <aside
+      className="painel-auth relative overflow-hidden px-6 pt-7 pb-20 text-white lg:absolute lg:inset-y-0 lg:left-0 lg:flex lg:w-[56%] lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]"
+      style={{
+        backgroundImage:
+          "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
+      }}
+    >
       {/* Aneis e bolhas de vidro, decorativos */}
       <span
         aria-hidden
-        className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full border border-white/20 shadow-[0_0_0_44px_rgba(255,255,255,0.04),0_0_0_100px_rgba(255,255,255,0.03)] lg:-left-16"
+        className="pointer-events-none absolute -top-24 -right-10 h-72 w-72 rounded-full border border-white/20 shadow-[0_0_0_44px_rgba(255,255,255,0.04),0_0_0_100px_rgba(255,255,255,0.03)]"
       />
       <span aria-hidden className="bolha absolute top-[34%] left-[10%] hidden h-14 w-14 lg:block" />
-      <span aria-hidden className="bolha absolute top-[6%] right-[6%] h-9 w-9 lg:top-[42%] lg:right-[18%] lg:h-10 lg:w-10" />
-      <span aria-hidden className="bolha absolute top-[52%] left-[34%] hidden h-7 w-7 lg:block" />
+      <span aria-hidden className="bolha absolute top-[5%] right-[7%] h-9 w-9 lg:top-[38%] lg:right-[22%] lg:h-10 lg:w-10" />
+      <span aria-hidden className="bolha absolute top-[48%] left-[38%] hidden h-8 w-8 lg:block" />
 
       <div className="relative">
         <MarcaEstetica estetica={estetica} grande />
       </div>
 
-      <div className="relative mt-6 lg:mt-0">
+      <div className="relative mt-8 lg:mt-0">
         {eLogin ? (
           <>
             <h2 className="text-3xl leading-tight font-bold lg:text-4xl">Bom ter você de volta.</h2>
