@@ -164,130 +164,147 @@ export function CatalogoAdmin({
           Tipos de veiculo. Ficam em cima porque definem os precos: sem
           tipo nenhum, nao ha onde por preco.
           --------------------------------------------------------------- */}
-      <section className="cartao-azul mb-8 rounded-3xl p-5 sm:p-6">
-        <h2 className="text-base font-semibold text-white">Tipos de veículo</h2>
-        <p className="mt-0.5 text-sm text-white/75">
-          O cliente escolhe um deles ao cadastrar o carro, e é ele que define o preço.
-        </p>
+      {/* Mesmo cartao do faturamento no Dashboard: degrade da cor da
+          estetica, aneis no canto e a luz correndo na borda. */}
+      <section
+        className="borda-viva relative mb-8 overflow-hidden rounded-3xl p-5 text-white sm:p-6"
+        style={{
+          backgroundImage:
+            "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
+          boxShadow:
+            "0 24px 60px -24px color-mix(in srgb, var(--color-astro-blue) 80%, transparent), 0 0 50px -10px color-mix(in srgb, var(--color-astro-blue-bright) 45%, transparent)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full border border-white/20 shadow-[0_0_0_40px_rgba(255,255,255,0.04),0_0_0_90px_rgba(255,255,255,0.03)]"
+        />
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {segmentos.map((s) =>
-            renomeando?.id === s.id ? (
-              <span key={s.id} className="flex items-center gap-1.5">
-                <input
-                  autoFocus
-                  value={renomeando.nome}
-                  onChange={(e) => setRenomeando({ id: s.id, nome: e.target.value })}
-                  className={`${inputCls} w-40`}
-                />
-                <button
-                  onClick={async () => {
-                    const ok = await chamar(`/api/segmentos/${s.id}`, "PATCH", {
-                      nome: renomeando.nome.trim(),
-                    });
-                    if (ok) setRenomeando(null);
-                  }}
-                  disabled={salvando}
-                  aria-label="Salvar nome"
-                  className="rounded-lg bg-astro-blue p-2 text-white disabled:opacity-40"
-                >
-                  <Check className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setRenomeando(null)}
-                  aria-label="Cancelar"
-                  className="rounded-lg border border-admin-border p-2 text-astro-muted"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </span>
-            ) : (
-              // Os icones so aparecem no hover (e no foco por teclado, senao
-              // some para quem navega por Tab). Com muitos tipos cadastrados,
-              // dois icones em cada pastilha viram ruido — a acao e ocasional,
-              // o nome e o que se le o tempo todo.
-              <span
-                key={s.id}
-                className="group flex min-h-10 items-center rounded-full border border-white/20 bg-white/[0.12] py-1.5 pr-2 pl-4 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/[0.18]"
-              >
-                {s.nome}
-                <span className="ml-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+        <div className="relative">
+          <h2 className="text-base font-semibold text-white">Tipos de veículo</h2>
+          <p className="mt-0.5 text-sm text-white/75">
+            O cliente escolhe um deles ao cadastrar o carro, e é ele que define o preço.
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {segmentos.map((s) =>
+              renomeando?.id === s.id ? (
+                <span key={s.id} className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={renomeando.nome}
+                    onChange={(e) => setRenomeando({ id: s.id, nome: e.target.value })}
+                    className={`${inputCls} w-40`}
+                  />
                   <button
-                    onClick={() => setRenomeando({ id: s.id, nome: s.nome })}
-                    aria-label={`Renomear ${s.nome}`}
-                    className="rounded-full p-1 text-white/70 transition hover:bg-white/10 hover:text-white"
+                    onClick={async () => {
+                      const ok = await chamar(`/api/segmentos/${s.id}`, "PATCH", {
+                        nome: renomeando.nome.trim(),
+                      });
+                      if (ok) setRenomeando(null);
+                    }}
+                    disabled={salvando}
+                    aria-label="Salvar nome"
+                    className="rounded-lg bg-astro-blue p-2 text-white disabled:opacity-40"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Check className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => chamar(`/api/segmentos/${s.id}`, "DELETE")}
-                    disabled={salvando}
-                    aria-label={`Remover ${s.nome}`}
-                    className="rounded-full p-1 text-white/70 transition hover:bg-red-500/25 hover:text-red-200 disabled:opacity-40"
+                    onClick={() => setRenomeando(null)}
+                    aria-label="Cancelar"
+                    className="rounded-lg border border-admin-border p-2 text-astro-muted"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </span>
-              </span>
-            )
-          )}
-
-          {novoSegmento === null ? (
-            <button
-              onClick={() => setNovoSegmento("")}
-              className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-white/40 px-4 py-1.5 text-sm text-white/80 transition hover:border-white hover:text-white"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Adicionar tipo
-            </button>
-          ) : (
-            <div className="flex w-full flex-wrap items-end gap-2 rounded-xl border border-admin-border bg-admin-bg p-3">
-              <div className="min-w-[12rem] flex-1">
-                <label className="text-sm text-astro-muted">Nome</label>
-                <input
-                  autoFocus
-                  value={novoSegmento}
-                  onChange={(e) => setNovoSegmento(e.target.value)}
-                  placeholder="Picape grande"
-                  className={`${inputCls} mt-1`}
-                />
-              </div>
-              {/* Todo servico precisa de preco para todo tipo. Copiar de um tipo
-                  parecido evita digitar um preco por servico, e o Admin ajusta
-                  so o que difere. */}
-              <div className="min-w-[12rem] flex-1">
-                <label className="text-sm text-astro-muted">Copiar preços de</label>
-                <select
-                  value={copiarDe}
-                  onChange={(e) => setCopiarDe(e.target.value)}
-                  className={`${inputCls} mt-1`}
+              ) : (
+                // Os icones so aparecem no hover (e no foco por teclado, senao
+                // some para quem navega por Tab). Com muitos tipos cadastrados,
+                // dois icones em cada pastilha viram ruido — a acao e ocasional,
+                // o nome e o que se le o tempo todo.
+                <span
+                  key={s.id}
+                  className="group flex min-h-10 items-center rounded-full border border-white/20 bg-white/[0.12] py-1.5 pr-2 pl-4 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/[0.18]"
                 >
-                  <option value="">Começar do zero</option>
-                  {segmentos.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nome}
-                    </option>
-                  ))}
-                </select>
+                  {s.nome}
+                  <span className="ml-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+                    <button
+                      onClick={() => setRenomeando({ id: s.id, nome: s.nome })}
+                      aria-label={`Renomear ${s.nome}`}
+                      className="rounded-full p-1 text-white/70 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => chamar(`/api/segmentos/${s.id}`, "DELETE")}
+                      disabled={salvando}
+                      aria-label={`Remover ${s.nome}`}
+                      className="rounded-full p-1 text-white/70 transition hover:bg-red-500/25 hover:text-red-200 disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </span>
+              )
+            )}
+
+            {novoSegmento === null ? (
+              <button
+                onClick={() => setNovoSegmento("")}
+                className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-white/40 px-4 py-1.5 text-sm text-white/80 transition hover:border-white hover:text-white"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar tipo
+              </button>
+            ) : (
+              <div className="flex w-full flex-wrap items-end gap-2 rounded-xl border border-admin-border bg-admin-bg p-3">
+                <div className="min-w-[12rem] flex-1">
+                  <label className="text-sm text-astro-muted">Nome</label>
+                  <input
+                    autoFocus
+                    value={novoSegmento}
+                    onChange={(e) => setNovoSegmento(e.target.value)}
+                    placeholder="Picape grande"
+                    className={`${inputCls} mt-1`}
+                  />
+                </div>
+                {/* Todo servico precisa de preco para todo tipo. Copiar de um tipo
+                    parecido evita digitar um preco por servico, e o Admin ajusta
+                    so o que difere. */}
+                <div className="min-w-[12rem] flex-1">
+                  <label className="text-sm text-astro-muted">Copiar preços de</label>
+                  <select
+                    value={copiarDe}
+                    onChange={(e) => setCopiarDe(e.target.value)}
+                    className={`${inputCls} mt-1`}
+                  >
+                    <option value="">Começar do zero</option>
+                    {segmentos.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={criarSegmento}
+                  disabled={salvando || !novoSegmento.trim()}
+                  className="rounded-full bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+                >
+                  Adicionar
+                </button>
+                <button
+                  onClick={() => {
+                    setNovoSegmento(null);
+                    setCopiarDe("");
+                  }}
+                  className="rounded-full border border-admin-border px-4 py-2.5 text-sm text-astro-muted"
+                >
+                  Cancelar
+                </button>
               </div>
-              <button
-                onClick={criarSegmento}
-                disabled={salvando || !novoSegmento.trim()}
-                className="rounded-full bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
-              >
-                Adicionar
-              </button>
-              <button
-                onClick={() => {
-                  setNovoSegmento(null);
-                  setCopiarDe("");
-                }}
-                className="rounded-full border border-admin-border px-4 py-2.5 text-sm text-astro-muted"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
 
