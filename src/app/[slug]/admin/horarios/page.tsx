@@ -10,11 +10,11 @@ import { HorariosAdmin } from "./horarios-admin";
 const NOMES_DIAS = [
   "Domingo",
   "Segunda",
-  "Terca",
+  "Terça",
   "Quarta",
   "Quinta",
   "Sexta",
-  "Sabado",
+  "Sábado",
 ];
 
 // A semana e EXIBIDA comecando na segunda e terminando no domingo, como no
@@ -64,13 +64,6 @@ export default async function AdminHorariosPage({
   });
 
   // O cabecalho e renderizado DENTRO do componente cliente porque o botao
-  // "Salvar grade" mora na barra do topo (como no mockup) e depende do estado
-  // do formulario. O AdminHeader tem a area de acao justamente para isso.
-  return (
-    <HorariosAdmin
-      horariosIniciais={horariosPorDia}
-      capacidadeSimultanea={tenant.capacidadeSimultanea}
-      linkConfiguracoes={`/${slug}/admin/configuracoes`}
-    />
-  );
+  // "Salvar grade" fica no topo e depende do estado do formulario.
+  return <HorariosAdmin horariosIniciais={horariosPorDia} />;
 }
