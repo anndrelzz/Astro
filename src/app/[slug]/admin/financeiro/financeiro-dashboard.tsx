@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Car, Clock, Download, Wallet } from "lucide-react";
+import { Car, Clock, Crown, Download, Wallet } from "lucide-react";
 import { BarrasHorizontais, LinhaPorDia, Rosca, formatarReal } from "./graficos";
 import { Modal } from "../modal";
 import { FUSO } from "@/lib/fuso";
@@ -36,6 +36,14 @@ export type ItemAcrescimo = {
   valor: number;
   acrescimo: number;
 };
+
+// Ouro, prata e bronze para os tres primeiros do ranking: metal em degrade
+// no selo e um brilho leve da mesma cor na linha.
+const MEDALHAS = [
+  { nome: "1º lugar", metal: "linear-gradient(135deg, #fde68a, #f59e0b 55%, #b45309)", texto: "#451a03", brilho: "rgba(245,158,11,0.16)" },
+  { nome: "2º lugar", metal: "linear-gradient(135deg, #f1f5f9, #94a3b8 55%, #475569)", texto: "#0f172a", brilho: "rgba(148,163,184,0.14)" },
+  { nome: "3º lugar", metal: "linear-gradient(135deg, #fed7aa, #c2410c 55%, #7c2d12)", texto: "#fff7ed", brilho: "rgba(194,65,12,0.16)" },
+];
 
 const PERIODOS: { valor: Periodo; rotulo: string }[] = [
   { valor: "hoje", rotulo: "Hoje" },
@@ -286,14 +294,29 @@ export function FinanceiroDashboard({
             <h2 className="mb-4 text-base font-semibold text-white">Top 5 clientes</h2>
             <ol className="space-y-1">
               {porCliente.map((c, i) => (
-                <li key={`${c.nome}-${i}`} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-white/[0.03]">
-                  <span
-                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-[0.7rem] font-bold ${
-                      i < 3 ? "bg-astro-blue text-white" : "bg-white/[0.06] text-astro-muted"
-                    }`}
-                  >
-                    {i + 1}
-                  </span>
+                <li
+                  key={`${c.nome}-${i}`}
+                  className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-white/[0.03]"
+                  style={MEDALHAS[i] ? { backgroundImage: `linear-gradient(90deg, ${MEDALHAS[i].brilho}, transparent 70%)` } : undefined}
+                >
+                  {MEDALHAS[i] ? (
+                    <span
+                      title={MEDALHAS[i].nome}
+                      className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-xs font-bold"
+                      style={{
+                        backgroundImage: MEDALHAS[i].metal,
+                        color: MEDALHAS[i].texto,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -2px 3px rgba(0,0,0,0.25), 0 0 14px -2px ${MEDALHAS[i].brilho}`,
+                      }}
+                    >
+                      {i + 1}
+                      {i === 0 && <Crown className="absolute -top-2.5 h-3.5 w-3.5 text-amber-300 drop-shadow" />}
+                    </span>
+                  ) : (
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/[0.06] font-mono text-xs font-bold text-astro-muted">
+                      {i + 1}
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-slate-200">{c.nome}</span>
                     <span className="block text-xs text-astro-muted">
