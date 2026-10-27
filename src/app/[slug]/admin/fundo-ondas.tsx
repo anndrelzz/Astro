@@ -1,52 +1,74 @@
-// Fundo com ondas suaves na cor da estetica (--color-astro-blue), para as telas
-// com cards em vidro (.vidro). Sao faixas largas e desfocadas que ondulam de
-// uma ponta a outra da tela, com pouca opacidade: o preto continua sendo o
-// fundo, e as ondas so dao profundidade ao vidro. Feito em SVG, sem imagem:
-// muda junto com a cor escolhida na Identidade visual (RF13).
+// Fundo das telas com cards em vidro (.vidro): uma grade de pontinhos sobre o
+// preto, e faixas de luz em forma de onda que deslizam devagar por baixo dela.
+// Os pontos so aparecem acesos onde a onda passa, entao o que se ve sao ondas
+// feitas de pontos atravessando a tela. A luz e a cor da estetica
+// (--color-astro-blue, RF13), entao muda junto com a Identidade visual.
 //
-// Fica fixo na tela (o conteudo rola por cima, que e o que faz o vidro
-// parecer vidro) e atras de tudo: -z-10 dentro do layout do Admin, que tem
+// Como funciona: a camada de luz tem uma mascara de pontos (.pontos-luz), e
+// so a luz se move (transform), que a placa de video resolve sem redesenhar a
+// grade. Com "reduzir movimento" ligado no sistema, as ondas ficam paradas.
+//
+// Fica fixo na tela e atras de tudo: -z-10 dentro do layout do Admin, que tem
 // `isolate` para que a camada negativa fique acima do fundo preto dele e
 // abaixo da sidebar e do conteudo.
 
-// Cada onda e uma faixa entre duas curvas que atravessam a tela inteira.
-const ONDAS = [
-  {
-    d: "M-200,250 C200,90 620,430 1040,250 C1240,165 1380,195 1640,150 L1640,330 C1380,375 1240,325 1040,405 C620,575 200,270 -200,420 Z",
-    opacidade: 0.75,
-  },
-  {
-    d: "M-200,560 C180,440 560,700 940,560 C1180,470 1360,525 1640,470 L1640,610 C1360,660 1180,595 940,700 C560,840 180,600 -200,700 Z",
-    opacidade: 0.6,
-  },
-  {
-    d: "M-200,860 C240,740 660,930 1080,800 C1290,735 1440,770 1640,740 L1640,1000 L-200,1000 Z",
-    opacidade: 0.5,
-  },
-];
+const LARGURA = 1440;
+const ALTURA = 900;
+
+// Faixa entre duas senoides que se repetem a cada `periodo`. O desenho tem
+// duas larguras de tela; como o periodo divide a largura, deslocar metade do
+// desenho cai no mesmo lugar e a animacao emenda sem salto.
+function faixa(centro: number, amplitude: number, espessura: number, periodo: number, fase: number) {
+  const y = (x: number, extra: number) =>
+    centro + extra + amplitude * Math.sin((2 * Math.PI * x) / periodo + fase);
+  const xs = Array.from({ length: (2 * LARGURA) / 30 + 1 }, (_, i) => i * 30);
+  const topo = xs.map((x) => `${x},${y(x, 0).toFixed(1)}`);
+  // A borda de baixo ondula um pouco defasada: a faixa engorda e afina.
+  const base = xs
+    .reverse()
+    .map((x) => `${x},${(y(x, espessura) + 18 * Math.sin((2 * Math.PI * x) / periodo + fase + 1.2)).toFixed(1)}`);
+  return `M${topo.join(" L")} L${base.join(" L")} Z`;
+}
+
+// Dois grupos que andam em sentidos e velocidades diferentes: quando as
+// faixas se cruzam, os pontos acendem mais.
+const PARA_ESQUERDA = [faixa(250, 80, 120, 1440, 0), faixa(690, 60, 90, 720, 2.1)];
+const PARA_DIREITA = [faixa(470, 100, 80, 1440, 1.4)];
+
+function Ondas({ caminhos, sentido }: { caminhos: string[]; sentido: "esquerda" | "direita" }) {
+  return (
+    <svg
+      className={`absolute inset-y-0 left-0 h-full w-[200%] will-change-transform ${
+        sentido === "esquerda" ? "animate-[ondas-esquerda_38s_linear_infinite]" : "animate-[ondas-direita_55s_linear_infinite]"
+      } motion-reduce:animate-none`}
+      viewBox={`0 0 ${2 * LARGURA} ${ALTURA}`}
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <filter id={`desfoque-${sentido}`} x="-10%" y="-50%" width="120%" height="200%">
+          <feGaussianBlur stdDeviation="30" />
+        </filter>
+      </defs>
+      <g filter={`url(#desfoque-${sentido})`}>
+        {caminhos.map((d) => (
+          <path key={d} d={d} style={{ fill: "color-mix(in srgb, var(--color-astro-blue) 65%, white)" }} />
+        ))}
+      </g>
+    </svg>
+  );
+}
 
 export function FundoOndas() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <svg className="h-full w-full" viewBox="0 0 1440 900" preserveAspectRatio="none">
-        <defs>
-          {/* A cor some nas pontas e e mais forte no meio de cada faixa. */}
-          <linearGradient id="onda-cor" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" style={{ stopColor: "var(--color-astro-blue)", stopOpacity: 0.15 }} />
-            <stop offset="45%" style={{ stopColor: "var(--color-astro-blue)", stopOpacity: 0.6 }} />
-            <stop offset="100%" style={{ stopColor: "var(--color-astro-blue)", stopOpacity: 0.25 }} />
-          </linearGradient>
-          <filter id="onda-desfoque" x="-20%" y="-50%" width="140%" height="200%">
-            <feGaussianBlur stdDeviation="26" />
-          </filter>
-        </defs>
+      {/* Grade apagada: os pontos que a luz nao alcanca */}
+      <div className="pontos-base absolute inset-0" />
 
-        <g filter="url(#onda-desfoque)">
-          {ONDAS.map((onda) => (
-            <path key={onda.d} d={onda.d} fill="url(#onda-cor)" opacity={onda.opacidade} />
-          ))}
-        </g>
-      </svg>
+      {/* Luz em ondas, vista so atraves dos pontos */}
+      <div className="pontos-luz absolute inset-0">
+        <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" />
+        <Ondas caminhos={PARA_DIREITA} sentido="direita" />
+      </div>
     </div>
   );
 }
