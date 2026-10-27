@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 
 // Graficos em SVG desenhados a mao — sem biblioteca.
 //
@@ -24,121 +24,6 @@ export function formatarReal(v: number, compacto = false) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-// ---------------------------------------------------------------------------
-// Bolhas: PIX | total | no local. As tres se fundem (filtro "goo": desfoca e
-// depois corta a transparencia, o que cola as bordas vizinhas), e a do meio
-// e pintada por cima na cor da estetica.
-// ---------------------------------------------------------------------------
-
-export function Bolhas({
-  total,
-  pix,
-  local,
-  pctPix,
-}: {
-  total: number;
-  pix: number;
-  local: number;
-  pctPix: number;
-}) {
-  const id = useId();
-  const lados = [
-    { x: "25%", rotulo: "PIX", valor: pix, pct: pctPix },
-    { x: "75%", rotulo: "No local", valor: local, pct: total > 0 ? 100 - pctPix : 0 },
-  ];
-
-  return (
-    <div className="relative mx-auto aspect-[600/220] w-full max-w-3xl">
-      <svg viewBox="0 0 600 220" className="absolute inset-0 h-full w-full" aria-hidden>
-        <defs>
-          <filter id={`goo-${id}`}>
-            <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="borrado" />
-            <feColorMatrix in="borrado" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10" />
-          </filter>
-          <radialGradient id={`centro-${id}`} cx="35%" cy="30%" r="80%">
-            <stop offset="0%" style={{ stopColor: "color-mix(in srgb, var(--color-astro-blue-bright) 70%, white)" }} />
-            <stop offset="45%" style={{ stopColor: "var(--color-astro-blue)" }} />
-            <stop offset="100%" style={{ stopColor: "color-mix(in srgb, var(--color-astro-blue) 55%, black)" }} />
-          </radialGradient>
-        </defs>
-        <g filter={`url(#goo-${id})`} fill="#202027">
-          <circle cx="150" cy="110" r="80" />
-          <circle cx="300" cy="110" r="102" />
-          <circle cx="450" cy="110" r="80" />
-        </g>
-        <circle
-          cx="300"
-          cy="110"
-          r="92"
-          fill={`url(#centro-${id})`}
-          style={{ filter: "drop-shadow(0 0 24px color-mix(in srgb, var(--color-astro-blue) 70%, transparent))" }}
-        />
-      </svg>
-
-      {lados.map((l) => (
-        <div
-          key={l.rotulo}
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
-          style={{ left: l.x }}
-        >
-          <p className="text-sm font-bold text-white sm:text-base lg:text-xl">
-            <span className="sm:hidden">{formatarReal(l.valor, true)}</span>
-            <span className="hidden sm:inline">{formatarReal(l.valor)}</span>
-          </p>
-          <p className="text-[0.7rem] text-astro-muted sm:text-xs">
-            {l.rotulo} · {l.pct.toFixed(0)}%
-          </p>
-        </div>
-      ))}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-        <p className="text-base font-bold text-white sm:text-xl lg:text-3xl">
-          <span className="sm:hidden">{formatarReal(total, true)}</span>
-          <span className="hidden sm:inline">{formatarReal(total)}</span>
-        </p>
-        <p className="text-[0.7rem] text-white/75 sm:text-xs">Total</p>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Linha branca sobre o cartao de destaque (comparacao com o periodo anterior)
-// ---------------------------------------------------------------------------
-
-export function LinhaSubindo({ valores }: { valores: number[] }) {
-  const id = useId();
-  if (valores.length < 2) return null;
-
-  const L = 300;
-  const A = 90;
-  const max = Math.max(...valores, 1);
-  const pontos = valores.map((v, i) => [(i / (valores.length - 1)) * L, A - 6 - (v / max) * (A - 12)] as const);
-  const linha = pontos.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const [ux, uy] = pontos[pontos.length - 1];
-
-  return (
-    <svg viewBox={`0 0 ${L} ${A}`} className="h-24 w-full" preserveAspectRatio="none" aria-hidden>
-      <defs>
-        <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="white" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="white" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${linha} L${L},${A} L0,${A} Z`} fill={`url(#area-${id})`} />
-      <path
-        d={linha}
-        fill="none"
-        stroke="white"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-      <circle cx={ux} cy={uy} r="4" fill="white" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
 }
 
 // ---------------------------------------------------------------------------
