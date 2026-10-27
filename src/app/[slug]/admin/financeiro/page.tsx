@@ -45,7 +45,7 @@ export default async function AdminFinanceiroPage({
         status: { not: "CANCELADO" },
         dataHora: { gte: inicio, lte: fim },
       },
-      include: { servico: true, usuario: true },
+      include: { servico: true, usuario: true, veiculo: true },
       orderBy: { dataHora: "asc" },
     })
   );
@@ -95,7 +95,8 @@ export default async function AdminFinanceiroPage({
       id: a.id,
       dia: a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: FUSO }),
       cliente: a.usuario.nome,
-      servico: a.servico.nome,
+      veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+      placa: a.veiculo.placa,
       valor: Number(a.valor),
       acrescimo: Number(a.acrescimoAplicado),
     }));
