@@ -5,6 +5,7 @@ import { partesNoFuso } from "@/lib/fuso";
 import { getTenantPorSlug } from "@/lib/tenant";
 import { withTenant } from "@/lib/tenant-db";
 import { AdminMobileNav, AdminSidebar } from "./admin-sidebar";
+import { FundoOndas } from "./fundo-ondas";
 
 // Casca do painel administrativo: barra lateral fixa na cor da estetica, tema
 // escuro e area de conteudo. Envolve todas as telas de /admin.
@@ -58,7 +59,10 @@ export default async function AdminLayout({
   const usuarioNome = session.user.name ?? "Admin";
 
   return (
-    <div className="flex min-h-dvh bg-admin-bg text-slate-100">
+    // isolate: o FundoOndas fica em -z-10, acima do preto desta casca e
+    // abaixo da sidebar e do conteudo.
+    <div className="isolate flex min-h-dvh bg-admin-bg text-slate-100">
+      <FundoOndas />
       <AdminSidebar
         slug={slug}
         tenantNome={tenant.nome}
