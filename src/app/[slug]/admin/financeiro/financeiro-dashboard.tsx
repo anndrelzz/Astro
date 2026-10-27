@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Clock, Download, Wallet } from "lucide-react";
+import { Car, Clock, Download, Wallet } from "lucide-react";
 import { BarrasHorizontais, LinhaPorDia, Rosca, formatarReal } from "./graficos";
 import { Modal } from "../modal";
 import { FUSO } from "@/lib/fuso";
@@ -25,12 +25,14 @@ export type ItemPagamento = {
 
 // Acrescimo por condicao do veiculo, lancado pelo Admin ao confirmar o
 // pagamento (regra pedida pela estetica cliente). `valor` e o combinado no
-// agendamento; o acrescimo fica separado dele.
+// agendamento; o acrescimo fica separado dele. O detalhe mostra o carro, nao o
+// servico: o acrescimo vem do estado do veiculo, e e o carro que o dono lembra.
 export type ItemAcrescimo = {
   id: string;
   dia: string;
   cliente: string;
-  servico: string;
+  veiculo: string;
+  placa: string;
   valor: number;
   acrescimo: number;
 };
@@ -321,7 +323,7 @@ export function FinanceiroDashboard({
               },
             ].map((r) => (
               <div key={r.rotulo} className="rounded-2xl bg-white/[0.05] px-2 py-3">
-                <p className="text-base font-bold text-white">{r.valor}</p>
+                <p className="text-sm font-bold whitespace-nowrap text-white sm:text-base">{r.valor}</p>
                 <p className="text-xs text-astro-muted">{r.rotulo}</p>
               </div>
             ))}
@@ -331,9 +333,14 @@ export function FinanceiroDashboard({
               <li key={a.id} className="flex items-center gap-3 py-3">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-white">{a.cliente}</span>
-                  <span className="block truncate text-xs text-astro-muted">
-                    {a.dia} · {a.servico}
+                  <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-300">
+                    <Car className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
+                    <span className="truncate">{a.veiculo}</span>
+                    <span className="shrink-0 rounded border border-zinc-300 border-t-[3px] border-t-blue-700 bg-white px-1.5 font-mono text-[0.6rem] font-bold tracking-wider text-zinc-900">
+                      {a.placa}
+                    </span>
                   </span>
+                  <span className="mt-0.5 block text-xs text-astro-muted">{a.dia}</span>
                 </span>
                 <span className="shrink-0 text-right">
                   <span className="block text-sm font-semibold text-amber-300">
