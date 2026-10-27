@@ -286,7 +286,7 @@ export function FinanceiroDashboard({
           {/* 3. Receita por servico */}
           <section className="rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
             <h2 className="mb-5 text-base font-semibold text-white">Receita por serviço</h2>
-            <BarrasHorizontais itens={porServico.map((s) => ({ rotulo: s.nome, valor: s.receita, nota: `${s.qtd}×` }))} />
+            <BarrasHorizontais itens={porServico.map((s) => ({ rotulo: s.nome, valor: s.receita }))} />
           </section>
 
           {/* 4. Top 5 clientes */}
