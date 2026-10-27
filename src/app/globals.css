@@ -215,3 +215,17 @@ body {
     filter: drop-shadow(-10px 0 14px rgb(0 0 0 / 0.6));
   }
 }
+
+/* Preenchimento automatico do navegador (senha e e-mail salvos). O Chrome
+   pinta o campo de azul-claro com texto preto por conta propria, o que fura o
+   tema escuro. A transicao gigante adia esse fundo para nunca chegar, e o
+   campo continua com o fundo do proprio componente; o texto volta a branco. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  transition: background-color 9999s ease-out 0s;
+}
