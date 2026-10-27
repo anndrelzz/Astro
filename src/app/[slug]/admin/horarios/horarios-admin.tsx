@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarClock, Check, Clock, Copy } from "lucide-react";
+import { Check, Clock, Copy } from "lucide-react";
 
 // UC09, RF02 — grade semanal de funcionamento. Um dia desligado significa
 // estetica fechada: a rota PUT /api/tenant/horarios remove o registro daquele
@@ -138,8 +138,6 @@ export function HorariosAdmin({
   const abertos = horarios.filter((h) => h.ativo && !invalido(h));
   // O cartao do topo mostra a grade SALVA: e o que esta valendo para o cliente.
   const situacao = situacaoAgora(salvos, agora);
-  const abertosSalvos = salvos.filter((h) => h.ativo && !invalido(h));
-  const minutosSemana = abertosSalvos.reduce((soma, h) => soma + paraMinutos(h.horaFim) - paraMinutos(h.horaInicio), 0);
 
   // Escala das barras: das 6h as 22h, alargada se algum dia passar disso.
   const escalaInicio = Math.min(6 * 60, ...abertos.map((h) => Math.floor(paraMinutos(h.horaInicio) / 60) * 60));
@@ -149,29 +147,7 @@ export function HorariosAdmin({
 
   return (
     <div>
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white lg:text-4xl">Grade de horários</h1>
-          <p className="mt-1.5 text-astro-muted">Os dias e horários em que o cliente pode agendar.</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {alterado && <span className="text-sm text-amber-300">Alterações não salvas</span>}
-          <button
-            type="button"
-            onClick={salvar}
-            disabled={!alterado || salvando || temErro}
-            className={`flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
-              alterado && !temErro
-                ? "bg-astro-blue text-white shadow-[0_14px_30px_-14px_var(--color-astro-blue)] hover:brightness-110"
-                : "border border-admin-border text-astro-muted"
-            } disabled:cursor-not-allowed`}
-          >
-            <Check className="h-4 w-4" />
-            {salvando ? "Salvando..." : alterado ? "Salvar grade" : "Grade salva"}
-          </button>
-        </div>
-      </div>
+      <h1 className="mb-7 text-3xl font-bold tracking-tight text-white lg:text-4xl">Grade de horários</h1>
 
       {erro && (
         <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{erro}</p>
@@ -191,9 +167,9 @@ export function HorariosAdmin({
       >
         <span
           aria-hidden
-          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full border border-white/20 shadow-[0_0_0_40px_rgba(255,255,255,0.04),0_0_0_90px_rgba(255,255,255,0.03)]"
+          className="pointer-events-none absolute -top-20 right-12 h-64 w-64 rounded-full border border-white/20 shadow-[0_0_0_40px_rgba(255,255,255,0.04),0_0_0_90px_rgba(255,255,255,0.03)] sm:right-40"
         />
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold text-white/85">
               <span
@@ -205,12 +181,29 @@ export function HorariosAdmin({
             </p>
             <p className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{situacao.detalhe}</p>
           </div>
-          {abertosSalvos.length > 0 && (
-            <p className="flex items-center gap-2 rounded-full bg-black/25 px-4 py-2 text-sm text-white/90">
-              <CalendarClock className="h-4 w-4" />
-              {abertosSalvos.length} {abertosSalvos.length === 1 ? "dia" : "dias"} · {formatarDuracao(minutosSemana)} por semana
-            </p>
-          )}
+          {/* Salvar mora no cartao. Sobre o azul: vidro quando nao ha o que
+              salvar, pilula branca quando ha (como o "Hoje" do faturamento). */}
+          <div className="flex flex-wrap items-center gap-3">
+            {alterado && (
+              <span className="flex items-center gap-2 text-sm text-white/90">
+                <span className="h-2 w-2 rounded-full bg-amber-300" />
+                Alterações não salvas
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={salvar}
+              disabled={!alterado || salvando || temErro}
+              className={`flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed ${
+                alterado && !temErro
+                  ? "bg-white text-astro-blue shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] hover:bg-white/90"
+                  : "border border-white/25 bg-white/10 text-white/80 backdrop-blur-sm"
+              }`}
+            >
+              <Check className="h-4 w-4" />
+              {salvando ? "Salvando..." : alterado ? "Salvar grade" : "Grade salva"}
+            </button>
+          </div>
         </div>
       </section>
 
