@@ -145,7 +145,7 @@ export function IdentidadeAdmin({
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Logo */}
-        <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
+        <section className="borda-viva rounded-2xl border border-admin-border bg-admin-surface p-5 shadow-[0_24px_60px_-30px_var(--color-astro-blue),0_0_44px_-18px_var(--color-astro-blue-bright)] lg:p-6">
           <p className="astro-label">Logo</p>
 
           <div className="mt-4 flex items-center justify-center rounded-xl border border-admin-border bg-admin-bg p-8">
@@ -190,7 +190,7 @@ export function IdentidadeAdmin({
         </section>
 
         {/* Cor primaria */}
-        <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
+        <section className="borda-viva rounded-2xl border border-admin-border bg-admin-surface p-5 shadow-[0_24px_60px_-30px_var(--color-astro-blue),0_0_44px_-18px_var(--color-astro-blue-bright)] lg:p-6">
           <p className="astro-label">Cor primaria</p>
           <p className="mt-1 text-sm text-astro-muted">
             Aplicada em botoes, links e destaques, no site do cliente e no Admin.
