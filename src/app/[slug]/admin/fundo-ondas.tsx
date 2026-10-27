@@ -39,7 +39,7 @@ function Ondas({ caminhos, sentido }: { caminhos: string[]; sentido: "esquerda" 
   return (
     <svg
       className={`absolute inset-y-0 left-0 h-full w-[200%] will-change-transform ${
-        sentido === "esquerda" ? "animate-[ondas-esquerda_22s_linear_infinite]" : "animate-[ondas-direita_32s_linear_infinite]"
+        sentido === "esquerda" ? "animate-[ondas-esquerda_16s_linear_infinite]" : "animate-[ondas-direita_24s_linear_infinite]"
       } motion-reduce:animate-none`}
       viewBox={`0 0 ${2 * LARGURA} ${ALTURA}`}
       preserveAspectRatio="none"
