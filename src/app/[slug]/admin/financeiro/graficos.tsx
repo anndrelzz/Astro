@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 // Graficos em SVG desenhados a mao — sem biblioteca.
 //
@@ -27,35 +27,45 @@ export function formatarReal(v: number, compacto = false) {
 }
 
 // ---------------------------------------------------------------------------
-// Colunas por dia, em vidro: a coluna em foco acende na cor da estetica e
-// ganha o balao com o valor em cima.
+// Linha por dia: a receita recebida em linha reta de ponto a ponto (os picos
+// ficam visiveis, sem suavizar), com uma lavagem da cor por baixo. O que ainda
+// falta receber aparece como linha tracejada clara. O dia em foco (ou, sem
+// foco, o de maior receita) ganha o ponto e o balao com o valor.
 // ---------------------------------------------------------------------------
 
 type Dia = { dia: string; recebido: number; pendente: number };
 
-export function ColunasPorDia({ dados }: { dados: Dia[] }) {
+export function LinhaPorDia({ dados }: { dados: Dia[] }) {
+  const id = useId();
   const [foco, setFoco] = useState<number | null>(null);
   const [tabela, setTabela] = useState(false);
 
-  const max = Math.max(...dados.map((d) => d.recebido + d.pendente), 1);
+  const max = Math.max(...dados.map((d) => Math.max(d.recebido, d.pendente)), 1);
   const temPendente = dados.some((d) => d.pendente > 0);
 
-  // Marcas de escala em numeros redondos.
+  // Topo da escala num numero redondo, com folga para o balao.
   const passo = Math.pow(10, Math.floor(Math.log10(max)));
-  const topo = Math.ceil(max / passo) * passo;
+  const topo = Math.ceil((max * 1.15) / passo) * passo;
 
-  const ALTURA = 190;
-  const larguraBarra = Math.min(34, Math.max(4, 640 / dados.length - 5));
-  // Sem foco, a coluna mais alta fica acesa (como o mes em destaque da referencia).
+  const L = 640;
+  const A = 200;
+  const x = (i: number) => (dados.length === 1 ? L / 2 : (i / (dados.length - 1)) * L);
+  const y = (v: number) => A - (v / topo) * A;
+  const caminho = (campo: "recebido" | "pendente") =>
+    dados.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d[campo]).toFixed(1)}`).join(" ");
+  const linha = caminho("recebido");
+
   const maior = dados.reduce((m, d, i) => (d.recebido > dados[m].recebido ? i : m), 0);
   const aceso = foco ?? (dados[maior]?.recebido > 0 ? maior : null);
+  const pct = (i: number) => (x(i) / L) * 100;
+  const faixa = L / Math.max(dados.length - 1, 1);
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <LegendaItem cor={COR_DADO} rotulo="Recebido" />
-          {temPendente && <LegendaItem cor={COR_PENDENTE} rotulo="A receber" />}
+          {temPendente && <LegendaItem cor={COR_PENDENTE} rotulo="A receber" tracejado />}
         </div>
         <button
           type="button"
@@ -70,79 +80,94 @@ export function ColunasPorDia({ dados }: { dados: Dia[] }) {
         <TabelaDias dados={dados} />
       ) : (
         <div>
-          <div className="relative" style={{ height: ALTURA }}>
+          <div className="relative" style={{ height: A }} onMouseLeave={() => setFoco(null)}>
             <svg
-              viewBox={`0 0 640 ${ALTURA}`}
-              className="absolute inset-0 h-full w-full"
+              viewBox={`0 0 ${L} ${A}`}
+              className="absolute inset-0 h-full w-full overflow-visible"
               preserveAspectRatio="none"
               role="img"
               aria-label="Receita por dia no período"
             >
               <defs>
-                <linearGradient id="coluna-vidro" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="white" stopOpacity="0.16" />
-                  <stop offset="100%" stopColor="white" stopOpacity="0.05" />
-                </linearGradient>
-                <linearGradient id="coluna-acesa" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" style={{ stopColor: "color-mix(in srgb, var(--color-astro-blue-bright) 70%, white)" }} />
-                  <stop offset="100%" style={{ stopColor: "var(--color-astro-blue)" }} />
+                <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" style={{ stopColor: "var(--color-astro-blue-bright)", stopOpacity: 0.35 }} />
+                  <stop offset="100%" style={{ stopColor: "var(--color-astro-blue-bright)", stopOpacity: 0 }} />
                 </linearGradient>
               </defs>
 
-              {dados.map((d, i) => {
-                const cx = ((i + 0.5) / dados.length) * 640;
-                const x = cx - larguraBarra / 2;
-                const hRec = (d.recebido / topo) * (ALTURA - 30);
-                const hPen = (d.pendente / topo) * (ALTURA - 30);
-                const ativo = aceso === i;
-                return (
-                  <g key={d.dia} onMouseEnter={() => setFoco(i)} onMouseLeave={() => setFoco(null)}>
-                    {/* alvo de hover generoso: cobre a faixa inteira do dia */}
-                    <rect x={cx - 320 / dados.length} y={0} width={640 / dados.length} height={ALTURA} fill="transparent" />
-                    {/* trilho da coluna, em vidro, ate o topo da escala */}
-                    <rect x={x} y={30} width={larguraBarra} height={ALTURA - 30} rx={larguraBarra / 2.5} fill="white" fillOpacity="0.03" />
-                    {d.pendente > 0 && (
-                      <rect
-                        x={x}
-                        y={ALTURA - hRec - hPen}
-                        width={larguraBarra}
-                        height={hPen + hRec}
-                        rx={larguraBarra / 2.5}
-                        fill={COR_PENDENTE}
-                      />
-                    )}
-                    {d.recebido > 0 && (
-                      <rect
-                        x={x}
-                        y={ALTURA - hRec}
-                        width={larguraBarra}
-                        height={hRec}
-                        rx={larguraBarra / 2.5}
-                        fill={ativo ? "url(#coluna-acesa)" : "url(#coluna-vidro)"}
-                        stroke="white"
-                        strokeOpacity={ativo ? 0 : 0.12}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    )}
-                  </g>
-                );
-              })}
+              {/* grade em fio, recessiva */}
+              {[0.25, 0.5, 0.75].map((f) => (
+                <line
+                  key={f}
+                  x1="0"
+                  x2={L}
+                  y1={A * f}
+                  y2={A * f}
+                  stroke="white"
+                  strokeOpacity="0.05"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+              <line x1="0" x2={L} y1={A} y2={A} stroke="white" strokeOpacity="0.1" vectorEffect="non-scaling-stroke" />
+
+              {temPendente && (
+                <path
+                  d={caminho("pendente")}
+                  fill="none"
+                  stroke={COR_PENDENTE}
+                  strokeWidth="1.5"
+                  strokeDasharray="5 5"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+              {dados.length > 1 && <path d={`${linha} L${L},${A} L0,${A} Z`} fill={`url(#area-${id})`} />}
+              <path
+                d={linha}
+                fill="none"
+                stroke={COR_DADO}
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+                style={{ filter: "drop-shadow(0 0 6px color-mix(in srgb, var(--color-astro-blue-bright) 60%, transparent))" }}
+              />
+
+              {/* alvos de hover: uma faixa vertical por dia */}
+              {dados.map((d, i) => (
+                <rect
+                  key={d.dia}
+                  x={x(i) - faixa / 2}
+                  y={0}
+                  width={faixa}
+                  height={A}
+                  fill="transparent"
+                  onMouseEnter={() => setFoco(i)}
+                />
+              ))}
             </svg>
 
-            {/* Balao com o valor da coluna acesa */}
+            {/* Marcacao do dia em foco: linha vertical, ponto e balao. Em HTML,
+                para o ponto ficar redondo mesmo com o SVG esticado. */}
             {aceso !== null && dados[aceso] && (
-              <div
-                className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg bg-white px-2 py-1 text-xs font-bold whitespace-nowrap text-black shadow-lg"
-                style={{
-                  left: `${((aceso + 0.5) / dados.length) * 100}%`,
-                  top: Math.max(
-                    0,
-                    ALTURA - ((dados[aceso].recebido + dados[aceso].pendente) / topo) * (ALTURA - 30) - 8
-                  ),
-                }}
-              >
-                {formatarReal(dados[aceso].recebido, true)}
-              </div>
+              <>
+                <span
+                  className="pointer-events-none absolute top-0 bottom-0 w-px -translate-x-1/2 bg-white/15"
+                  style={{ left: `${pct(aceso)}%` }}
+                />
+                <span
+                  className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
+                  style={{ left: `${pct(aceso)}%`, top: y(dados[aceso].recebido), backgroundColor: COR_DADO }}
+                />
+                <span
+                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg bg-white px-2 py-1 text-xs font-bold whitespace-nowrap text-black shadow-lg"
+                  style={{
+                    left: `clamp(2rem, ${pct(aceso)}%, calc(100% - 2rem))`,
+                    top: Math.max(26, y(dados[aceso].recebido) - 12),
+                  }}
+                >
+                  {formatarReal(dados[aceso].recebido, true)}
+                </span>
+              </>
             )}
           </div>
 
@@ -207,10 +232,14 @@ function TabelaDias({ dados }: { dados: Dia[] }) {
   );
 }
 
-function LegendaItem({ cor, rotulo }: { cor: string; rotulo: string }) {
+function LegendaItem({ cor, rotulo, tracejado = false }: { cor: string; rotulo: string; tracejado?: boolean }) {
   return (
     <span className="flex items-center gap-2 text-xs text-astro-muted">
-      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cor }} />
+      {tracejado ? (
+        <span className="w-4 border-t-2 border-dashed" style={{ borderColor: cor }} />
+      ) : (
+        <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: cor }} />
+      )}
       {rotulo}
     </span>
   );
