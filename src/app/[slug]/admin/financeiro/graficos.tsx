@@ -86,7 +86,7 @@ export function LinhaPorDia({ dados }: { dados: Dia[] }) {
               className="absolute inset-0 h-full w-full overflow-visible"
               preserveAspectRatio="none"
               role="img"
-              aria-label="Receita por dia no período"
+              aria-label="Receita por período, dia a dia"
             >
               <defs>
                 <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">

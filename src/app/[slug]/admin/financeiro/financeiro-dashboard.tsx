@@ -219,7 +219,7 @@ export function FinanceiroDashboard({
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           {/* 2. Receita por periodo, dia a dia */}
           <section className="min-w-0 rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
-            <h2 className="mb-4 text-base font-semibold text-white">Receita por dia</h2>
+            <h2 className="mb-4 text-base font-semibold text-white">Receita por período</h2>
             <LinhaPorDia dados={serieDiaria} />
           </section>
 
