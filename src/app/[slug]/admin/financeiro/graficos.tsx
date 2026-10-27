@@ -321,3 +321,52 @@ export function Rosca({ partes }: { partes: { rotulo: string; valor: number; cor
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Linha branca da receita acumulada, para o cartao de destaque (fundo na cor
+// da estetica). Estica para ocupar a altura que o cartao tiver; o ponto final
+// e o rotulo sao HTML, para nao deformarem junto com o SVG.
+// ---------------------------------------------------------------------------
+
+export function LinhaAcumulada({ valores, rotulo }: { valores: number[]; rotulo: string }) {
+  const id = useId();
+  const L = 300;
+  const A = 100;
+  const max = Math.max(...valores, 1);
+  const pontos = valores.map((v, i) => [(i / (valores.length - 1)) * L, A - 4 - (v / max) * (A - 8)] as const);
+  const linha = pontos.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const fimY = (pontos[pontos.length - 1][1] / A) * 100;
+
+  return (
+    <div className="absolute inset-0">
+      <svg viewBox={`0 0 ${L} ${A}`} className="h-full w-full" preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <linearGradient id={`acumulada-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="white" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={`${linha} L${L},${A} L0,${A} Z`} fill={`url(#acumulada-${id})`} />
+        <path
+          d={linha}
+          fill="none"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <span
+        className="absolute right-0 h-2.5 w-2.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]"
+        style={{ top: `${fimY}%` }}
+      />
+      <span
+        className="absolute right-0 rounded-full bg-black/30 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-white backdrop-blur-sm"
+        style={{ top: `calc(${fimY}% + 10px)` }}
+      >
+        {rotulo}
+      </span>
+    </div>
+  );
+}
