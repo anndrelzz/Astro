@@ -225,7 +225,7 @@ export function FinanceiroDashboard({
 
           {/* Como os clientes pagam: duas partes de um todo, por isso rosca */}
           <section className="flex flex-col rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
-            <h2 className="mb-4 text-base font-semibold text-white">Como os clientes pagam</h2>
+            <h2 className="mb-4 text-base font-semibold text-white">Formas de pagamento</h2>
             {receitaTotal > 0 ? (
               <>
                 <Rosca
