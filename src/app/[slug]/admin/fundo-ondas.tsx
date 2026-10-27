@@ -1,28 +1,52 @@
-// Fundo com ondas de luz na cor da estetica (--color-astro-blue), para as telas
-// com cards em vidro (.vidro). Feito so com CSS, sem imagem: muda junto com a
-// cor escolhida na Identidade visual (RF13) e nao pesa no carregamento.
+// Fundo com ondas suaves na cor da estetica (--color-astro-blue), para as telas
+// com cards em vidro (.vidro). Sao faixas largas e desfocadas que ondulam de
+// uma ponta a outra da tela, com pouca opacidade: o preto continua sendo o
+// fundo, e as ondas so dao profundidade ao vidro. Feito em SVG, sem imagem:
+// muda junto com a cor escolhida na Identidade visual (RF13).
 //
 // Fica fixo na tela (o conteudo rola por cima, que e o que faz o vidro
 // parecer vidro) e atras de tudo: -z-10 dentro do layout do Admin, que tem
 // `isolate` para que a camada negativa fique acima do fundo preto dele e
 // abaixo da sidebar e do conteudo.
+
+// Cada onda e uma faixa entre duas curvas que atravessam a tela inteira.
+const ONDAS = [
+  {
+    d: "M-200,250 C200,90 620,430 1040,250 C1240,165 1380,195 1640,150 L1640,330 C1380,375 1240,325 1040,405 C620,575 200,270 -200,420 Z",
+    opacidade: 0.75,
+  },
+  {
+    d: "M-200,560 C180,440 560,700 940,560 C1180,470 1360,525 1640,470 L1640,610 C1360,660 1180,595 940,700 C560,840 180,600 -200,700 Z",
+    opacidade: 0.6,
+  },
+  {
+    d: "M-200,860 C240,740 660,930 1080,800 C1290,735 1440,770 1640,740 L1640,1000 L-200,1000 Z",
+    opacidade: 0.5,
+  },
+];
+
 export function FundoOndas() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      {/* Brilho no alto, a direita */}
-      <div className="absolute -top-[30vh] -right-[10vw] h-[80vh] w-[60vw] rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--color-astro-blue)_70%,transparent),transparent)] blur-2xl" />
+      <svg className="h-full w-full" viewBox="0 0 1440 900" preserveAspectRatio="none">
+        <defs>
+          {/* A cor some nas pontas e e mais forte no meio de cada faixa. */}
+          <linearGradient id="onda-cor" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" style={{ stopColor: "var(--color-astro-blue)", stopOpacity: 0.15 }} />
+            <stop offset="45%" style={{ stopColor: "var(--color-astro-blue)", stopOpacity: 0.6 }} />
+            <stop offset="100%" style={{ stopColor: "var(--color-astro-blue)", stopOpacity: 0.25 }} />
+          </linearGradient>
+          <filter id="onda-desfoque" x="-20%" y="-50%" width="140%" height="200%">
+            <feGaussianBlur stdDeviation="26" />
+          </filter>
+        </defs>
 
-      {/* Onda principal: um circulo enorme cuja borda atravessa a tela na
-          diagonal. A faixa larga e desfocada da o volume; o fio nitido logo
-          dentro dela e o brilho da quina, como nas referencias. */}
-      <div className="absolute top-[22vh] left-[34vw] h-[170vh] w-[170vh] rounded-full bg-[radial-gradient(circle,transparent_56%,color-mix(in_srgb,var(--color-astro-blue)_85%,transparent)_64%,color-mix(in_srgb,var(--color-astro-blue)_35%,transparent)_69%,transparent_72%)] blur-xl" />
-      <div className="absolute top-[calc(22vh+11.5vh)] left-[calc(34vw+11.5vh)] h-[147vh] w-[147vh] rounded-full border-2 border-astro-blue-bright/80 blur-[2px]" />
-
-      {/* Segunda onda, no canto de baixo a esquerda */}
-      <div className="absolute -bottom-[95vh] -left-[40vh] h-[140vh] w-[140vh] rounded-full bg-[radial-gradient(circle,transparent_58%,color-mix(in_srgb,var(--color-astro-blue)_55%,transparent)_66%,transparent_71%)] blur-2xl" />
-
-      {/* Escurece de leve o lado esquerdo, onde comecam os textos */}
-      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(0,0,0,0.45),transparent_55%)]" />
+        <g filter="url(#onda-desfoque)">
+          {ONDAS.map((onda) => (
+            <path key={onda.d} d={onda.d} fill="url(#onda-cor)" opacity={onda.opacidade} />
+          ))}
+        </g>
+      </svg>
     </div>
   );
 }
