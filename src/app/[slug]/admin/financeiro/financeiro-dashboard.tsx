@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Car, Clock, Crown, Download, Wallet } from "lucide-react";
-import { BarrasHorizontais, LinhaPorDia, Rosca, formatarReal } from "./graficos";
+import { BarrasHorizontais, LinhaAcumulada, LinhaPorDia, Rosca, formatarReal } from "./graficos";
 import { Modal } from "../modal";
 import { FUSO } from "@/lib/fuso";
 import type { Periodo } from "@/lib/financeiro";
@@ -44,6 +44,14 @@ const MEDALHAS = [
   { nome: "2º lugar", metal: "linear-gradient(135deg, #f1f5f9, #94a3b8 55%, #475569)", texto: "#0f172a", brilho: "rgba(148,163,184,0.14)" },
   { nome: "3º lugar", metal: "linear-gradient(135deg, #fed7aa, #c2410c 55%, #7c2d12)", texto: "#fff7ed", brilho: "rgba(194,65,12,0.16)" },
 ];
+
+const ROTULO_PERIODO: Record<Periodo, string> = {
+  hoje: "hoje",
+  "7dias": "em 7 dias",
+  "30dias": "em 30 dias",
+  "90dias": "em 90 dias",
+  ano: "no ano",
+};
 
 const PERIODOS: { valor: Periodo; rotulo: string }[] = [
   { valor: "hoje", rotulo: "Hoje" },
@@ -93,6 +101,8 @@ export function FinanceiroDashboard({
   const totalAcrescimos = acrescimos.reduce((s, a) => s + a.acrescimo, 0);
   const ticketMedio = atendimentos ? receitaTotal / atendimentos : 0;
   const recebidoLocal = receitaTotal - recebidoPix;
+  // Receita somada dia a dia: a linha do cartao principal sobe ate o total.
+  const acumulada = serieDiaria.reduce<number[]>((acc, d) => [...acc, (acc.at(-1) ?? 0) + d.recebido], []);
 
   return (
     <div>
@@ -158,8 +168,16 @@ export function FinanceiroDashboard({
               </p>
               <p className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">{formatarReal(receitaTotal)}</p>
             </div>
-            {/* Numeros de apoio no rodape do cartao, que acompanha a altura do "A receber" */}
-            <div className="relative mt-auto grid grid-cols-2 gap-3 pt-6">
+            {/* Como o total foi crescendo no periodo. Trecho plano = dias sem
+                receita. Ocupa o espaco que o cartao ganha ao acompanhar a
+                altura do "A receber". */}
+            {acumulada.length > 1 && receitaTotal > 0 && (
+              <div className="relative mt-4 min-h-24 flex-1">
+                <LinhaAcumulada valores={acumulada} rotulo={`${formatarReal(receitaTotal, true)} ${ROTULO_PERIODO[periodo]}`} />
+              </div>
+            )}
+            {/* Numeros de apoio no rodape do cartao */}
+            <div className="relative mt-auto grid grid-cols-2 gap-3 pt-4">
               {[
                 { rotulo: atendimentos === 1 ? "Atendimento pago" : "Atendimentos pagos", valor: String(atendimentos) },
                 { rotulo: "Ticket médio", valor: formatarReal(ticketMedio) },
