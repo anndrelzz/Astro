@@ -172,7 +172,7 @@ export function FinanceiroDashboard({
                 receita. Ocupa o espaco que o cartao ganha ao acompanhar a
                 altura do "A receber". */}
             {acumulada.length > 1 && receitaTotal > 0 && (
-              <div className="relative mt-4 min-h-24 flex-1">
+              <div className="relative mt-4 min-h-28 flex-1">
                 <LinhaAcumulada valores={acumulada} rotulo={`${formatarReal(receitaTotal, true)} ${ROTULO_PERIODO[periodo]}`} />
               </div>
             )}
