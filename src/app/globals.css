@@ -182,3 +182,36 @@ body {
     mask-size: 14px 14px;
   }
 }
+
+/* Painel de marca do login e do cadastro: a borda que encosta no formulario
+   e uma curva organica, feita por mascara (corta o degrade e os aneis
+   juntos). No celular a curva fica embaixo; no computador, a direita. */
+.painel-auth {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V82C84 94 70 74 52 86S18 100 0 90Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V82C84 94 70 74 52 86S18 100 0 90Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+@media (min-width: 1024px) {
+  .painel-auth {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H74C92 14 66 34 82 52S94 84 80 100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H74C92 14 66 34 82 52S94 84 80 100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  }
+}
+
+/* Recorte inverso do .painel-auth (o lado escuro dentro da caixa do painel),
+   usado so para projetar a sombra preta sobre o azul ao longo da curva. */
+.painel-auth-inverso {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 90C18 100 34 98 52 86S84 94 100 82V100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 90C18 100 34 98 52 86S84 94 100 82V100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+.painel-auth-sombra {
+  filter: drop-shadow(0 -8px 12px rgb(0 0 0 / 0.6));
+}
+@media (min-width: 1024px) {
+  .painel-auth-inverso {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M74 0C92 14 66 34 82 52S94 84 80 100H100V0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M74 0C92 14 66 34 82 52S94 84 80 100H100V0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  }
+  .painel-auth-sombra {
+    filter: drop-shadow(-10px 0 14px rgb(0 0 0 / 0.6));
+  }
+}

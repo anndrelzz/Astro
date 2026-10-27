@@ -1,123 +1,121 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 
-// Animacao de sucesso (login/cadastro), inspirada no app DinDin e adaptada
-// para a identidade do Astro: fundo navy, circulo azul com ondas, sparkles
-// azuis e barra de progresso — no mesmo espirito da tela 12 (confirmado).
+// Tela de sucesso (login, cadastro e agendamento confirmado).
+//
+// Uma animacao so, em tres tempos e sem nada repetindo para sempre: o anel se
+// desenha girando, o centro cresce e preenche o circulo, e o "certo" se
+// desenha por cima. Tudo na cor da estetica (--color-astro-blue). O fundo e
+// escuro e limpo, com um unico brilho suave atras do circulo, que se abre
+// uma vez junto com o preenchimento.
+//
+// Com "reduzir movimento" ligado no sistema, a tela aparece ja no estado
+// final, sem animar.
 
-// Posicoes fixas das estrelinhas (deterministico, sem hydration mismatch).
-const SPARKLES = [
-  { x: 18, y: 20, size: 16, delay: 0.4, dur: 3.2 },
-  { x: 80, y: 16, size: 11, delay: 1.1, dur: 2.6 },
-  { x: 12, y: 52, size: 9, delay: 0.7, dur: 3.8 },
-  { x: 85, y: 44, size: 14, delay: 0.2, dur: 2.9 },
-  { x: 22, y: 76, size: 10, delay: 1.6, dur: 3.4 },
-  { x: 76, y: 74, size: 12, delay: 0.9, dur: 2.7 },
-  { x: 50, y: 12, size: 9, delay: 1.9, dur: 3.6 },
-  { x: 90, y: 28, size: 11, delay: 0.5, dur: 2.4 },
-];
+const COR = "var(--color-astro-blue)";
+const COR_CLARA = "var(--color-astro-blue-bright)";
 
-const AZUL = "var(--color-astro-blue-bright)";
-const MUTED = "var(--color-astro-muted)";
+// Ritmo: desenhar o anel, preencher, desenhar o certo, e so entao o texto.
+const T = { anel: 0.15, preencher: 0.6, certo: 0.95, texto: 1.15 };
+const DESACELERA = [0.22, 1, 0.36, 1] as const;
 
-function Sparkle({ x, y, size, delay, dur }: (typeof SPARKLES)[number]) {
+export function SuccessScreen({ title, subtitle = "Entrando no app…" }: { title: string; subtitle?: string }) {
+  const parado = useReducedMotion();
+  const quando = (atraso: number, duracao: number) =>
+    parado ? { duration: 0 } : { delay: atraso, duration: duracao, ease: DESACELERA };
+
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0, rotate: 0 }}
-      animate={{ opacity: [0, 1, 0.7, 1, 0], scale: [0, 1, 0.85, 1, 0], rotate: 180 }}
-      transition={{ delay, duration: dur, repeat: Infinity, ease: "easeInOut" }}
-      style={{ position: "absolute", left: `${x}%`, top: `${y}%`, willChange: "transform, opacity" }}
-    >
-      <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-        <path d="M8 0 L8.6 6.4 L8 8 L7.4 6.4 Z" fill={AZUL} />
-        <path d="M16 8 L9.6 8.6 L8 8 L9.6 7.4 Z" fill={AZUL} />
-        <path d="M8 16 L7.4 9.6 L8 8 L8.6 9.6 Z" fill={AZUL} />
-        <path d="M0 8 L6.4 7.4 L8 8 L6.4 8.6 Z" fill={AZUL} />
-      </svg>
-    </motion.div>
-  );
-}
-
-export function SuccessScreen({
-  title,
-  subtitle = "Entrando no app…",
-}: {
-  title: string;
-  subtitle?: string;
-}) {
-  return (
-    <motion.div
+      role="status"
+      aria-live="polite"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="astro-dark fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden"
+      transition={{ duration: parado ? 0 : 0.25 }}
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden bg-[#050507]"
     >
-      {SPARKLES.map((s, i) => (
-        <Sparkle key={i} {...s} />
-      ))}
-
+      {/* Brilho unico atras do circulo: abre uma vez e fica */}
       <motion.div
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", damping: 14, stiffness: 200, delay: 0.1 }}
-        className="relative mb-8"
-      >
-        {/* Ondas pulsantes */}
-        <motion.div
-          animate={{ scale: [1, 1.7], opacity: [0.45, 0] }}
-          transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.6, ease: "easeOut", delay: 0.4 }}
-          className="absolute inset-0 rounded-full"
-          style={{ backgroundColor: AZUL, willChange: "transform, opacity" }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.4], opacity: [0.3, 0] }}
-          transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.6, ease: "easeOut", delay: 0.8 }}
-          className="absolute inset-0 rounded-full"
-          style={{ backgroundColor: AZUL, willChange: "transform, opacity" }}
-        />
-        <div
-          className="flex h-28 w-28 items-center justify-center rounded-full"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--color-astro-blue) 0%, var(--color-astro-blue-bright) 100%)",
-            boxShadow: "0 8px 40px color-mix(in srgb, var(--color-astro-blue) 55%, transparent)",
-          }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.35, type: "spring", stiffness: 300 }}
-          >
-            <Check size={56} color="#ffffff" strokeWidth={2.5} />
-          </motion.div>
-        </div>
-      </motion.div>
+        aria-hidden
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={quando(T.preencher, 1.1)}
+        className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full"
+        style={{ background: `radial-gradient(closest-side, color-mix(in srgb, ${COR} 32%, transparent), transparent)` }}
+      />
+
+      <div className="relative mb-9 h-32 w-32">
+        <svg viewBox="0 0 120 120" className="h-full w-full" aria-hidden>
+          {/* Trilho do anel */}
+          <circle cx="60" cy="60" r="54" fill="none" stroke="white" strokeOpacity="0.06" strokeWidth="6" />
+
+          {/* Anel se desenhando, girando de leve enquanto fecha */}
+          <motion.circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill="none"
+            stroke={COR_CLARA}
+            strokeWidth="6"
+            strokeLinecap="round"
+            style={{ rotate: -90, transformOrigin: "60px 60px" }}
+            initial={{ pathLength: 0, rotate: -90 }}
+            animate={{ pathLength: 1, rotate: 270 }}
+            transition={quando(T.anel, 0.75)}
+          />
+
+          {/* Centro: comeca como um ponto e cresce ate encher o circulo */}
+          <motion.circle
+            cx="60"
+            cy="60"
+            r="54"
+            fill={COR}
+            style={{ transformOrigin: "60px 60px" }}
+            initial={{ scale: 0.04 }}
+            animate={{ scale: 1 }}
+            transition={parado ? { duration: 0 } : { delay: T.preencher, type: "spring", stiffness: 170, damping: 18 }}
+          />
+
+          {/* Certo desenhado por cima */}
+          <motion.path
+            d="M38 61 L53 76 L83 45"
+            fill="none"
+            stroke="white"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={quando(T.certo, 0.35)}
+          />
+        </svg>
+      </div>
 
       <motion.h2
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.55 }}
-        className="mb-2 text-center text-2xl font-bold text-white"
+        transition={quando(T.texto, 0.4)}
+        className="mb-1.5 text-center text-2xl font-bold text-white"
       >
         {title}
       </motion.h2>
       <motion.p
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-        className="text-center text-sm"
-        style={{ color: MUTED }}
+        transition={quando(T.texto + 0.08, 0.4)}
+        className="text-center text-sm text-astro-muted"
       >
         {subtitle}
       </motion.p>
 
+      {/* Progresso ate abrir o app: avanca em ritmo constante (linear) */}
       <motion.div
+        aria-hidden
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
-        transition={{ delay: 0.3, duration: 1.9, ease: "linear" }}
-        style={{ originX: 0, backgroundColor: AZUL }}
-        className="absolute bottom-0 left-0 right-0 h-1"
+        transition={parado ? { duration: 0 } : { delay: 0.2, duration: 2, ease: "linear" }}
+        style={{ originX: 0, backgroundColor: COR_CLARA }}
+        className="absolute right-0 bottom-0 left-0 h-0.5"
       />
     </motion.div>
   );
