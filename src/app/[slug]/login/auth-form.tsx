@@ -12,7 +12,7 @@ import { FundoOndas } from "../admin/fundo-ondas";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { SuccessScreen } from "@/components/ui/success-screen";
 import { callbackUrlSeguro } from "@/lib/callback-url";
-import { PainelMarca, type Estetica } from "./painel-marca";
+import { CamadasPapel, FUNDO_ESTETICA, PainelMarca, type Estetica } from "./painel-marca";
 import { LIMITES } from "@/lib/validations/limites";
 
 // Regras de senha exibidas ao usuario no cadastro. Precisam bater exatamente
@@ -28,9 +28,10 @@ const REGRAS_SENHA = [
 // (/login e /cadastro), como no mockup: assim o "Criar agora" e uma navegacao
 // real (funciona antes mesmo do JS hidratar) e nao um toggle client-side.
 //
-// Layout: um cartao sobre o fundo de pontos com ondas (o mesmo do painel). O
-// lado colorido, na cor da estetica, tem a borda em curva; o formulario fica
-// no lado escuro. No celular o lado colorido vira a faixa do topo.
+// Layout: um cartao sobre o fundo de pontos com ondas (o mesmo do painel), com
+// o degrade da cor da estetica. No computador, folhas de "papel recortado"
+// vem da direita e a de cima e a superficie escura do formulario. No celular,
+// o formulario fica num cartao de vidro sobre o degrade.
 export function AuthForm({
   modo,
   estetica,
@@ -180,14 +181,17 @@ export function AuthForm({
           }}
         />
 
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div
+          className="relative overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+          style={{ backgroundImage: FUNDO_ESTETICA }}
+        >
+          <CamadasPapel />
           <PainelMarca modo={modo} estetica={estetica} />
           {/* Coluna 1 vazia no computador: o painel colorido fica por baixo, absoluto */}
-          <div aria-hidden className="hidden lg:block" />
 
           {/* Formulario */}
           <div
-            className={`relative flex flex-col px-6 pt-2 pb-8 lg:px-12 ${eLogin ? "lg:py-10" : "lg:py-7"}`}
+            className={`relative z-10 m-3 mt-0 flex flex-col rounded-[1.6rem] border border-white/15 bg-black/55 px-5 py-6 backdrop-blur-xl lg:m-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-12 lg:backdrop-blur-none ${eLogin ? "lg:py-10" : "lg:py-7"}`}
           >
             <div className="hidden justify-end lg:flex">
               <Logo className="h-6" />
