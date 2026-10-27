@@ -1,39 +1,26 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
+import { FUSO, chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
-import { AdminHeader } from "../admin-header";
-import { AgendamentosLista, type Periodo } from "./agendamentos-lista";
+import { AgendamentosLista, type DiaSemana, type ItemAgendamento } from "./agendamentos-lista";
 
-// RF11, UC10 — painel administrativo com visao geral dos agendamentos.
+// RF11, UC10 — agenda do painel administrativo, em linha do tempo.
 //
-// O periodo e filtrado no SERVIDOR (via query string), porque e ele que limita
-// quanto sai do banco. Abas, busca e paginacao rodam no cliente, sobre o
-// conjunto ja carregado, para responderem sem ida e volta ao servidor.
+// O servidor carrega UMA SEMANA (segunda a domingo) que contem o dia pedido em
+// ?dia=AAAA-MM-DD (padrao: hoje, no relogio da estetica). Trocar de dia dentro
+// da semana, filtrar por situacao e buscar rodam no cliente, sem ida ao
+// servidor; trocar de semana e uma nova navegacao.
 
-const PERIODOS: Periodo[] = ["hoje", "7dias", "mes", "todos"];
+const SIGLAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-function janelaDoPeriodo(periodo: Periodo) {
-  if (periodo === "todos") return undefined;
-
-  // "Hoje" e "mes" sao os do relogio da estetica (lib/fuso.ts), nao do servidor.
-  const agora = new Date();
-
-  if (periodo === "hoje") {
-    return { gte: inicioDoDia(agora), lte: fimDoDia(agora) };
-  }
-
-  const p = partesNoFuso(agora);
-  const inicio =
-    periodo === "7dias"
-      ? inicioDoDia(agora, -7)
-      : instanteNoFuso(p.ano, p.mes, 1); // mes corrente
-
-  // Sem limite superior: o Admin precisa enxergar o que ainda vai acontecer,
-  // nao apenas o que ja passou.
-  return { gte: inicio };
+function lerDia(bruto: string | undefined, agora: Date) {
+  const m = bruto?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return inicioDoDia(agora);
+  const d = instanteNoFuso(Number(m[1]), Number(m[2]), Number(m[3]));
+  // Data impossivel (31/02) vira outro dia no Date; nesse caso, volta para hoje.
+  return chaveDia(d) === bruto ? d : inicioDoDia(agora);
 }
 
 export default async function AdminAgendamentosPage({
@@ -41,10 +28,10 @@ export default async function AdminAgendamentosPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ periodo?: string }>;
+  searchParams: Promise<{ dia?: string }>;
 }) {
   const { slug } = await params;
-  const { periodo: periodoBruto } = await searchParams;
+  const { dia: diaBruto } = await searchParams;
 
   const tenant = await prisma.tenant.findUnique({ where: { slug } });
   if (!tenant) notFound();
@@ -57,47 +44,76 @@ export default async function AdminAgendamentosPage({
     redirect(`/${slug}`);
   }
 
-  // Padrao "hoje": ao abrir o painel o Admin quer saber o movimento do dia,
-  // nao navegar historico. Periodos maiores estao a um clique de distancia.
-  const periodo: Periodo = PERIODOS.includes(periodoBruto as Periodo)
-    ? (periodoBruto as Periodo)
-    : "hoje";
+  const agora = new Date();
+  const diaEscolhido = lerDia(diaBruto, agora);
+  // Segunda-feira da semana do dia escolhido (diaSemana: 0 = domingo).
+  const recuo = (partesNoFuso(diaEscolhido).diaSemana + 6) % 7;
+  const segunda = inicioDoDia(diaEscolhido, -recuo);
 
-  const dataHora = janelaDoPeriodo(periodo);
+  const { agendamentos, horarios } = await withTenant(tenant.id, async (tx) => {
+    const [agendamentos, horarios] = await Promise.all([
+      tx.agendamento.findMany({
+        where: {
+          tenantId: tenant.id,
+          dataHora: { gte: segunda, lte: fimDoDia(segunda, 6) },
+        },
+        include: { usuario: true, veiculo: true, servico: true },
+        orderBy: { dataHora: "asc" },
+      }),
+      tx.horarioFuncionamento.findMany({ where: { tenantId: tenant.id } }),
+    ]);
+    return { agendamentos, horarios };
+  });
 
-  const agendamentos = await withTenant(tenant.id, (tx) =>
-    tx.agendamento.findMany({
-      where: { tenantId: tenant.id, ...(dataHora ? { dataHora } : {}) },
-      include: { usuario: true, veiculo: true, servico: true },
-      // Crescente: do primeiro horario do dia para o ultimo, na ordem em que a
-      // estetica atende. E como o Admin le a propria agenda.
-      orderBy: { dataHora: "asc" },
-    })
-  );
+  const dias: DiaSemana[] = Array.from({ length: 7 }, (_, i) => {
+    const d = inicioDoDia(segunda, i);
+    const p = partesNoFuso(d);
+    const grade = horarios.find((h) => h.diaSemana === p.diaSemana);
+    return {
+      chave: chaveDia(d),
+      sigla: SIGLAS[p.diaSemana],
+      numero: p.dia,
+      nome: d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: FUSO }),
+      abreMin: grade?.horaInicioMin ?? null,
+      fechaMin: grade?.horaFimMin ?? null,
+    };
+  });
 
-  const itens = agendamentos.map((a) => ({
-    id: a.id,
-    dataHoraISO: a.dataHora.toISOString(),
-    duracaoMin: a.servico.duracaoMin,
-    clienteNome: a.usuario.nome,
-    clienteTelefone: a.usuario.telefone ?? "",
-    veiculo: `${a.veiculo.marca} ${a.veiculo.modelo} ${a.veiculo.ano}`,
-    placa: a.veiculo.placa,
-    servicoNome: a.servico.nome,
-    valor: Number(a.valor),
-    acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),
-    status: a.status,
-  }));
+  const itens: ItemAgendamento[] = agendamentos.map((a) => {
+    const inicioMin = minutosNoFuso(a.dataHora);
+    return {
+      id: a.id,
+      dia: chaveDia(a.dataHora),
+      inicioMin,
+      fimMin: inicioMin + a.servico.duracaoMin,
+      fimISO: new Date(a.dataHora.getTime() + a.servico.duracaoMin * 60000).toISOString(),
+      duracaoMin: a.servico.duracaoMin,
+      clienteNome: a.usuario.nome,
+      clienteTelefone: a.usuario.telefone ?? "",
+      clienteEmail: a.usuario.email,
+      veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+      veiculoAno: a.veiculo.ano,
+      placa: a.veiculo.placa,
+      servicoNome: a.servico.nome,
+      valor: Number(a.valor),
+      acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),
+      status: a.status,
+    };
+  });
 
   return (
-    <>
-      <AdminHeader trilha="Lista" titulo="Agendamentos" />
-      <AgendamentosLista
-        slug={slug}
-        itens={itens}
-        periodo={periodo}
-        acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}
-      />
-    </>
+    <AgendamentosLista
+      slug={slug}
+      dias={dias}
+      diaInicial={chaveDia(diaEscolhido)}
+      semanaAnterior={chaveDia(inicioDoDia(segunda, -7))}
+      proximaSemana={chaveDia(inicioDoDia(segunda, 7))}
+      hoje={chaveDia(agora)}
+      agoraISO={agora.toISOString()}
+      agoraMin={minutosNoFuso(agora)}
+      capacidade={tenant.capacidadeSimultanea}
+      itens={itens}
+      acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}
+    />
   );
 }

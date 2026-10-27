@@ -97,3 +97,44 @@ body {
   font-size: 0.7rem;
   color: var(--color-astro-muted);
 }
+
+/* Luz azul que corre devagar pela borda de um bloco (Admin): um gradiente
+   conico girando, recortado por mascara para sobrar so a borda. A cor e a da
+   estetica (--color-astro-blue), entao acompanha a Identidade visual.
+   Usada com moderacao: cartao de faturamento, bloco da estetica na lateral e
+   agendamento em andamento. Quem pede menos movimento ve a luz parada. */
+@property --angulo-borda {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes girar-borda {
+  to { --angulo-borda: 360deg; }
+}
+@layer components {
+  .borda-viva { position: relative; isolation: isolate; }
+  .borda-viva::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    border-radius: inherit;
+    padding: 2px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--angulo-borda),
+      transparent 0deg 250deg,
+      var(--color-astro-blue-bright) 290deg,
+      color-mix(in srgb, var(--color-astro-blue-bright) 35%, white) 318deg,
+      var(--color-astro-blue) 330deg,
+      transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: girar-borda 7s linear infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .borda-viva::before { animation: none; --angulo-borda: 300deg; }
+}
