@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Clock, Download, Wallet } from "lucide-react";
-import { BarrasHorizontais, LinhaPorDia, formatarReal } from "./graficos";
+import { BarrasHorizontais, LinhaPorDia, Rosca, formatarReal } from "./graficos";
+import { Modal } from "../modal";
 import { FUSO } from "@/lib/fuso";
 import type { Periodo } from "@/lib/financeiro";
 
-// RF12, UC11 — dashboard financeiro, em cinco blocos: receita total do
-// periodo, o que ainda falta receber, receita por dia, receita por servico e
-// os 5 clientes que mais gastaram. O botao "Exportar" baixa o periodo em CSV
-// (relatorio exportavel do objetivo 5 do RFC).
+// RF12, UC11 — dashboard financeiro: receita total do periodo, o que ainda
+// falta receber, receita por dia, como os clientes pagam (com os acrescimos),
+// receita por servico e os 5 clientes que mais gastaram. O botao "Exportar"
+// baixa o periodo em CSV (relatorio exportavel do objetivo 5 do RFC).
 
 export type ItemPagamento = {
   id: string;
@@ -19,6 +21,18 @@ export type ItemPagamento = {
   servico: string;
   forma: "PIX" | "LOCAL";
   valor: number;
+};
+
+// Acrescimo por condicao do veiculo, lancado pelo Admin ao confirmar o
+// pagamento (regra pedida pela estetica cliente). `valor` e o combinado no
+// agendamento; o acrescimo fica separado dele.
+export type ItemAcrescimo = {
+  id: string;
+  dia: string;
+  cliente: string;
+  servico: string;
+  valor: number;
+  acrescimo: number;
 };
 
 const PERIODOS: { valor: Periodo; rotulo: string }[] = [
@@ -47,6 +61,7 @@ export function FinanceiroDashboard({
   porServico,
   porCliente,
   aReceberLista,
+  acrescimos,
 }: {
   slug: string;
   periodo: Periodo;
@@ -61,8 +76,11 @@ export function FinanceiroDashboard({
   porServico: { nome: string; receita: number; qtd: number }[];
   porCliente: { nome: string; receita: number; visitas: number }[];
   aReceberLista: ItemPagamento[];
+  acrescimos: ItemAcrescimo[];
 }) {
   const router = useRouter();
+  const [verAcrescimos, setVerAcrescimos] = useState(false);
+  const totalAcrescimos = acrescimos.reduce((s, a) => s + a.acrescimo, 0);
   const ticketMedio = atendimentos ? receitaTotal / atendimentos : 0;
   const recebidoLocal = receitaTotal - recebidoPix;
 
@@ -111,7 +129,7 @@ export function FinanceiroDashboard({
           {/* 1. Receita total — cartao de destaque, como o faturamento do Dashboard */}
           <section
             aria-label="Receita total"
-            className="borda-viva relative overflow-hidden rounded-3xl p-6 text-white"
+            className="borda-viva relative flex flex-col overflow-hidden rounded-3xl p-6 text-white"
             style={{
               backgroundImage:
                 "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
@@ -129,18 +147,18 @@ export function FinanceiroDashboard({
                 Receita total
               </p>
               <p className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">{formatarReal(receitaTotal)}</p>
-              <p className="mt-2 text-sm text-white/80">
-                {atendimentos} {atendimentos === 1 ? "atendimento pago" : "atendimentos pagos"} · ticket médio{" "}
-                <b className="text-white">{formatarReal(ticketMedio)}</b>
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full bg-black/25 px-3.5 py-1.5 text-xs">
-                  PIX <b className="ml-1">{formatarReal(recebidoPix)}</b>
-                </span>
-                <span className="rounded-full bg-black/25 px-3.5 py-1.5 text-xs">
-                  No local <b className="ml-1">{formatarReal(recebidoLocal)}</b>
-                </span>
-              </div>
+            </div>
+            {/* Numeros de apoio no rodape do cartao, que acompanha a altura do "A receber" */}
+            <div className="relative mt-auto grid grid-cols-2 gap-3 pt-6">
+              {[
+                { rotulo: atendimentos === 1 ? "Atendimento pago" : "Atendimentos pagos", valor: String(atendimentos) },
+                { rotulo: "Ticket médio", valor: formatarReal(ticketMedio) },
+              ].map((n) => (
+                <div key={n.rotulo} className="rounded-2xl bg-black/25 px-4 py-3">
+                  <p className="text-lg font-bold">{n.valor}</p>
+                  <p className="text-xs text-white/75">{n.rotulo}</p>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -196,11 +214,63 @@ export function FinanceiroDashboard({
           </section>
         </div>
 
-        {/* 2. Receita por periodo, dia a dia */}
-        <section className="min-w-0 rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-white">Receita por dia</h2>
-          <LinhaPorDia dados={serieDiaria} />
-        </section>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          {/* 2. Receita por periodo, dia a dia */}
+          <section className="min-w-0 rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
+            <h2 className="mb-4 text-base font-semibold text-white">Receita por dia</h2>
+            <LinhaPorDia dados={serieDiaria} />
+          </section>
+
+          {/* Como os clientes pagam: duas partes de um todo, por isso rosca */}
+          <section className="flex flex-col rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
+            <h2 className="mb-4 text-base font-semibold text-white">Como os clientes pagam</h2>
+            {receitaTotal > 0 ? (
+              <>
+                <Rosca
+                  partes={[
+                    { rotulo: "PIX", valor: recebidoPix, cor: "var(--color-astro-blue-bright)" },
+                    { rotulo: "No local", valor: recebidoLocal, cor: "rgb(255 255 255 / 0.28)" },
+                  ]}
+                />
+                <ul className="mt-5 grid gap-2">
+                  {[
+                    { rotulo: "PIX", valor: recebidoPix, cor: "var(--color-astro-blue-bright)" },
+                    { rotulo: "No local", valor: recebidoLocal, cor: "rgb(255 255 255 / 0.28)" },
+                  ].map((p) => (
+                    <li key={p.rotulo} className="flex items-center gap-2 text-sm">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.cor }} />
+                      <span className="text-slate-200">{p.rotulo}</span>
+                      <span className="ml-auto font-semibold text-white">{formatarReal(p.valor)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="my-auto py-6 text-center text-sm text-astro-muted">Nenhum pagamento confirmado no período.</p>
+            )}
+
+            {/* Acrescimos: um resumo aqui e o detalhe no modal */}
+            <div className="mt-auto pt-5">
+              <div className="rounded-2xl bg-white/[0.04] p-3.5">
+                <p className="text-xs text-astro-muted">Acréscimos cobrados</p>
+                <p className="mt-0.5 text-sm text-slate-200">
+                  <b className="text-white">{formatarReal(totalAcrescimos)}</b>
+                  {acrescimos.length > 0 &&
+                    ` em ${acrescimos.length} ${acrescimos.length === 1 ? "atendimento" : "atendimentos"}`}
+                </p>
+                {acrescimos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setVerAcrescimos(true)}
+                    className="mt-2.5 w-full rounded-full border border-admin-border py-2 text-xs font-semibold text-astro-muted transition hover:border-astro-blue hover:text-white"
+                  >
+                    Ver detalhes
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
           {/* 3. Receita por servico */}
@@ -238,6 +308,49 @@ export function FinanceiroDashboard({
           </section>
         </div>
       </div>
+
+      <Modal aberto={verAcrescimos} onFechar={() => setVerAcrescimos(false)} titulo="Acréscimos cobrados">
+        <div className="grid gap-4">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {[
+              { rotulo: "Total", valor: formatarReal(totalAcrescimos) },
+              { rotulo: "Atendimentos", valor: String(acrescimos.length) },
+              {
+                rotulo: "Da receita",
+                valor: `${receitaTotal > 0 ? Math.round((totalAcrescimos / receitaTotal) * 100) : 0}%`,
+              },
+            ].map((r) => (
+              <div key={r.rotulo} className="rounded-2xl bg-white/[0.05] px-2 py-3">
+                <p className="text-base font-bold text-white">{r.valor}</p>
+                <p className="text-xs text-astro-muted">{r.rotulo}</p>
+              </div>
+            ))}
+          </div>
+          <ul className="divide-y divide-white/10">
+            {acrescimos.map((a) => (
+              <li key={a.id} className="flex items-center gap-3 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-white">{a.cliente}</span>
+                  <span className="block truncate text-xs text-astro-muted">
+                    {a.dia} · {a.servico}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-sm font-semibold text-amber-300">
+                    + {formatarReal(a.acrescimo)}
+                    <span className="ml-1 text-xs font-medium text-astro-muted">
+                      ({Math.round((a.acrescimo / a.valor) * 100)}%)
+                    </span>
+                  </span>
+                  <span className="block text-xs text-astro-muted">
+                    {formatarReal(a.valor)} → {formatarReal(a.valor + a.acrescimo)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Modal>
     </div>
   );
 }
