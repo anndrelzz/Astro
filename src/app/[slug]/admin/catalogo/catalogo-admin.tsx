@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Clock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { LIMITES } from "@/lib/validations/limites";
+import { Modal } from "../modal";
 
 type Segmento = { id: string; nome: string; ordem: number };
 
@@ -24,15 +25,15 @@ function formatarDuracao(min: number) {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-slate-100 placeholder:text-astro-muted";
+  "w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2.5 text-sm text-slate-100 placeholder:text-astro-muted";
 
-// UC08, RF01, RN01 revisada — o catalogo da estetica numa grade so: os tipos de
-// veiculo que ela atende sao as COLUNAS, os servicos sao as LINHAS, e a celula
-// e o preco daquele servico para aquele tipo.
-//
-// O formato segue o trabalho real do Admin: ele preenche isso uma vez na
-// implantacao e depois so reajusta precos. Reajuste e edicao de celula numa
-// grade, nao sete formularios abertos um a um.
+// Tempos mais comuns, escolhidos com um toque no modal. Qualquer outro valor
+// continua possivel pelo "Outro".
+const DURACOES = [30, 40, 45, 60, 90, 120, 180, 240, 300];
+
+// UC08, RF01, RN01 revisada — o catalogo da estetica: os tipos de veiculo que
+// ela atende, e um card por servico com a duracao, a faixa de preco e o preco
+// de cada tipo. Clicar no card abre o modal com tudo que se edita no servico.
 export function CatalogoAdmin({
   segmentos,
   servicos,
@@ -49,6 +50,8 @@ export function CatalogoAdmin({
   const [copiarDe, setCopiarDe] = useState<string>("");
   const [renomeando, setRenomeando] = useState<{ id: string; nome: string } | null>(null);
   const [servicoEdit, setServicoEdit] = useState<Servico | null>(null);
+  // Duracao fora da lista de DURACOES: mostra o campo livre no modal.
+  const [duracaoLivre, setDuracaoLivre] = useState(false);
 
   async function chamar(url: string, metodo: string, corpo?: unknown) {
     setErro(null);
@@ -118,39 +121,34 @@ export function CatalogoAdmin({
     precos: Object.fromEntries(segmentos.map((s) => [s.id, 0])),
   };
 
+  function editar(s: Servico) {
+    setServicoEdit(s);
+    setDuracaoLivre(!DURACOES.includes(s.duracaoMin));
+  }
+
+  const ativos = servicos.filter((s) => s.ativo).length;
+  const pausados = servicos.length - ativos;
+
   return (
     <div>
-      {/* Faixa de topo com o tratamento .astro-dark (listras diagonais +
-          brilho tingido pela cor do tenant, RF13). O mesmo da vitrine do
-          cliente, para o Admin nao parecer outro produto. */}
-      <div className="astro-dark mb-6 overflow-hidden rounded-2xl border border-admin-border px-6 py-7">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white lg:text-3xl">Catálogo</h1>
-            <p className="mt-1 max-w-xl text-sm text-astro-muted">
-              Os tipos de veículo que você atende, seus serviços e o preço de
-              cada combinação.
-            </p>
-          </div>
-
-          {/* Resumo em numeros: da a dimensao do catalogo de relance e ancora
-              o lado direito da faixa, que ficaria vazio. */}
-          <div className="flex gap-2.5">
-            {[
-              { valor: segmentos.length, rotulo: segmentos.length === 1 ? "tipo" : "tipos" },
-              { valor: servicos.length, rotulo: servicos.length === 1 ? "serviço" : "serviços" },
-              { valor: segmentos.length * servicos.length, rotulo: "preços" },
-            ].map((item) => (
-              <div
-                key={item.rotulo}
-                className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-center"
-              >
-                <p className="font-mono text-xl font-bold text-white">{item.valor}</p>
-                <p className="astro-label mt-0.5">{item.rotulo}</p>
-              </div>
-            ))}
-          </div>
+      {/* Topo no padrao do Dashboard: titulo direto, sem capa. */}
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white lg:text-4xl">Catálogo</h1>
+          <p className="mt-1.5 text-astro-muted">
+            Os serviços que você oferece e quanto custa cada um, por tipo de veículo.
+          </p>
         </div>
+        {segmentos.length > 0 && (
+          <button
+            type="button"
+            onClick={() => editar(servicoVazio)}
+            className="flex items-center gap-2 rounded-full bg-astro-blue px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_-14px_var(--color-astro-blue)] transition hover:brightness-110"
+          >
+            <Plus className="h-4 w-4" />
+            Novo serviço
+          </button>
+        )}
       </div>
 
       {erro && (
@@ -160,320 +158,334 @@ export function CatalogoAdmin({
       )}
 
       {/* ---------------------------------------------------------------
-          Tipos de veiculo — as COLUNAS da grade abaixo.
-          Ficam em cima porque definem a forma da tabela: sem tipo nenhum,
-          nao ha onde por preco, e a grade nao tem o que mostrar.
+          Tipos de veiculo. Ficam em cima porque definem os precos: sem
+          tipo nenhum, nao ha onde por preco.
           --------------------------------------------------------------- */}
-      <section className="mb-6 rounded-2xl border border-admin-border bg-admin-surface p-5">
-        <p className="astro-label">Tipos de veículo que você atende</p>
-        <p className="mt-1 text-xs text-astro-muted">
-          É o que o cliente escolhe ao cadastrar o carro, e o que define o preço.
-        </p>
+      {/* Mesmo cartao do faturamento no Dashboard: degrade da cor da
+          estetica, aneis no canto e a luz correndo na borda. */}
+      <section
+        className="borda-viva relative mb-8 overflow-hidden rounded-3xl p-5 text-white sm:p-6"
+        style={{
+          backgroundImage:
+            "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
+          boxShadow:
+            "0 24px 60px -24px color-mix(in srgb, var(--color-astro-blue) 80%, transparent), 0 0 50px -10px color-mix(in srgb, var(--color-astro-blue-bright) 45%, transparent)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full border border-white/20 shadow-[0_0_0_40px_rgba(255,255,255,0.04),0_0_0_90px_rgba(255,255,255,0.03)]"
+        />
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {segmentos.map((s) =>
-            renomeando?.id === s.id ? (
-              <span key={s.id} className="flex items-center gap-1.5">
-                <input
-                  autoFocus
-                  value={renomeando.nome}
-                  onChange={(e) => setRenomeando({ id: s.id, nome: e.target.value })}
-                  className={`${inputCls} w-40`}
-                />
-                <button
-                  onClick={async () => {
-                    const ok = await chamar(`/api/segmentos/${s.id}`, "PATCH", {
-                      nome: renomeando.nome.trim(),
-                    });
-                    if (ok) setRenomeando(null);
-                  }}
-                  disabled={salvando}
-                  aria-label="Salvar nome"
-                  className="rounded-lg bg-astro-blue p-2 text-white disabled:opacity-40"
-                >
-                  <Check className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setRenomeando(null)}
-                  aria-label="Cancelar"
-                  className="rounded-lg border border-admin-border p-2 text-astro-muted"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </span>
-            ) : (
-              // Os icones so aparecem no hover (e no foco por teclado, senao
-              // some para quem navega por Tab). Com muitos tipos cadastrados,
-              // dois icones em cada pastilha viram ruido — a acao e ocasional,
-              // o nome e o que se le o tempo todo.
-              <span
-                key={s.id}
-                className="group flex items-center rounded-full border border-admin-border bg-gradient-to-b from-admin-surface-2 to-admin-bg py-1.5 pl-4 pr-2 text-sm text-slate-100 transition hover:border-astro-blue/40"
-              >
-                {s.nome}
-                <span className="ml-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+        <div className="relative">
+          <h2 className="text-base font-semibold text-white">Tipos de veículo</h2>
+          <p className="mt-0.5 text-sm text-white/75">
+            O cliente escolhe um deles ao cadastrar o carro, e é ele que define o preço.
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {segmentos.map((s) =>
+              renomeando?.id === s.id ? (
+                <span key={s.id} className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={renomeando.nome}
+                    onChange={(e) => setRenomeando({ id: s.id, nome: e.target.value })}
+                    className={`${inputCls} w-40`}
+                  />
                   <button
-                    onClick={() => setRenomeando({ id: s.id, nome: s.nome })}
-                    aria-label={`Renomear ${s.nome}`}
-                    className="rounded-full p-1 text-astro-muted transition hover:bg-white/10 hover:text-white"
+                    onClick={async () => {
+                      const ok = await chamar(`/api/segmentos/${s.id}`, "PATCH", {
+                        nome: renomeando.nome.trim(),
+                      });
+                      if (ok) setRenomeando(null);
+                    }}
+                    disabled={salvando}
+                    aria-label="Salvar nome"
+                    className="rounded-lg bg-astro-blue p-2 text-white disabled:opacity-40"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Check className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => chamar(`/api/segmentos/${s.id}`, "DELETE")}
-                    disabled={salvando}
-                    aria-label={`Remover ${s.nome}`}
-                    className="rounded-full p-1 text-astro-muted transition hover:bg-red-500/15 hover:text-red-400 disabled:opacity-40"
+                    onClick={() => setRenomeando(null)}
+                    aria-label="Cancelar"
+                    className="rounded-lg border border-admin-border p-2 text-astro-muted"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </span>
-              </span>
-            )
-          )}
-
-          {novoSegmento === null ? (
-            <button
-              onClick={() => setNovoSegmento("")}
-              className="flex items-center gap-1.5 rounded-full border border-dashed border-admin-border px-4 py-1.5 text-sm text-astro-muted transition hover:border-astro-blue hover:text-white"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Adicionar tipo
-            </button>
-          ) : (
-            <div className="flex w-full flex-wrap items-end gap-2 rounded-xl border border-admin-border bg-admin-bg p-3">
-              <div className="min-w-[12rem] flex-1">
-                <label className="astro-label">Nome</label>
-                <input
-                  autoFocus
-                  value={novoSegmento}
-                  onChange={(e) => setNovoSegmento(e.target.value)}
-                  placeholder="Picape grande"
-                  className={`${inputCls} mt-1`}
-                />
-              </div>
-              {/* Todo servico precisa de preco para todo tipo. Copiar de um tipo
-                  parecido evita digitar um preco por servico, e o Admin ajusta
-                  so o que difere. */}
-              <div className="min-w-[12rem] flex-1">
-                <label className="astro-label">Copiar preços de</label>
-                <select
-                  value={copiarDe}
-                  onChange={(e) => setCopiarDe(e.target.value)}
-                  className={`${inputCls} mt-1`}
+              ) : (
+                // Os icones so aparecem no hover (e no foco por teclado, senao
+                // some para quem navega por Tab). Com muitos tipos cadastrados,
+                // dois icones em cada pastilha viram ruido — a acao e ocasional,
+                // o nome e o que se le o tempo todo.
+                <span
+                  key={s.id}
+                  className="group flex min-h-10 items-center rounded-full border border-white/20 bg-white/[0.12] py-1.5 pr-2 pl-4 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/[0.18]"
                 >
-                  <option value="">Começar do zero</option>
-                  {segmentos.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nome}
-                    </option>
-                  ))}
-                </select>
+                  {s.nome}
+                  <span className="ml-1 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+                    <button
+                      onClick={() => setRenomeando({ id: s.id, nome: s.nome })}
+                      aria-label={`Renomear ${s.nome}`}
+                      className="rounded-full p-1 text-white/70 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => chamar(`/api/segmentos/${s.id}`, "DELETE")}
+                      disabled={salvando}
+                      aria-label={`Remover ${s.nome}`}
+                      className="rounded-full p-1 text-white/70 transition hover:bg-red-500/25 hover:text-red-200 disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </span>
+              )
+            )}
+
+            {novoSegmento === null ? (
+              <button
+                onClick={() => setNovoSegmento("")}
+                className="flex min-h-10 items-center gap-1.5 rounded-full border border-dashed border-white/40 px-4 py-1.5 text-sm text-white/80 transition hover:border-white hover:text-white"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar tipo
+              </button>
+            ) : (
+              <div className="flex w-full flex-wrap items-end gap-2 rounded-xl border border-admin-border bg-admin-bg p-3">
+                <div className="min-w-[12rem] flex-1">
+                  <label className="text-sm text-astro-muted">Nome</label>
+                  <input
+                    autoFocus
+                    value={novoSegmento}
+                    onChange={(e) => setNovoSegmento(e.target.value)}
+                    placeholder="Picape grande"
+                    className={`${inputCls} mt-1`}
+                  />
+                </div>
+                {/* Todo servico precisa de preco para todo tipo. Copiar de um tipo
+                    parecido evita digitar um preco por servico, e o Admin ajusta
+                    so o que difere. */}
+                <div className="min-w-[12rem] flex-1">
+                  <label className="text-sm text-astro-muted">Copiar preços de</label>
+                  <select
+                    value={copiarDe}
+                    onChange={(e) => setCopiarDe(e.target.value)}
+                    className={`${inputCls} mt-1`}
+                  >
+                    <option value="">Começar do zero</option>
+                    {segmentos.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={criarSegmento}
+                  disabled={salvando || !novoSegmento.trim()}
+                  className="rounded-full bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+                >
+                  Adicionar
+                </button>
+                <button
+                  onClick={() => {
+                    setNovoSegmento(null);
+                    setCopiarDe("");
+                  }}
+                  className="rounded-full border border-admin-border px-4 py-2.5 text-sm text-astro-muted"
+                >
+                  Cancelar
+                </button>
               </div>
-              <button
-                onClick={criarSegmento}
-                disabled={salvando || !novoSegmento.trim()}
-                className="rounded-lg bg-gradient-to-b from-astro-blue-bright to-astro-blue px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-astro-blue/20 transition hover:brightness-110 disabled:opacity-40"
-              >
-                Adicionar
-              </button>
-              <button
-                onClick={() => {
-                  setNovoSegmento(null);
-                  setCopiarDe("");
-                }}
-                className="rounded-lg border border-admin-border px-4 py-2 text-sm text-astro-muted"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
 
       {/* ---------------------------------------------------------------
-          A grade: servicos nas linhas, tipos nas colunas.
+          Servicos em cards. O card resume (duracao, faixa de preco e o
+          preco de cada tipo); clicar em qualquer parte dele abre a edicao.
           --------------------------------------------------------------- */}
       {segmentos.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-admin-border px-5 py-8 text-center text-sm text-astro-muted">
           Cadastre ao menos um tipo de veículo para começar a montar o catálogo.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-surface">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[44rem] border-separate border-spacing-0 text-sm">
-              <thead>
-                {/* A coluna do servico fica fixa na rolagem horizontal: com
-                    muitos tipos cadastrados a tabela passa da largura da tela,
-                    e sem isso o preco perde a referencia de qual servico e.
-                    Precisa de fundo proprio (o conteudo passa por baixo) e de
-                    border-separate na tabela, senao a borda nao acompanha a
-                    celula grudada. */}
-                <tr>
-                  <th className="astro-label sticky left-0 z-20 border-b border-admin-border bg-admin-surface-2 px-4 py-3 text-left">
-                    Serviço
-                  </th>
-                  {segmentos.map((s) => (
-                    <th
-                      key={s.id}
-                      className="astro-label w-24 border-b border-admin-border bg-gradient-to-b from-admin-surface-2 to-admin-surface px-2 py-3 text-right"
-                    >
-                      {s.nome}
-                    </th>
-                  ))}
-                  <th className="w-24 border-b border-admin-border bg-admin-surface-2 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {servicos.map((s) => (
-                  <tr
-                    key={s.id}
-                    className={`group transition ${s.ativo ? "" : "opacity-50"}`}
-                  >
-                    <td className="sticky left-0 z-10 border-b border-admin-border/60 bg-admin-surface px-4 py-3.5 transition group-hover:bg-admin-surface-2">
-                      {/* Acento na borda esquerda no hover: marca a linha inteira
-                          sem precisar colorir o fundo das celulas de preco, que
-                          e onde o olho esta. */}
-                      <span className="absolute inset-y-0 left-0 w-0.5 bg-astro-blue opacity-0 transition-opacity group-hover:opacity-100" />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-white">{s.nome}</p>
-                        {!s.ativo && (
-                          <span className="flex items-center gap-1.5 rounded-full bg-admin-surface-2 px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-wider text-astro-muted">
-                            <span className="h-1.5 w-1.5 rounded-full bg-astro-muted" />
-                            Pausado
-                          </span>
-                        )}
-                      </div>
-                      {/* So a duracao. A descricao sai daqui: e o texto mais
-                          longo da linha e empurrava as colunas de preco, que
-                          sao o que se olha nesta tela. Ela continua sendo
-                          editada no modal e exibida ao cliente na vitrine. */}
-                      <p className="mt-0.5 flex items-center gap-2 text-xs text-astro-muted">
-                        <Clock className="h-3 w-3 shrink-0" />
-                        <span className="font-mono">{formatarDuracao(s.duracaoMin)}</span>
-                      </p>
-                    </td>
-                    {segmentos.map((seg) => {
-                      const valor = s.precos[seg.id];
-                      return (
-                        <td
-                          key={seg.id}
-                          className="border-b border-admin-border/60 px-2 py-3.5 text-right font-mono text-slate-300 transition group-hover:bg-white/[0.02] group-hover:text-white"
-                        >
-                          {/* Zero aqui quase sempre significa "tipo recem-criado
-                              e ainda nao precificado", nao "de graca" — por isso
-                              aparece destacado, e nao como R$ 0,00 normal. */}
-                          {valor === undefined || valor === 0 ? (
-                            <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-xs text-amber-400/90">
-                              a definir
-                            </span>
-                          ) : (
-                            valor.toFixed(2).replace(".", ",")
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="border-b border-admin-border/60 px-4 py-3.5 text-right transition group-hover:bg-white/[0.02]">
-                      <button
-                        onClick={() => setServicoEdit(s)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-slate-200 opacity-70 transition hover:border-astro-blue hover:text-white group-hover:opacity-100"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-base font-semibold text-white">Serviços</h2>
+            <span className="text-sm text-astro-muted">
+              {ativos} {ativos === 1 ? "ativo" : "ativos"}
+              {pausados > 0 && ` · ${pausados} ${pausados === 1 ? "pausado" : "pausados"}`}
+            </span>
           </div>
 
-          <div className="border-t border-admin-border p-4">
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">
+            {servicos.map((s) => (
+              <CardServico key={s.id} servico={s} segmentos={segmentos} onEditar={() => editar(s)} />
+            ))}
+
             <button
-              onClick={() => setServicoEdit(servicoVazio)}
-              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-b from-astro-blue-bright to-astro-blue px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-astro-blue/20 transition hover:brightness-110"
+              type="button"
+              onClick={() => editar(servicoVazio)}
+              className="group flex min-h-56 flex-col items-center justify-center gap-2.5 rounded-3xl border border-dashed border-white/20 bg-black/20 font-semibold backdrop-blur-sm text-astro-muted transition hover:border-astro-blue/60 hover:text-white"
             >
-              <Plus className="h-4 w-4" />
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-white/[0.08] transition group-hover:bg-astro-blue group-hover:text-white">
+                <Plus className="h-5 w-5" />
+              </span>
               Novo serviço
             </button>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Edicao do servico: dados + a coluna de precos daquela linha. */}
-      {servicoEdit && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6">
-          <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-admin-border bg-admin-surface p-5 sm:rounded-2xl">
-            <h2 className="text-lg font-bold text-white">
-              {servicoEdit.id === "" ? "Novo serviço" : servicoEdit.nome}
-            </h2>
-
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="astro-label">Nome do serviço</label>
+      {/* Edicao do servico: dados + o preco de cada tipo. */}
+      <Modal
+        aberto={servicoEdit !== null}
+        onFechar={() => setServicoEdit(null)}
+        titulo={servicoEdit?.id === "" ? "Novo serviço" : (servicoEdit?.nome ?? "")}
+        rodape={
+          <>
+            <button
+              type="button"
+              onClick={() => setServicoEdit(null)}
+              className="ml-auto rounded-full border border-admin-border px-5 py-2.5 text-sm text-astro-muted transition hover:text-white"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={salvarServico}
+              disabled={salvando || !servicoEdit?.nome.trim()}
+              className="rounded-full bg-astro-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+            >
+              {salvando ? "Salvando..." : "Salvar"}
+            </button>
+          </>
+        }
+      >
+        {servicoEdit && (
+          <div className="grid gap-5">
+            <div className="grid gap-3">
+              <label className="block text-sm text-astro-muted">
+                Nome do serviço
                 <input
                   value={servicoEdit.nome}
                   maxLength={LIMITES.nomeServico}
-                  onChange={(e) =>
-                    setServicoEdit({ ...servicoEdit, nome: e.target.value })
-                  }
-                  className={`${inputCls} mt-1`}
+                  onChange={(e) => setServicoEdit({ ...servicoEdit, nome: e.target.value })}
+                  className={`${inputCls} mt-1.5`}
                 />
-              </div>
-
-              <div>
-                <label className="astro-label">Descrição</label>
+              </label>
+              <label className="block text-sm text-astro-muted">
+                Descrição
                 <textarea
                   rows={2}
                   value={servicoEdit.descricao ?? ""}
-                  onChange={(e) =>
-                    setServicoEdit({ ...servicoEdit, descricao: e.target.value })
-                  }
-                  placeholder="Aparece no card do serviço para o cliente"
-                  className={`${inputCls} mt-1 resize-none`}
+                  onChange={(e) => setServicoEdit({ ...servicoEdit, descricao: e.target.value })}
+                  placeholder="Aparece para o cliente na hora de agendar"
+                  className={`${inputCls} mt-1.5 resize-none`}
                 />
-              </div>
+              </label>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="astro-label">Duração (min)</label>
+            {/* Duracao: os tempos comuns em um toque; "Outro" abre o campo
+                para qualquer valor (de 5 em 5 minutos, como antes). */}
+            <div role="group" className="border-t border-white/10 pt-4">
+              <p className="mb-2.5 text-sm font-semibold text-white">Quanto tempo leva</p>
+              <div className="flex flex-wrap gap-1.5">
+                {DURACOES.map((d) => {
+                  const marcado = !duracaoLivre && servicoEdit.duracaoMin === d;
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={marcado}
+                      onClick={() => {
+                        setDuracaoLivre(false);
+                        setServicoEdit({ ...servicoEdit, duracaoMin: d });
+                      }}
+                      className={`min-h-9 rounded-full border px-3 font-mono text-[0.8rem] font-semibold transition ${
+                        marcado
+                          ? "border-transparent bg-astro-blue text-white"
+                          : "border-admin-border text-astro-muted hover:text-white"
+                      }`}
+                    >
+                      {formatarDuracao(d)}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  aria-pressed={duracaoLivre}
+                  onClick={() => setDuracaoLivre(true)}
+                  className={`min-h-9 rounded-full border px-3 text-[0.8rem] font-semibold transition ${
+                    duracaoLivre
+                      ? "border-transparent bg-astro-blue text-white"
+                      : "border-admin-border text-astro-muted hover:text-white"
+                  }`}
+                >
+                  Outro
+                </button>
+              </div>
+              {duracaoLivre && (
+                <label className="mt-3 flex items-center gap-2 text-sm text-astro-muted">
                   <input
                     type="number"
                     min={5}
                     step={5}
                     value={servicoEdit.duracaoMin}
-                    onChange={(e) =>
-                      setServicoEdit({
-                        ...servicoEdit,
-                        duracaoMin: Number(e.target.value),
-                      })
-                    }
-                    className={`${inputCls} mt-1`}
+                    onChange={(e) => setServicoEdit({ ...servicoEdit, duracaoMin: Number(e.target.value) })}
+                    className={`${inputCls} w-28 text-right font-mono`}
                   />
-                </div>
-                <div>
-                  <label className="astro-label">Status</label>
-                  <label className="mt-1 flex h-[38px] cursor-pointer items-center justify-between rounded-lg border border-admin-border bg-admin-bg px-3">
-                    <span className="text-sm text-slate-100">
-                      {servicoEdit.ativo ? "Ativo" : "Pausado"}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={servicoEdit.ativo}
-                      onChange={(e) =>
-                        setServicoEdit({ ...servicoEdit, ativo: e.target.checked })
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
+                  minutos
+                  <span className="font-mono text-slate-300">= {formatarDuracao(servicoEdit.duracaoMin || 0)}</span>
+                </label>
+              )}
+            </div>
 
-              <div>
-                <p className="astro-label">Preço por tipo de veículo</p>
-                <div className="mt-2 space-y-2">
-                  {segmentos.map((seg) => (
-                    <div key={seg.id} className="flex items-center gap-3">
-                      <span className="flex-1 text-sm text-slate-200">{seg.nome}</span>
+            <div className="border-t border-white/10 pt-4">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={servicoEdit.ativo}
+                onClick={() => setServicoEdit({ ...servicoEdit, ativo: !servicoEdit.ativo })}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-admin-border bg-black/40 px-4 py-3 text-left"
+              >
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    {servicoEdit.ativo ? "Ativo" : "Pausado"}
+                  </span>
+                  <span className="block text-xs text-astro-muted">
+                    {servicoEdit.ativo
+                      ? "Aparece para o cliente agendar"
+                      : "Fica escondido do cliente até você reativar"}
+                  </span>
+                </span>
+                <span
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                    servicoEdit.ativo ? "bg-emerald-500" : "bg-zinc-600"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                      servicoEdit.ativo ? "translate-x-5" : ""
+                    }`}
+                  />
+                </span>
+              </button>
+            </div>
+
+            <div role="group" className="border-t border-white/10 pt-4">
+              <p className="mb-2.5 text-sm font-semibold text-white">Preço por tipo de veículo</p>
+              <div className="grid gap-2">
+                {segmentos.map((seg) => (
+                  <label key={seg.id} className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-3">
+                    <span className="truncate text-sm text-slate-200">{seg.nome}</span>
+                    <span className="flex items-center rounded-lg border border-admin-border bg-admin-bg px-3 focus-within:border-astro-blue">
+                      <span className="text-xs text-astro-muted">R$</span>
                       <input
                         type="number"
                         min={0}
@@ -482,38 +494,103 @@ export function CatalogoAdmin({
                         onChange={(e) =>
                           setServicoEdit({
                             ...servicoEdit,
-                            precos: {
-                              ...servicoEdit.precos,
-                              [seg.id]: Number(e.target.value),
-                            },
+                            precos: { ...servicoEdit.precos, [seg.id]: Number(e.target.value) },
                           })
                         }
-                        className={`${inputCls} w-32 text-right font-mono`}
+                        className="w-full bg-transparent py-2 pl-2 text-right font-mono text-sm font-semibold text-white outline-none"
                       />
-                    </div>
-                  ))}
-                </div>
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
-
-            <div className="mt-5 flex gap-2">
-              <button
-                onClick={salvarServico}
-                disabled={salvando || !servicoEdit.nome.trim()}
-                className="flex-1 rounded-lg bg-gradient-to-b from-astro-blue-bright to-astro-blue px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/20 transition hover:brightness-110 disabled:opacity-40"
-              >
-                {salvando ? "Salvando..." : "Salvar"}
-              </button>
-              <button
-                onClick={() => setServicoEdit(null)}
-                className="rounded-lg border border-admin-border px-4 py-2.5 text-sm text-astro-muted"
-              >
-                Cancelar
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
+  );
+}
+
+function reais(valor: number) {
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function CardServico({
+  servico: s,
+  segmentos,
+  onEditar,
+}: {
+  servico: Servico;
+  segmentos: Segmento[];
+  onEditar: () => void;
+}) {
+  const definidos = segmentos.map((seg) => s.precos[seg.id] ?? 0).filter((v) => v > 0);
+  const min = Math.min(...definidos);
+  const max = Math.max(...definidos);
+
+  return (
+    <button
+      type="button"
+      onClick={onEditar}
+      aria-label={`Editar ${s.nome}`}
+      className={`vidro group relative flex min-h-56 flex-col gap-3.5 rounded-3xl p-5 text-left transition hover:-translate-y-0.5 hover:!border-astro-blue-bright/60 ${
+        s.ativo ? "" : "opacity-55 hover:opacity-85"
+      }`}
+    >
+      <span className="absolute top-4 right-4 grid h-9 w-9 place-items-center rounded-full border border-white/15 text-astro-muted transition group-hover:border-transparent group-hover:bg-astro-blue group-hover:text-white">
+        <Pencil className="h-4 w-4" />
+      </span>
+
+      <span className="block pr-11">
+        <span className="block text-[1.05rem] leading-snug font-bold tracking-tight text-white">{s.nome}</span>
+        <span className="mt-1.5 flex flex-wrap gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-xs font-semibold text-astro-muted">
+            <Clock className="h-3 w-3" />
+            {formatarDuracao(s.duracaoMin)}
+          </span>
+          {!s.ativo && (
+            <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-300">
+              Pausado
+            </span>
+          )}
+        </span>
+      </span>
+
+      {s.descricao && <span className="line-clamp-2 text-sm text-astro-muted">{s.descricao}</span>}
+
+      <span className="mt-auto block">
+        <span className="block text-xs text-astro-muted">Preço</span>
+        {definidos.length === 0 ? (
+          <span className="text-lg font-semibold text-amber-300">A definir</span>
+        ) : (
+          <span className="text-2xl font-bold tracking-tight text-white">
+            R$ {reais(min)}
+            {max !== min && (
+              <>
+                <span className="mx-1.5 text-base font-medium text-astro-muted">a</span>R$ {reais(max)}
+              </>
+            )}
+          </span>
+        )}
+      </span>
+
+      {/* Zero aqui quase sempre significa "tipo recem-criado e ainda nao
+          precificado", nao "de graca" — por isso aparece como "a definir". */}
+      <span className="flex flex-wrap gap-x-3 gap-y-1 border-t border-dashed border-white/15 pt-3 text-xs text-astro-muted">
+        {segmentos.map((seg) => {
+          const valor = s.precos[seg.id] ?? 0;
+          return (
+            <span key={seg.id}>
+              {seg.nome}{" "}
+              {valor > 0 ? (
+                <b className="font-mono font-semibold text-slate-200">{reais(valor)}</b>
+              ) : (
+                <b className="font-semibold text-amber-300">a definir</b>
+              )}
+            </span>
+          );
+        })}
+      </span>
+    </button>
   );
 }
