@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Clock, Download, Wallet } from "lucide-react";
-import { BarrasHorizontais, ColunasPorDia, formatarReal } from "./graficos";
+import { BarrasHorizontais, LinhaPorDia, formatarReal } from "./graficos";
 import { FUSO } from "@/lib/fuso";
 import type { Periodo } from "@/lib/financeiro";
 
@@ -199,7 +199,7 @@ export function FinanceiroDashboard({
         {/* 2. Receita por periodo, dia a dia */}
         <section className="min-w-0 rounded-3xl border border-admin-border bg-admin-surface p-5 sm:p-6">
           <h2 className="mb-4 text-base font-semibold text-white">Receita por dia</h2>
-          <ColunasPorDia dados={serieDiaria} />
+          <LinhaPorDia dados={serieDiaria} />
         </section>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
