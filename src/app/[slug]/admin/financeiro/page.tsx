@@ -5,7 +5,7 @@ import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/lib/financeiro"
 import { FUSO, chaveDia, inicioDoDia } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
-import { FinanceiroDashboard, type ItemPagamento } from "./financeiro-dashboard";
+import { FinanceiroDashboard, type ItemAcrescimo, type ItemPagamento } from "./financeiro-dashboard";
 
 // RF12, UC11 — dashboard financeiro: receita total, receita por dia, por
 // servico, os 5 clientes que mais gastaram e o que ainda falta receber.
@@ -86,9 +86,23 @@ export default async function AdminFinanceiroPage({
     porCliente.set(a.usuarioId, item);
   }
 
+  // Acrescimos por condicao do veiculo (cobrados na avaliacao presencial) nos
+  // pagamentos confirmados do periodo, do mais recente ao mais antigo.
+  const acrescimos: ItemAcrescimo[] = recebidos
+    .filter((a) => Number(a.acrescimoAplicado ?? 0) > 0)
+    .sort((a, b) => b.dataHora.getTime() - a.dataHora.getTime())
+    .map((a) => ({
+      id: a.id,
+      dia: a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: FUSO }),
+      cliente: a.usuario.nome,
+      servico: a.servico.nome,
+      valor: Number(a.valor),
+      acrescimo: Number(a.acrescimoAplicado),
+    }));
+
   // O que ainda falta entrar, do mais antigo (o que esta atrasado) ao mais novo.
   const hojeChave = chaveDia(new Date());
-  const aReceberLista: ItemPagamento[] = pendentes.slice(0, 6).map((a) => ({
+  const aReceberLista: ItemPagamento[] = pendentes.slice(0, 4).map((a) => ({
     id: a.id,
     dia:
       chaveDia(a.dataHora) === hojeChave
@@ -115,6 +129,7 @@ export default async function AdminFinanceiroPage({
       porServico={[...porServico.values()].sort((a, b) => b.receita - a.receita)}
       porCliente={[...porCliente.values()].sort((a, b) => b.receita - a.receita).slice(0, 5)}
       aReceberLista={aReceberLista}
+      acrescimos={acrescimos}
     />
   );
 }

@@ -277,3 +277,47 @@ export function BarrasHorizontais({ itens }: { itens: { rotulo: string; valor: n
     </ul>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Rosca: partes de um todo, so para poucas partes (aqui, PIX e no local). O
+// numero do meio e a fatia principal em porcentagem.
+// ---------------------------------------------------------------------------
+
+export function Rosca({ partes }: { partes: { rotulo: string; valor: number; cor: string }[] }) {
+  const total = partes.reduce((s, p) => s + p.valor, 0);
+  const R = 42;
+  const C = 2 * Math.PI * R;
+  const principal = partes[0];
+  const fatias = partes.reduce<{ rotulo: string; cor: string; tam: number; inicio: number }[]>((acc, p) => {
+    const inicio = acc.length ? acc[acc.length - 1].inicio + acc[acc.length - 1].tam : 0;
+    return [...acc, { rotulo: p.rotulo, cor: p.cor, tam: total ? (p.valor / total) * C : 0, inicio }];
+  }, []);
+
+  return (
+    <div className="relative mx-auto aspect-square w-full max-w-[9.5rem]">
+      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" role="img" aria-label="Divisão da receita por forma de pagamento">
+        <circle cx="50" cy="50" r={R} fill="none" stroke="white" strokeOpacity="0.05" strokeWidth="11" />
+        {fatias.map((f) =>
+          f.tam > 0 ? (
+            <circle
+              key={f.rotulo}
+              cx="50"
+              cy="50"
+              r={R}
+              fill="none"
+              stroke={f.cor}
+              strokeWidth="11"
+              // 1,5 de respiro entre as fatias
+              strokeDasharray={`${Math.max(f.tam - 1.5, 0)} ${C}`}
+              strokeDashoffset={-f.inicio}
+            />
+          ) : null
+        )}
+      </svg>
+      <div className="absolute inset-0 grid place-content-center text-center">
+        <p className="text-2xl font-bold text-white">{total ? Math.round((principal.valor / total) * 100) : 0}%</p>
+        <p className="text-xs text-astro-muted">{principal.rotulo}</p>
+      </div>
+    </div>
+  );
+}
