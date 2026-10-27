@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
+import { FUSO, chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
-import { FinanceiroDashboard, type Periodo } from "./financeiro-dashboard";
+import { FinanceiroDashboard, type ItemPagamento, type Periodo } from "./financeiro-dashboard";
 import type { Prisma } from "@/generated/prisma/client";
 
 // RF12, UC11 — dashboard financeiro: receita por periodo, por servico e por
@@ -164,8 +164,26 @@ export default async function AdminFinanceiroPage({
     porCliente.set(a.usuarioId, atual);
   }
 
-  const pagamentoPix = recebidos.filter((a) => a.formaPagamento === "PIX").length;
-  const pagamentoLocal = recebidos.length - pagamentoPix;
+  // Listas da coluna da direita: o que ainda falta entrar (mais antigo
+  // primeiro, e o que esta atrasado) e os ultimos pagamentos confirmados.
+  const hojeChave = chaveDia(new Date());
+  const paraItem = (a: (typeof dados.atual)[number], valor: number): ItemPagamento => ({
+    id: a.id,
+    dia:
+      chaveDia(a.dataHora) === hojeChave
+        ? "Hoje"
+        : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
+    cliente: a.usuario.nome,
+    servico: a.servico.nome,
+    forma: a.formaPagamento,
+    valor,
+  });
+  const aReceberLista = pendentes.slice(0, 6).map((a) => paraItem(a, Number(a.valor)));
+  const ultimosRecebidos = [...recebidos]
+    .sort((a, b) => b.dataHora.getTime() - a.dataHora.getTime())
+    .slice(0, 6)
+    .map((a) => paraItem(a, totalCobrado(a)));
+
 
   return (
     <FinanceiroDashboard
@@ -185,8 +203,8 @@ export default async function AdminFinanceiroPage({
       porCliente={[...porCliente.values()]
         .sort((a, b) => b.receita - a.receita)
         .slice(0, 8)}
-      pagamentoPix={pagamentoPix}
-      pagamentoLocal={pagamentoLocal}
+      aReceberLista={aReceberLista}
+      ultimosRecebidos={ultimosRecebidos}
     />
   );
 }

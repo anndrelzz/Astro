@@ -4,28 +4,17 @@ import { useId, useState } from "react";
 
 // Graficos em SVG desenhados a mao — sem biblioteca.
 //
-// Sao tres formas simples (coluna empilhada, minilinha, barra horizontal) e a
-// geometria de cada uma e regra de tres: valor / maior valor x espaco
-// disponivel. Em troca das ~150 linhas daqui, o pacote nao cresce e o grafico
-// vem pronto no HTML — canvas precisaria baixar e executar JavaScript antes de
+// A geometria de cada um e regra de tres: valor / maior valor x espaco
+// disponivel. Em troca destas linhas, o pacote nao cresce e o grafico vem
+// pronto no HTML — canvas precisaria baixar e executar JavaScript antes de
 // pintar qualquer pixel.
 //
-// Especificacoes seguidas (guia de visualizacao de dados do projeto):
-//   - barra com no maximo 24px de espessura, topo arredondado em 4px e base
-//     reta apoiada na linha zero
-//   - 2px de respiro na cor da superficie entre segmentos que se tocam
-//   - grade e eixos em fio de 1px, solidos, um passo acima da superficie
-//   - rotulo nunca veste a cor do dado; identidade vem da marca colorida ao lado
-//   - tooltip complementa, nunca e o unico caminho para o valor (existe a
-//     visao em tabela)
+// A cor dos dados e a da estetica (--color-astro-blue-bright), como no resto do
+// painel. O tooltip complementa, nunca e o unico caminho para o valor (existe a
+// visao em tabela).
 
-// Azul claro em vez do azul padrao da marca: 5,09:1 de contraste contra a
-// superficie do painel, contra 3,62:1 do outro. Em barra fina isso aparece.
-export const COR_DADO = "#3b82f6";
-export const COR_CONTEXTO = "#a1a1aa";
-export const COR_ALTERNATIVA = "#d95926";
-const COR_SUPERFICIE = "#09090b";
-const COR_GRADE = "#27272a";
+const COR_DADO = "var(--color-astro-blue-bright)";
+const COR_PENDENTE = "rgb(255 255 255 / 0.22)";
 
 export function formatarReal(v: number, compacto = false) {
   if (compacto && v >= 1000) {
@@ -38,59 +27,123 @@ export function formatarReal(v: number, compacto = false) {
 }
 
 // ---------------------------------------------------------------------------
-// Minilinha do cartao de indicador (sparkline)
+// Bolhas: PIX | total | no local. As tres se fundem (filtro "goo": desfoca e
+// depois corta a transparencia, o que cola as bordas vizinhas), e a do meio
+// e pintada por cima na cor da estetica.
 // ---------------------------------------------------------------------------
 
-export function Minilinha({ valores }: { valores: number[] }) {
+export function Bolhas({
+  total,
+  pix,
+  local,
+  pctPix,
+}: {
+  total: number;
+  pix: number;
+  local: number;
+  pctPix: number;
+}) {
+  const id = useId();
+  const lados = [
+    { x: "25%", rotulo: "PIX", valor: pix, pct: pctPix },
+    { x: "75%", rotulo: "No local", valor: local, pct: total > 0 ? 100 - pctPix : 0 },
+  ];
+
+  return (
+    <div className="relative mx-auto aspect-[600/220] w-full max-w-3xl">
+      <svg viewBox="0 0 600 220" className="absolute inset-0 h-full w-full" aria-hidden>
+        <defs>
+          <filter id={`goo-${id}`}>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="borrado" />
+            <feColorMatrix in="borrado" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10" />
+          </filter>
+          <radialGradient id={`centro-${id}`} cx="35%" cy="30%" r="80%">
+            <stop offset="0%" style={{ stopColor: "color-mix(in srgb, var(--color-astro-blue-bright) 70%, white)" }} />
+            <stop offset="45%" style={{ stopColor: "var(--color-astro-blue)" }} />
+            <stop offset="100%" style={{ stopColor: "color-mix(in srgb, var(--color-astro-blue) 55%, black)" }} />
+          </radialGradient>
+        </defs>
+        <g filter={`url(#goo-${id})`} fill="#202027">
+          <circle cx="150" cy="110" r="80" />
+          <circle cx="300" cy="110" r="102" />
+          <circle cx="450" cy="110" r="80" />
+        </g>
+        <circle
+          cx="300"
+          cy="110"
+          r="92"
+          fill={`url(#centro-${id})`}
+          style={{ filter: "drop-shadow(0 0 24px color-mix(in srgb, var(--color-astro-blue) 70%, transparent))" }}
+        />
+      </svg>
+
+      {lados.map((l) => (
+        <div
+          key={l.rotulo}
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
+          style={{ left: l.x }}
+        >
+          <p className="text-sm font-bold text-white sm:text-base lg:text-xl">
+            <span className="sm:hidden">{formatarReal(l.valor, true)}</span>
+            <span className="hidden sm:inline">{formatarReal(l.valor)}</span>
+          </p>
+          <p className="text-[0.7rem] text-astro-muted sm:text-xs">
+            {l.rotulo} · {l.pct.toFixed(0)}%
+          </p>
+        </div>
+      ))}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+        <p className="text-base font-bold text-white sm:text-xl lg:text-3xl">
+          <span className="sm:hidden">{formatarReal(total, true)}</span>
+          <span className="hidden sm:inline">{formatarReal(total)}</span>
+        </p>
+        <p className="text-[0.7rem] text-white/75 sm:text-xs">Total</p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Linha branca sobre o cartao de destaque (comparacao com o periodo anterior)
+// ---------------------------------------------------------------------------
+
+export function LinhaSubindo({ valores }: { valores: number[] }) {
   const id = useId();
   if (valores.length < 2) return null;
 
-  const L = 120;
-  const A = 32;
+  const L = 300;
+  const A = 90;
   const max = Math.max(...valores, 1);
-
-  const pontos = valores.map((v, i) => {
-    const x = (i / (valores.length - 1)) * L;
-    const y = A - (v / max) * A;
-    return [x, y] as const;
-  });
-
-  const linha = pontos.map(([x, y], i) => `${i ? "L" : "M"}${x},${y}`).join(" ");
-  const area = `${linha} L${L},${A} L0,${A} Z`;
+  const pontos = valores.map((v, i) => [(i / (valores.length - 1)) * L, A - 6 - (v / max) * (A - 12)] as const);
+  const linha = pontos.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const [ux, uy] = pontos[pontos.length - 1];
 
   return (
-    <svg
-      viewBox={`0 0 ${L} ${A}`}
-      className="h-8 w-full"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
+    <svg viewBox={`0 0 ${L} ${A}`} className="h-24 w-full" preserveAspectRatio="none" aria-hidden>
       <defs>
-        <linearGradient id={`g-${id}`} x1="0" y1="0" x2="0" y2="1">
-          {/* area = a mesma cor da serie a ~10% — uma lavagem, nunca bloco */}
-          <stop offset="0%" stopColor={COR_DADO} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={COR_DADO} stopOpacity="0" />
+        <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="white" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={area} fill={`url(#g-${id})`} />
+      <path d={`${linha} L${L},${A} L0,${A} Z`} fill={`url(#area-${id})`} />
       <path
         d={linha}
         fill="none"
-        stroke={COR_DADO}
+        stroke="white"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
       />
-      {/* ponto final com anel na cor da superficie, para nao sumir na linha */}
-      <circle cx={ux} cy={uy} r="2.5" fill={COR_DADO} stroke={COR_SUPERFICIE} strokeWidth="1.5" />
+      <circle cx={ux} cy={uy} r="4" fill="white" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Colunas empilhadas por dia
+// Colunas por dia, em vidro: a coluna em foco acende na cor da estetica e
+// ganha o balao com o valor em cima.
 // ---------------------------------------------------------------------------
 
 type Dia = { dia: string; recebido: number; pendente: number };
@@ -105,162 +158,122 @@ export function ColunasPorDia({ dados }: { dados: Dia[] }) {
   // Marcas de escala em numeros redondos.
   const passo = Math.pow(10, Math.floor(Math.log10(max)));
   const topo = Math.ceil(max / passo) * passo;
-  const marcas = [0, topo / 2, topo];
 
-  const ALTURA = 180;
-  // Espessura limitada a 24px, com 2px de respiro entre barras vizinhas.
-  const larguraBarra = Math.min(24, Math.max(3, 640 / dados.length - 2));
+  const ALTURA = 190;
+  const larguraBarra = Math.min(34, Math.max(4, 640 / dados.length - 5));
+  // Sem foco, a coluna mais alta fica acesa (como o mes em destaque da referencia).
+  const maior = dados.reduce((m, d, i) => (d.recebido > dados[m].recebido ? i : m), 0);
+  const aceso = foco ?? (dados[maior]?.recebido > 0 ? maior : null);
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        {/* Legenda: obrigatoria a partir de duas series */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <LegendaItem cor={COR_DADO} rotulo="Recebido" />
-          {temPendente && <LegendaItem cor={COR_CONTEXTO} rotulo="A receber" />}
+          {temPendente && <LegendaItem cor={COR_PENDENTE} rotulo="A receber" />}
         </div>
         <button
+          type="button"
           onClick={() => setTabela((v) => !v)}
-          className="rounded-md border border-admin-border px-2.5 py-1 font-mono text-[0.65rem] uppercase tracking-wider text-astro-muted transition hover:text-white"
+          className="rounded-full border border-admin-border px-3 py-1.5 text-xs text-astro-muted transition hover:text-white"
         >
-          {tabela ? "Ver grafico" : "Ver tabela"}
+          {tabela ? "Ver gráfico" : "Ver tabela"}
         </button>
       </div>
 
       {tabela ? (
         <TabelaDias dados={dados} />
       ) : (
-        <div className="relative">
-          <div className="flex gap-3">
-            {/* Eixo de valores */}
-            <div
-              className="flex shrink-0 flex-col justify-between text-right font-mono text-[0.6rem] tabular-nums text-astro-muted"
-              style={{ height: ALTURA }}
+        <div>
+          <div className="relative" style={{ height: ALTURA }}>
+            <svg
+              viewBox={`0 0 640 ${ALTURA}`}
+              className="absolute inset-0 h-full w-full"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="Receita por dia no período"
             >
-              {[...marcas].reverse().map((m) => (
-                <span key={m}>{formatarReal(m, true)}</span>
-              ))}
-            </div>
+              <defs>
+                <linearGradient id="coluna-vidro" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="white" stopOpacity="0.16" />
+                  <stop offset="100%" stopColor="white" stopOpacity="0.05" />
+                </linearGradient>
+                <linearGradient id="coluna-acesa" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" style={{ stopColor: "color-mix(in srgb, var(--color-astro-blue-bright) 70%, white)" }} />
+                  <stop offset="100%" style={{ stopColor: "var(--color-astro-blue)" }} />
+                </linearGradient>
+              </defs>
 
-            <div className="min-w-0 flex-1">
-              <svg
-                viewBox={`0 0 640 ${ALTURA}`}
-                className="w-full"
-                style={{ height: ALTURA }}
-                preserveAspectRatio="none"
-                role="img"
-                aria-label="Receita por dia no periodo"
-              >
-                {/* grade em fio solido, recessiva */}
-                {marcas.map((m) => {
-                  const y = ALTURA - (m / topo) * ALTURA;
-                  return (
-                    <line
-                      key={m}
-                      x1="0"
-                      y1={y}
-                      x2="640"
-                      y2={y}
-                      stroke={COR_GRADE}
-                      strokeWidth="1"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  );
-                })}
-
-                {dados.map((d, i) => {
-                  const cx = ((i + 0.5) / dados.length) * 640;
-                  const x = cx - larguraBarra / 2;
-                  const hRec = (d.recebido / topo) * ALTURA;
-                  const hPen = (d.pendente / topo) * ALTURA;
-                  const ativo = foco === i;
-
-                  return (
-                    <g
-                      key={d.dia}
-                      onMouseEnter={() => setFoco(i)}
-                      onMouseLeave={() => setFoco(null)}
-                      opacity={foco === null || ativo ? 1 : 0.45}
-                    >
-                      {/* alvo de hover generoso: cobre a faixa inteira do dia */}
+              {dados.map((d, i) => {
+                const cx = ((i + 0.5) / dados.length) * 640;
+                const x = cx - larguraBarra / 2;
+                const hRec = (d.recebido / topo) * (ALTURA - 30);
+                const hPen = (d.pendente / topo) * (ALTURA - 30);
+                const ativo = aceso === i;
+                return (
+                  <g key={d.dia} onMouseEnter={() => setFoco(i)} onMouseLeave={() => setFoco(null)}>
+                    {/* alvo de hover generoso: cobre a faixa inteira do dia */}
+                    <rect x={cx - 320 / dados.length} y={0} width={640 / dados.length} height={ALTURA} fill="transparent" />
+                    {/* trilho da coluna, em vidro, ate o topo da escala */}
+                    <rect x={x} y={30} width={larguraBarra} height={ALTURA - 30} rx={larguraBarra / 2.5} fill="white" fillOpacity="0.03" />
+                    {d.pendente > 0 && (
                       <rect
-                        x={cx - 640 / dados.length / 2}
-                        y={0}
-                        width={640 / dados.length}
-                        height={ALTURA}
-                        fill="transparent"
+                        x={x}
+                        y={ALTURA - hRec - hPen}
+                        width={larguraBarra}
+                        height={hPen + hRec}
+                        rx={larguraBarra / 2.5}
+                        fill={COR_PENDENTE}
                       />
-                      {d.pendente > 0 && (
-                        <rect
-                          x={x}
-                          y={ALTURA - hRec - hPen}
-                          width={larguraBarra}
-                          height={Math.max(0, hPen - (hRec > 0 ? 2 : 0))}
-                          rx="4"
-                          fill={COR_CONTEXTO}
-                        />
-                      )}
-                      {d.recebido > 0 && (
-                        <rect
-                          x={x}
-                          y={ALTURA - hRec}
-                          width={larguraBarra}
-                          height={hRec}
-                          // topo arredondado, base reta na linha zero
-                          rx={d.pendente > 0 ? 0 : 4}
-                          fill={COR_DADO}
-                        />
-                      )}
-                    </g>
-                  );
-                })}
+                    )}
+                    {d.recebido > 0 && (
+                      <rect
+                        x={x}
+                        y={ALTURA - hRec}
+                        width={larguraBarra}
+                        height={hRec}
+                        rx={larguraBarra / 2.5}
+                        fill={ativo ? "url(#coluna-acesa)" : "url(#coluna-vidro)"}
+                        stroke="white"
+                        strokeOpacity={ativo ? 0 : 0.12}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
 
-                {/* linha de base */}
-                <line
-                  x1="0"
-                  y1={ALTURA}
-                  x2="640"
-                  y2={ALTURA}
-                  stroke={COR_GRADE}
-                  strokeWidth="1"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-
-              {/* faixa do eixo de datas — dentro do container, nunca cortada */}
-              <div className="mt-2 flex justify-between font-mono text-[0.6rem] tabular-nums text-astro-muted">
-                <span>{rotuloDia(dados[0]?.dia)}</span>
-                {dados.length > 2 && (
-                  <span>{rotuloDia(dados[Math.floor(dados.length / 2)]?.dia)}</span>
-                )}
-                <span>{rotuloDia(dados[dados.length - 1]?.dia)}</span>
+            {/* Balao com o valor da coluna acesa */}
+            {aceso !== null && dados[aceso] && (
+              <div
+                className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg bg-white px-2 py-1 text-xs font-bold whitespace-nowrap text-black shadow-lg"
+                style={{
+                  left: `${((aceso + 0.5) / dados.length) * 100}%`,
+                  top: Math.max(
+                    0,
+                    ALTURA - ((dados[aceso].recebido + dados[aceso].pendente) / topo) * (ALTURA - 30) - 8
+                  ),
+                }}
+              >
+                {formatarReal(dados[aceso].recebido, true)}
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Tooltip: complementa a leitura, nao a substitui */}
-          {foco !== null && dados[foco] && (
-            <div className="pointer-events-none mt-3 inline-flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
-              <span className="font-mono text-[0.65rem] uppercase tracking-wider text-astro-muted">
-                {rotuloDia(dados[foco].dia, true)}
-              </span>
-              <span className="flex items-center gap-1.5 text-sm text-white">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: COR_DADO }}
-                />
-                {formatarReal(dados[foco].recebido)}
-              </span>
-              {dados[foco].pendente > 0 && (
-                <span className="flex items-center gap-1.5 text-sm text-astro-muted">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: COR_CONTEXTO }}
-                  />
-                  {formatarReal(dados[foco].pendente)}
-                </span>
-              )}
-            </div>
+          {/* faixa do eixo de datas */}
+          <div className="mt-2 flex justify-between font-mono text-[0.65rem] tabular-nums text-astro-muted">
+            <span>{rotuloDia(dados[0]?.dia)}</span>
+            {dados.length > 2 && <span>{rotuloDia(dados[Math.floor(dados.length / 2)]?.dia)}</span>}
+            <span>{rotuloDia(dados[dados.length - 1]?.dia)}</span>
+          </div>
+
+          {aceso !== null && dados[aceso] && (
+            <p className="mt-3 text-xs text-astro-muted">
+              {rotuloDia(dados[aceso].dia, true)} · recebido{" "}
+              <b className="text-white">{formatarReal(dados[aceso].recebido)}</b>
+              {dados[aceso].pendente > 0 && <> · a receber {formatarReal(dados[aceso].pendente)}</>}
+            </p>
           )}
         </div>
       )}
@@ -277,24 +290,20 @@ function rotuloDia(dia?: string, completo = false) {
 function TabelaDias({ dados }: { dados: Dia[] }) {
   const comMovimento = dados.filter((d) => d.recebido > 0 || d.pendente > 0);
   return (
-    <div className="max-h-64 overflow-y-auto rounded-lg border border-admin-border">
+    <div className="max-h-64 overflow-y-auto rounded-xl border border-admin-border">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-admin-surface">
-          <tr className="border-b border-admin-border">
-            <th className="astro-label px-3 py-2 text-left">Dia</th>
-            <th className="astro-label px-3 py-2 text-right">Recebido</th>
-            <th className="astro-label px-3 py-2 text-right">A receber</th>
+          <tr className="border-b border-admin-border text-xs text-astro-muted">
+            <th className="px-3 py-2 text-left font-medium">Dia</th>
+            <th className="px-3 py-2 text-right font-medium">Recebido</th>
+            <th className="px-3 py-2 text-right font-medium">A receber</th>
           </tr>
         </thead>
         <tbody>
           {comMovimento.map((d) => (
             <tr key={d.dia} className="border-b border-admin-border/60 last:border-0">
-              <td className="px-3 py-2 font-mono tabular-nums text-slate-200">
-                {rotuloDia(d.dia, true)}
-              </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
-                {formatarReal(d.recebido)}
-              </td>
+              <td className="px-3 py-2 font-mono tabular-nums text-slate-200">{rotuloDia(d.dia, true)}</td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{formatarReal(d.recebido)}</td>
               <td className="px-3 py-2 text-right font-mono tabular-nums text-astro-muted">
                 {d.pendente ? formatarReal(d.pendente) : "—"}
               </td>
@@ -303,7 +312,7 @@ function TabelaDias({ dados }: { dados: Dia[] }) {
           {comMovimento.length === 0 && (
             <tr>
               <td colSpan={3} className="px-3 py-6 text-center text-astro-muted">
-                Nenhum movimento no periodo.
+                Nenhum movimento no período.
               </td>
             </tr>
           )}
@@ -316,7 +325,7 @@ function TabelaDias({ dados }: { dados: Dia[] }) {
 function LegendaItem({ cor, rotulo }: { cor: string; rotulo: string }) {
   return (
     <span className="flex items-center gap-2 text-xs text-astro-muted">
-      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: cor }} />
+      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cor }} />
       {rotulo}
     </span>
   );
@@ -326,106 +335,31 @@ function LegendaItem({ cor, rotulo }: { cor: string; rotulo: string }) {
 // Barras horizontais — magnitude comparada
 // ---------------------------------------------------------------------------
 
-export function BarrasHorizontais({
-  itens,
-}: {
-  itens: { rotulo: string; valor: number; nota?: string }[];
-}) {
+export function BarrasHorizontais({ itens }: { itens: { rotulo: string; valor: number; nota?: string }[] }) {
   const max = Math.max(...itens.map((i) => i.valor), 1);
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-3.5">
       {itens.map((i) => (
         <li key={i.rotulo}>
           <div className="flex items-baseline justify-between gap-3">
             <p className="min-w-0 truncate text-sm text-slate-200">
               {i.rotulo}
-              {i.nota && (
-                <span className="ml-2 font-mono text-[0.65rem] text-astro-muted">
-                  {i.nota}
-                </span>
-              )}
+              {i.nota && <span className="ml-2 font-mono text-[0.65rem] text-astro-muted">{i.nota}</span>}
             </p>
-            <p className="shrink-0 text-sm font-semibold text-white">
-              {formatarReal(i.valor)}
-            </p>
+            <p className="shrink-0 text-sm font-semibold text-white">{formatarReal(i.valor)}</p>
           </div>
-          {/* Categorias nominais: todas na MESMA cor. Colorir cada barra de um
-              jeito gastaria o canal de identidade repetindo o que o comprimento
-              da barra ja diz. */}
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-admin-surface-2">
+          {/* Categorias nominais: todas na MESMA cor. O comprimento ja diz a
+              diferenca; colorir cada barra repetiria a informacao. */}
+          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-white/[0.06]">
             <div
               className="h-full rounded-full"
-              style={{
-                width: `${Math.max(2, (i.valor / max) * 100)}%`,
-                backgroundColor: COR_DADO,
-              }}
+              style={{ width: `${Math.max(2, (i.valor / max) * 100)}%`, backgroundColor: COR_DADO }}
             />
           </div>
         </li>
       ))}
-      {itens.length === 0 && (
-        <li className="py-6 text-center text-sm text-astro-muted">
-          Nenhuma receita no periodo.
-        </li>
-      )}
+      {itens.length === 0 && <li className="py-6 text-center text-sm text-astro-muted">Nenhuma receita no período.</li>}
     </ul>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Divisao entre duas partes — barra empilhada unica
-// ---------------------------------------------------------------------------
-
-export function BarraDivisao({
-  a,
-  b,
-}: {
-  a: { rotulo: string; valor: number };
-  b: { rotulo: string; valor: number };
-}) {
-  const total = a.valor + b.valor;
-
-  if (total === 0) {
-    return (
-      <p className="py-6 text-center text-sm text-astro-muted">
-        Nenhum pagamento confirmado no periodo.
-      </p>
-    );
-  }
-
-  const pctA = (a.valor / total) * 100;
-
-  return (
-    <div>
-      {/* Uma barra, dois segmentos, 2px de respiro entre eles. Rosca de duas
-          fatias e anti-padrao: a proporcao le pior num arco do que num
-          comprimento lado a lado. */}
-      <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full">
-        <div style={{ width: `${pctA}%`, backgroundColor: COR_DADO }} />
-        <div style={{ width: `${100 - pctA}%`, backgroundColor: COR_ALTERNATIVA }} />
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        {[
-          { ...a, cor: COR_DADO, pct: pctA },
-          { ...b, cor: COR_ALTERNATIVA, pct: 100 - pctA },
-        ].map((s) => (
-          <div key={s.rotulo}>
-            <span className="flex items-center gap-2 text-xs text-astro-muted">
-              <span
-                className="h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: s.cor }}
-              />
-              {s.rotulo}
-            </span>
-            <p className="mt-1 text-xl font-bold text-white">{s.valor}</p>
-            <p className="font-mono text-[0.65rem] text-astro-muted">
-              {s.pct.toFixed(0)}% dos atendimentos
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
