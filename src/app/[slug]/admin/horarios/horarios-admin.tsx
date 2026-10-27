@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Check, Clock, Copy } from "lucide-react";
+import { CalendarClock, Check, Clock, Copy } from "lucide-react";
 
 // UC09, RF02 — grade semanal de funcionamento. Um dia desligado significa
 // estetica fechada: a rota PUT /api/tenant/horarios remove o registro daquele
@@ -42,7 +42,41 @@ function formatarDuracao(min: number) {
 
 const invalido = (dia: HorarioDia) => dia.ativo && dia.horaInicio >= dia.horaFim;
 
-export function HorariosAdmin({ horariosIniciais }: { horariosIniciais: HorarioDia[] }) {
+function hhmm(min: number) {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+// Situacao da estetica agora, pela grade SALVA (a que o cliente ve).
+function situacaoAgora(grade: HorarioDia[], agora: { diaSemana: number; minuto: number }) {
+  const valido = (h?: HorarioDia) => !!h && h.ativo && !invalido(h);
+  const hoje = grade.find((h) => h.diaSemana === agora.diaSemana);
+  if (valido(hoje)) {
+    const inicio = paraMinutos(hoje!.horaInicio);
+    const fim = paraMinutos(hoje!.horaFim);
+    if (agora.minuto >= inicio && agora.minuto < fim) {
+      return { aberto: true, titulo: "Aberto agora", detalhe: `Fecha às ${hoje!.horaFim} · em ${formatarDuracao(fim - agora.minuto)}` };
+    }
+    if (agora.minuto < inicio) {
+      return { aberto: false, titulo: "Fechado agora", detalhe: `Abre hoje às ${hoje!.horaInicio}` };
+    }
+  }
+  for (let i = 1; i <= 7; i++) {
+    const dia = grade.find((h) => h.diaSemana === (agora.diaSemana + i) % 7);
+    if (valido(dia)) {
+      const quando = i === 1 ? "amanhã" : dia!.nome.toLowerCase();
+      return { aberto: false, titulo: "Fechado agora", detalhe: `Abre ${quando} às ${dia!.horaInicio}` };
+    }
+  }
+  return { aberto: false, titulo: "Fechado", detalhe: "Nenhum dia aberto na semana. O cliente não consegue agendar." };
+}
+
+export function HorariosAdmin({
+  horariosIniciais,
+  agora,
+}: {
+  horariosIniciais: HorarioDia[];
+  agora: { diaSemana: number; minuto: number };
+}) {
   const router = useRouter();
   const [horarios, setHorarios] = useState(horariosIniciais);
   const [salvos, setSalvos] = useState(horariosIniciais);
@@ -102,7 +136,10 @@ export function HorariosAdmin({ horariosIniciais }: { horariosIniciais: HorarioD
   }
 
   const abertos = horarios.filter((h) => h.ativo && !invalido(h));
-  const minutosSemana = abertos.reduce((soma, h) => soma + paraMinutos(h.horaFim) - paraMinutos(h.horaInicio), 0);
+  // O cartao do topo mostra a grade SALVA: e o que esta valendo para o cliente.
+  const situacao = situacaoAgora(salvos, agora);
+  const abertosSalvos = salvos.filter((h) => h.ativo && !invalido(h));
+  const minutosSemana = abertosSalvos.reduce((soma, h) => soma + paraMinutos(h.horaFim) - paraMinutos(h.horaInicio), 0);
 
   // Escala das barras: das 6h as 22h, alargada se algum dia passar disso.
   const escalaInicio = Math.min(6 * 60, ...abertos.map((h) => Math.floor(paraMinutos(h.horaInicio) / 60) * 60));
@@ -115,11 +152,7 @@ export function HorariosAdmin({ horariosIniciais }: { horariosIniciais: HorarioD
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white lg:text-4xl">Grade de horários</h1>
-          <p className="mt-1.5 text-astro-muted">
-            {abertos.length === 0
-              ? "Nenhum dia aberto. O cliente não consegue agendar."
-              : `Aberto ${abertos.length} ${abertos.length === 1 ? "dia" : "dias"} · ${formatarDuracao(minutosSemana)} por semana`}
-          </p>
+          <p className="mt-1.5 text-astro-muted">Os dias e horários em que o cliente pode agendar.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -143,6 +176,43 @@ export function HorariosAdmin({ horariosIniciais }: { horariosIniciais: HorarioD
       {erro && (
         <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{erro}</p>
       )}
+
+      {/* Cartao de destaque, no mesmo estilo do faturamento (Dashboard) e dos
+          tipos de veiculo (Catalogo): a situacao da estetica agora. */}
+      <section
+        aria-label="Situação agora"
+        className="borda-viva relative mb-6 overflow-hidden rounded-3xl p-5 text-white sm:p-6"
+        style={{
+          backgroundImage:
+            "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
+          boxShadow:
+            "0 24px 60px -24px color-mix(in srgb, var(--color-astro-blue) 80%, transparent), 0 0 50px -10px color-mix(in srgb, var(--color-astro-blue-bright) 45%, transparent)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full border border-white/20 shadow-[0_0_0_40px_rgba(255,255,255,0.04),0_0_0_90px_rgba(255,255,255,0.03)]"
+        />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-semibold text-white/85">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  situacao.aberto ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" : "bg-white/50"
+                }`}
+              />
+              {situacao.titulo}
+            </p>
+            <p className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{situacao.detalhe}</p>
+          </div>
+          {abertosSalvos.length > 0 && (
+            <p className="flex items-center gap-2 rounded-full bg-black/25 px-4 py-2 text-sm text-white/90">
+              <CalendarClock className="h-4 w-4" />
+              {abertosSalvos.length} {abertosSalvos.length === 1 ? "dia" : "dias"} · {formatarDuracao(minutosSemana)} por semana
+            </p>
+          )}
+        </div>
+      </section>
 
       <section className="rounded-3xl border border-admin-border bg-admin-surface p-4 sm:p-6">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -172,6 +242,7 @@ export function HorariosAdmin({ horariosIniciais }: { horariosIniciais: HorarioD
         <ul className="grid gap-2">
           {horarios.map((dia) => {
             const errado = invalido(dia);
+            const hoje = dia.diaSemana === agora.diaSemana;
             const inicio = paraMinutos(dia.horaInicio);
             const fim = paraMinutos(dia.horaFim);
             return (
@@ -193,10 +264,13 @@ export function HorariosAdmin({ horariosIniciais }: { horariosIniciais: HorarioD
                       onChange={(e) => atualizarDia(dia.diaSemana, "ativo", e.target.checked)}
                       className="peer sr-only"
                     />
-                    <span className="h-6 w-11 rounded-full bg-zinc-700 transition peer-checked:bg-astro-blue peer-focus-visible:ring-2 peer-focus-visible:ring-astro-blue-bright" />
+                    <span className="h-6 w-11 rounded-full bg-zinc-700 transition peer-checked:bg-emerald-500 peer-focus-visible:ring-2 peer-focus-visible:ring-astro-blue-bright" />
                     <span className="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
                   </span>
                   <span className={`text-sm font-semibold ${dia.ativo ? "text-white" : "text-astro-muted"}`}>{dia.nome}</span>
+                  {hoje && (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.65rem] font-semibold text-white">Hoje</span>
+                  )}
                 </label>
 
                 <div className="flex items-center gap-2">
@@ -226,6 +300,14 @@ export function HorariosAdmin({ horariosIniciais }: { horariosIniciais: HorarioD
                           <span
                             className="absolute inset-y-0 rounded-full bg-astro-blue shadow-[0_0_14px_-2px_var(--color-astro-blue)]"
                             style={{ left: `${pct(inicio)}%`, width: `${pct(fim) - pct(inicio)}%` }}
+                          />
+                        )}
+                        {/* "Agora" no dia de hoje, como a linha vermelha das agendas */}
+                        {hoje && agora.minuto >= escalaInicio && agora.minuto <= escalaFim && (
+                          <span
+                            title={`Agora, ${hhmm(agora.minuto)}`}
+                            className="absolute -top-1.5 -bottom-1.5 w-0.5 -translate-x-1/2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                            style={{ left: `${pct(agora.minuto)}%` }}
                           />
                         )}
                       </div>
