@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { LayoutDashboard, MapPin, MessageCircle } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
@@ -119,16 +119,6 @@ export default async function TenantPage({
     ) as Record<string, number>,
   }));
 
-  // Endereco montado a partir do que estiver preenchido — estetica que so
-  // informou bairro e cidade mostra so isso, sem virgulas soltas.
-  const endereco = [
-    [tenant.rua, tenant.numero].filter(Boolean).join(", "),
-    tenant.bairro,
-    [tenant.cidade, tenant.estado].filter(Boolean).join(" - "),
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   // O preco mostrado e o do carro do cliente (o primeiro da garagem, o mesmo
   // que aparece como principal no perfil). Carro de um tipo que a estetica
   // removeu nao conta; sem carro valido, os cards mostram a faixa de precos.
@@ -187,47 +177,39 @@ export default async function TenantPage({
         </header>
 
         <main className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)] gap-4 px-4 pt-5 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-5 lg:px-8 lg:pt-5">
-          {/* Cartao da estetica — logo, nome e endereco vem das Configuracoes
-              do Admin (UC13). Um contato so, o WhatsApp: e por onde o cliente
-              fala com a loja quando nao consegue agendar. */}
+          {/* Cartao da estetica — logo e nome vem das Configuracoes do Admin
+              (UC13). Um contato so, o WhatsApp da loja, num botao redondo a
+              direita: e por onde o cliente fala com a loja quando nao
+              consegue agendar. Compacto para o proximo horario subir. */}
           <section
             aria-label={tenant.nome}
-            className={`flex flex-col rounded-3xl border border-zinc-200/80 bg-white/85 p-5 shadow-[0_10px_30px_-18px_rgb(15_23_42/0.25)] backdrop-blur lg:p-6 ${destaque ? "" : "lg:col-span-2"}`}
+            className={`flex items-center gap-3.5 rounded-3xl border border-zinc-200/80 bg-white/85 p-4 shadow-[0_10px_30px_-18px_rgb(15_23_42/0.25)] backdrop-blur lg:p-5 ${destaque ? "" : "lg:col-span-2"}`}
           >
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-astro-bg">
-                {tenant.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={tenant.logoUrl}
-                    alt={`Logo ${tenant.nome}`}
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <span className="text-sm font-semibold tracking-wide text-white">
-                    {iniciais}
-                  </span>
-                )}
-              </div>
-              <h2 className="min-w-0 text-lg font-bold leading-snug text-zinc-900">{tenant.nome}</h2>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-astro-bg">
+              {tenant.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={tenant.logoUrl}
+                  alt={`Logo ${tenant.nome}`}
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <span className="text-sm font-semibold tracking-wide text-white">
+                  {iniciais}
+                </span>
+              )}
             </div>
-
-            {endereco && (
-              <p className="mt-4 flex items-start gap-2 text-sm text-zinc-600">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
-                {endereco}
-              </p>
-            )}
+            <h2 className="min-w-0 flex-1 text-lg font-bold leading-snug text-zinc-900">{tenant.nome}</h2>
 
             {linkWhatsapp && (
               <a
                 href={linkWhatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 flex items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:border-zinc-300 hover:bg-zinc-50 lg:mt-auto lg:self-start lg:px-5"
+                aria-label="Falar no WhatsApp"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_8px_20px_-10px_#25D366] transition hover:brightness-105"
               >
-                <MessageCircle className="h-4 w-4" />
-                Falar no WhatsApp
+                <IconeWhatsapp className="h-6 w-6" />
               </a>
             )}
           </section>
@@ -248,5 +230,15 @@ export default async function TenantPage({
         </main>
       </div>
     </ClienteShell>
+  );
+}
+
+// Icone do WhatsApp (o lucide nao tem marcas). Desenho de um caminho so, em
+// branco sobre o verde do botao.
+function IconeWhatsapp({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.21 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zM12.05 21.5h-.01a9.5 9.5 0 0 1-4.84-1.33l-.35-.21-3.6.94.96-3.5-.23-.36a9.46 9.46 0 0 1-1.45-5.05c0-5.23 4.26-9.49 9.5-9.49 2.54 0 4.92.99 6.71 2.79a9.43 9.43 0 0 1 2.78 6.71c0 5.24-4.26 9.5-9.47 9.5zm8.08-17.58A11.35 11.35 0 0 0 12.05.58C5.75.58.62 5.7.62 12c0 2.01.53 3.98 1.53 5.71L.52 23.42l5.84-1.53a11.4 11.4 0 0 0 5.69 1.45h.01c6.3 0 11.43-5.13 11.43-11.43 0-3.05-1.19-5.92-3.36-8.08z" />
+    </svg>
   );
 }
