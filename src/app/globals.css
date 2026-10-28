@@ -175,6 +175,11 @@ body {
     background-image: radial-gradient(circle, rgb(255 255 255 / 0.09) 1.2px, transparent 1.6px);
     background-size: 14px 14px;
   }
+  /* Mesma grade sobre fundo claro (telas do cliente): pontos escuros. */
+  .pontos-base-claro {
+    background-image: radial-gradient(circle, rgb(15 23 42 / 0.1) 1.2px, transparent 1.6px);
+    background-size: 14px 14px;
+  }
   .pontos-luz {
     -webkit-mask-image: radial-gradient(circle, #000 1.6px, transparent 2px);
     mask-image: radial-gradient(circle, #000 1.6px, transparent 2px);

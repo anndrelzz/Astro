@@ -9,6 +9,8 @@
 // grade. Com "reduzir movimento" ligado no sistema, as ondas ficam paradas.
 // As telas do cliente pedem `paradoNoCelular`: quem agenda pelo telefone nao
 // precisa de animacao continua gastando bateria atras da lista de servicos.
+// Com `claro`, a mesma grade fica sobre o fundo claro do cliente: pontos
+// escuros apagados e luz na cor pura da estetica, sem clarear para o branco.
 //
 // Fica fixo na tela e atras de tudo: -z-10 dentro do layout do Admin, que tem
 // `isolate` para que a camada negativa fique acima do fundo preto dele e
@@ -41,10 +43,12 @@ function Ondas({
   caminhos,
   sentido,
   paradoNoCelular,
+  claro,
 }: {
   caminhos: string[];
   sentido: "esquerda" | "direita";
   paradoNoCelular: boolean;
+  claro: boolean;
 }) {
   return (
     <svg
@@ -61,23 +65,29 @@ function Ondas({
       </defs>
       <g filter={`url(#desfoque-${sentido})`}>
         {caminhos.map((d) => (
-          <path key={d} d={d} style={{ fill: "color-mix(in srgb, var(--color-astro-blue) 65%, white)" }} />
+          <path key={d} d={d} style={{ fill: claro ? "var(--color-astro-blue)" : "color-mix(in srgb, var(--color-astro-blue) 65%, white)" }} />
         ))}
       </g>
     </svg>
   );
 }
 
-export function FundoOndas({ paradoNoCelular = false }: { paradoNoCelular?: boolean }) {
+export function FundoOndas({
+  paradoNoCelular = false,
+  claro = false,
+}: {
+  paradoNoCelular?: boolean;
+  claro?: boolean;
+}) {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       {/* Grade apagada: os pontos que a luz nao alcanca */}
-      <div className="pontos-base absolute inset-0" />
+      <div className={`${claro ? "pontos-base-claro" : "pontos-base"} absolute inset-0`} />
 
       {/* Luz em ondas, vista so atraves dos pontos */}
       <div className="pontos-luz absolute inset-0 opacity-75">
-        <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" paradoNoCelular={paradoNoCelular} />
-        <Ondas caminhos={PARA_DIREITA} sentido="direita" paradoNoCelular={paradoNoCelular} />
+        <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" paradoNoCelular={paradoNoCelular} claro={claro} />
+        <Ondas caminhos={PARA_DIREITA} sentido="direita" paradoNoCelular={paradoNoCelular} claro={claro} />
       </div>
     </div>
   );
