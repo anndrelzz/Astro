@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import { ThemeColor } from "@/components/ui/theme-color";
-import { FundoOndas } from "../admin/fundo-ondas";
 import { iniciais } from "@/lib/iniciais";
 import { VincularTelegram } from "./vincular-telegram";
 import { LIMITES } from "@/lib/validations/limites";
@@ -39,6 +38,11 @@ type Veiculo = {
 // arredondado. A partir de lg vira duas colunas: o cartao escuro do cliente
 // a esquerda (com as estatisticas e o "Editar dados") e, a direita, dados,
 // garagem e acoes rapidas.
+// Fundo do topo escuro do perfil: preto com um brilho na cor da estetica
+// (RF13) descendo do alto, mais forte no centro, onde fica a foto.
+const GRADIENTE_ESCURO =
+  "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--color-astro-blue) 45%, transparent), transparent 70%), radial-gradient(60% 50% at 50% 45%, color-mix(in srgb, var(--color-astro-blue) 20%, transparent), transparent 75%), #07080b";
+
 export function PerfilCliente({
   slug,
   nome,
@@ -65,10 +69,12 @@ export function PerfilCliente({
       <ThemeColor color="#09090b" />
 
       {/* Cabecalho escuro — celular. No desktop o titulo vem da casca e a
-          identidade do cliente esta no cartao da coluna esquerda. O fundo e
-          a grade de pontos do painel, com as ondas na cor da estetica. */}
-      <div className="relative isolate overflow-hidden rounded-b-[2rem] bg-astro-bg px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden">
-        <FundoOndas contido />
+          identidade do cliente esta no cartao da coluna esquerda. Preto com
+          um brilho na cor da estetica vindo de cima (GRADIENTE_ESCURO). */}
+      <div
+        className="rounded-b-[2rem] px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden"
+        style={{ background: GRADIENTE_ESCURO }}
+      >
         <div className="relative mx-auto flex max-w-md items-center justify-between">
           <Link
             href={`/${slug}`}
@@ -83,7 +89,7 @@ export function PerfilCliente({
 
         <div className="relative mx-auto mt-4 flex max-w-md flex-col items-center">
           <div className="relative">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-white/5 text-3xl font-bold text-white">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/15 bg-white/5 text-3xl font-bold text-white shadow-[0_0_40px_-6px_var(--color-astro-blue)]">
               {inicial}
             </div>
             <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-astro-bg bg-astro-blue">
@@ -94,11 +100,10 @@ export function PerfilCliente({
         </div>
       </div>
 
-      <main className="relative mx-auto -mt-4 max-w-md space-y-5 px-4 lg:mx-0 lg:mt-0 lg:grid lg:max-w-none lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-8">
+      <main className="relative mx-auto mt-4 max-w-md space-y-5 px-4 lg:mx-0 lg:mt-0 lg:grid lg:max-w-none lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-8">
         {/* Cartao do cliente — so no desktop. Reune o que no celular esta
             espalhado entre o cabecalho escuro e as estatisticas. */}
-        <aside className="relative isolate hidden overflow-hidden rounded-2xl bg-astro-bg p-6 lg:block">
-          <FundoOndas contido />
+        <aside className="hidden rounded-2xl p-6 lg:block" style={{ background: GRADIENTE_ESCURO }}>
           <div className="relative flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 text-2xl font-bold text-white">
