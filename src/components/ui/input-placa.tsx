@@ -1,35 +1,21 @@
 "use client";
 
-// Campo de placa desenhado como uma placa de verdade (UC02, tela 08).
-//
-// A faixa de cima traz estado e cidade da ESTETICA, vindos do cadastro do
-// tenant — e enfeite, nao dado do carro: o cliente pode ter emplacado em outra
-// cidade. Ela existe para o campo ser reconhecivel de imediato, nao para
-// afirmar a origem do veiculo.
-//
-// Sem cidade/estado cadastrados a faixa cai para "BRASIL", que e o que aparece
-// nas placas do padrao Mercosul — assim a placa nunca fica com a faixa vazia.
+// Campo de placa desenhado como uma placa de verdade (UC02, tela 08), no
+// padrao Mercosul: a faixa azul diz "BRASIL", como nas placas reais.
 export function InputPlaca({
   valor,
   aoMudar,
-  cidade,
-  estado,
 }: {
   valor: string;
   aoMudar: (valor: string) => void;
-  cidade?: string | null;
-  estado?: string | null;
 }) {
-  const cabecalho =
-    [estado, cidade].filter(Boolean).join(" - ").toUpperCase() || "BRASIL";
-
   return (
     // Cores do padrao Mercosul: face branca com borda preta, faixa azul no
     // topo com texto branco e a bandeira do Brasil a direita.
     <div className="overflow-hidden rounded-xl border-2 border-zinc-900 bg-white shadow-sm transition focus-within:ring-4 focus-within:ring-astro-blue/30">
       <div className="relative flex items-center justify-center bg-[#003399] px-3 py-1">
         <span className="text-[0.6rem] font-semibold tracking-[0.25em] text-white">
-          {cabecalho}
+          BRASIL
         </span>
         <BandeiraBrasil className="absolute right-2.5 h-2.5 w-3.5" />
       </div>
