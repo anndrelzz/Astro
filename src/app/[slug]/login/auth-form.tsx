@@ -30,7 +30,9 @@ const REGRAS_SENHA = [
 //
 // Layout: um cartao sobre o fundo de pontos com ondas (o mesmo do painel). O
 // lado colorido, na cor da estetica, tem a borda em curva; o formulario fica
-// no lado escuro. No celular o lado colorido vira a faixa do topo.
+// no lado escuro. No celular o cartao ocupa a tela inteira, o lado colorido
+// vira a faixa do topo e tudo cabe na area visivel sem rolar (conferido de
+// 375x635, o iPhone X com as barras do Safari, para cima).
 export function AuthForm({
   modo,
   estetica,
@@ -148,7 +150,7 @@ export function AuthForm({
   }
 
   return (
-    <div className="relative isolate flex min-h-dvh items-center justify-center bg-black px-4 py-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:p-6 [@media(min-height:820px)]:lg:p-10">
+    <div className="relative isolate flex min-h-dvh justify-center bg-black lg:items-center lg:p-6 [@media(min-height:820px)]:lg:p-10">
       <ThemeColor color="#000000" />
       <FundoOndas />
 
@@ -161,27 +163,29 @@ export function AuthForm({
         )}
       </AnimatePresence>
 
-      <div className="relative w-full max-w-5xl">
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="relative flex w-full max-w-5xl flex-col">
+        <div className="relative flex flex-1 flex-col overflow-hidden bg-[#0b0b0f] lg:grid lg:min-h-[34rem] lg:flex-none lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:rounded-[2rem] lg:border lg:border-white/10 lg:shadow-[0_40px_120px_-40px_var(--color-astro-blue)]">
           <PainelMarca modo={modo} estetica={estetica} />
           {/* Coluna 1 vazia no computador: o painel colorido fica por baixo, absoluto */}
           <div aria-hidden className="hidden lg:block" />
 
           {/* Formulario */}
           <div
-            className={`relative flex flex-col px-6 pt-2 pb-8 lg:px-12 ${eLogin ? "lg:py-10" : "lg:py-7"}`}
+            className={`relative flex flex-1 flex-col px-6 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] lg:px-12 ${eLogin ? "lg:py-10" : "lg:py-7"}`}
           >
             <div className="hidden justify-end lg:flex">
               <Logo className="h-9" />
             </div>
 
-            <div className="lg:my-auto">
+            <div className="my-auto">
               <h1
                 className={`text-2xl font-bold text-white ${eLogin ? "lg:text-3xl" : ""}`}
               >
                 {eLogin ? "Entrar" : "Criar conta"}
               </h1>
-              <p className="mt-1.5 text-sm text-astro-muted">
+              <p
+                className={`mt-1 text-sm text-astro-muted ${eLogin ? "" : "hidden lg:block"}`}
+              >
                 {eLogin
                   ? "Use o e-mail e a senha cadastrados."
                   : "Leva menos de um minuto."}
@@ -189,7 +193,7 @@ export function AuthForm({
 
               <form
                 onSubmit={handleSubmit}
-                className={eLogin ? "mt-6 space-y-4" : "mt-4 space-y-3"}
+                className={eLogin ? "mt-5 space-y-3.5 lg:mt-6 lg:space-y-4" : "mt-2 space-y-2 lg:mt-4 lg:space-y-3"}
               >
                 {erro && (
                   <p
@@ -221,7 +225,7 @@ export function AuthForm({
                   className={
                     eLogin
                       ? ""
-                      : "space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0"
+                      : "space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0"
                   }
                 >
                   <CampoAuth
@@ -289,7 +293,7 @@ export function AuthForm({
                   {/* Medidor de forca: uma barra por regra atendida, com as
                       mesmas regras que o servidor exige. */}
                   {!eLogin && (
-                    <div className="pt-2">
+                    <div className="pt-1.5 lg:pt-2">
                       <div className="flex gap-1.5" aria-hidden>
                         {REGRAS_SENHA.map((regra, i) => (
                           <span
@@ -298,7 +302,7 @@ export function AuthForm({
                           />
                         ))}
                       </div>
-                      <p className="mt-1.5 text-xs text-astro-muted">
+                      <p className="mt-1 text-xs text-astro-muted lg:mt-1.5">
                         Mínimo de {REGRAS_SENHA.map((r) => r.rotulo).join(", ")}
                         .
                       </p>
@@ -307,7 +311,7 @@ export function AuthForm({
                 </div>
 
                 {!eLogin && (
-                  <label className="flex cursor-pointer items-start gap-2.5 text-sm text-astro-muted">
+                  <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-astro-muted lg:text-sm">
                     <input
                       type="checkbox"
                       checked={aceitouTermos}
@@ -346,7 +350,7 @@ export function AuthForm({
               </form>
 
               <p
-                className={`text-center text-sm text-astro-muted ${eLogin ? "mt-6" : "mt-4"}`}
+                className={`text-center text-sm text-astro-muted ${eLogin ? "mt-5 lg:mt-6" : "mt-2.5 lg:mt-4"}`}
               >
                 {eLogin ? "Ainda não tem conta? " : "Já tem conta? "}
                 <Link
@@ -361,7 +365,7 @@ export function AuthForm({
             {/* Sem "voltar a vitrine": /[slug] redireciona quem nao esta
                 logado para ca, entao o link seria um laco. */}
             <p
-              className={`mt-8 text-center text-xs text-astro-muted/70 lg:mt-0 lg:text-right ${eLogin ? "" : "lg:hidden"}`}
+              className={`hidden text-right text-xs text-astro-muted/70 ${eLogin ? "lg:block" : ""}`}
             >
               © {new Date().getFullYear()} Astro Estética Automotiva
             </p>
@@ -388,7 +392,7 @@ function CampoAuth({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm text-slate-300">
+      <label htmlFor={id} className="mb-1 block text-sm text-slate-300 lg:mb-1.5">
         {rotulo}
       </label>
       <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] py-1 pr-1.5 pl-4 transition focus-within:border-astro-blue-bright/70 focus-within:bg-white/[0.08]">
@@ -396,7 +400,7 @@ function CampoAuth({
         <input
           id={id}
           {...props}
-          className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent py-2 text-sm lg:py-2.5 text-white placeholder:text-white/30 focus:outline-none"
         />
         {direita}
       </div>

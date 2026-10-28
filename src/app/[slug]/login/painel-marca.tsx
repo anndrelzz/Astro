@@ -23,7 +23,7 @@ export function MarcaEstetica({
     <div className={`flex items-center ${grande ? "gap-3.5" : "gap-2.5"}`}>
       <div
         className={`flex shrink-0 items-center justify-center overflow-hidden border border-white/20 bg-white/10 ${
-          grande ? "h-14 w-14 rounded-2xl" : "h-9 w-9 rounded-lg"
+          grande ? "h-11 w-11 rounded-xl lg:h-14 lg:w-14 lg:rounded-2xl" : "h-9 w-9 rounded-lg"
         }`}
       >
         {estetica.logoUrl ? (
@@ -35,14 +35,14 @@ export function MarcaEstetica({
           />
         ) : (
           <span
-            className={`font-semibold tracking-wide text-white ${grande ? "text-base" : "text-xs"}`}
+            className={`font-semibold tracking-wide text-white ${grande ? "text-sm lg:text-base" : "text-xs"}`}
           >
             {iniciais}
           </span>
         )}
       </div>
       <span
-        className={`truncate font-semibold text-white ${grande ? "text-lg" : "text-sm"}`}
+        className={`truncate font-semibold text-white ${grande ? "text-base lg:text-lg" : "text-sm"}`}
       >
         {estetica.nome}
       </span>
@@ -53,7 +53,9 @@ export function MarcaEstetica({
 // Painel de marca das telas de login e cadastro: o lado colorido do cartao,
 // na cor da estetica (RF13), com o mesmo degrade e os mesmos aneis do cartao
 // de faturamento do painel. A borda que encosta no formulario e uma curva
-// (.painel-auth, em globals.css). No celular vira a faixa do topo do cartao.
+// (.painel-auth, em globals.css). No celular vira a faixa do topo do cartao,
+// baixa o bastante para login e cadastro caberem na tela sem rolar: sem o
+// texto de apoio e, no cadastro de celular baixo, so com o logo e o nome.
 export function PainelMarca({
   modo,
   estetica,
@@ -66,7 +68,7 @@ export function PainelMarca({
   return (
     <aside className="relative lg:absolute lg:inset-y-0 lg:left-0 lg:w-[56%]">
       <div
-        className="painel-auth relative h-full overflow-hidden px-6 pt-7 pb-20 text-white lg:flex lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]"
+        className={`painel-auth relative h-full overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+1.25rem)] text-white ${eLogin ? "pb-12" : "pb-9 [@media(min-height:720px)]:pb-12"} lg:flex lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]`}
         style={{
           backgroundImage:
             "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
@@ -82,20 +84,22 @@ export function PainelMarca({
           <MarcaEstetica estetica={estetica} grande />
         </div>
 
-        <div className="relative mt-8 lg:mt-0">
+        <div
+          className={`relative mt-4 lg:mt-0 ${eLogin ? "" : "hidden lg:block [@media(min-height:720px)]:block"}`}
+        >
           {eLogin ? (
             <>
-              <h2 className="text-3xl leading-tight font-bold lg:text-4xl">
+              <h2 className="text-2xl leading-tight font-bold lg:text-4xl">
                 Bom ter você de volta.
               </h2>
-              <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/80">
+              <p className="mt-3 hidden max-w-xs text-sm leading-relaxed text-white/80 lg:block">
                 Entre para acompanhar seus agendamentos, veículos e histórico de
                 serviços.
               </p>
             </>
           ) : (
             <>
-              <h2 className="text-3xl leading-tight font-bold lg:text-4xl">
+              <h2 className="text-2xl leading-tight font-bold lg:text-4xl">
                 Agende sem ligar nem esperar.
               </h2>
               <ul className="mt-5 hidden space-y-3 lg:block">
