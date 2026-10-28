@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Trash2, Clock, X } from "lucide-react";
-import { BarraCliente } from "@/components/ui/bottom-nav";
+import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { FUSO, partesNoFuso } from "@/lib/fuso";
 
@@ -187,9 +187,6 @@ export function HistoricoLista({
             </h1>
           </div>
         </div>
-        <div className="mt-2">
-          <BarraCliente slug={slug} />
-        </div>
       </header>
 
       {/* Indicadores — so no desktop (tela 13). No celular a contagem cabe na
@@ -294,6 +291,7 @@ export function HistoricoLista({
         </div>
       </div>
 
+      <BottomNav slug={slug} />
 
       {/* Tela 14 — modal de cancelamento */}
       {alvo && (
