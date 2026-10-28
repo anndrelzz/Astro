@@ -7,7 +7,7 @@ import { FundoOndas } from "./admin/fundo-ondas";
 // Casca das telas do cliente logado (mockup de desktop): barra lateral fixa a
 // esquerda e area de conteudo a direita. Abaixo de lg ela desaparece por
 // completo e a tela volta a ser exatamente o que ja era no celular — a
-// navegacao volta a ser a pilula do rodape (BottomNav).
+// navegacao volta a ser a barra do rodape (BarraCliente, no layout).
 //
 // E um componente, e nao um layout.tsx, de proposito: /[slug]/login, /cadastro
 // e /confirmado sao telas cheias, sem menu nenhum, e um layout nesse nivel
