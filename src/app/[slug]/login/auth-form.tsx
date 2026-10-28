@@ -165,7 +165,10 @@ export function AuthForm({
       </AnimatePresence>
 
       <div className="relative w-full max-w-5xl">
-        <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:rounded-[2rem]">
+        {/* transform-gpu: no Safari (e no Chrome do iPhone, que usa o mesmo
+            motor) o overflow-hidden deixa de recortar os cantos arredondados
+            quando ha filho com mascara ou filtro, como a curva do painel. */}
+        <div className="relative transform-gpu overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:rounded-[2rem]">
           <PainelMarca modo={modo} estetica={estetica} />
           {/* Coluna 1 vazia no computador: o painel colorido fica por baixo, absoluto */}
           <div aria-hidden className="hidden lg:block" />
