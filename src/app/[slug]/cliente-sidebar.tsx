@@ -9,7 +9,7 @@ import { itemAtivo, itensCliente } from "@/components/ui/bottom-nav";
 import { iniciais } from "@/lib/iniciais";
 
 // Barra lateral do cliente no desktop (telas 04, 06, 08, 09, 10, 11 e 13 do
-// mockup). Espelha a BarraCliente do celular: mesma lista de itens, forma
+// mockup). Espelha a BottomNav do celular: mesma lista de itens, forma
 // diferente. Ela so existe a partir de lg — abaixo disso o menu continua
 // sendo a pilula flutuante do rodape.
 //
