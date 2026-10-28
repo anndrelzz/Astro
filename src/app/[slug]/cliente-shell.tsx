@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClienteSidebar } from "./cliente-sidebar";
+import { FundoOndas } from "./admin/fundo-ondas";
 
 // Casca das telas do cliente logado (mockup de desktop): barra lateral fixa a
 // esquerda e area de conteudo a direita. Abaixo de lg ela desaparece por
@@ -16,6 +17,7 @@ export async function ClienteShell({
   titulo,
   trilha,
   acoes,
+  escuro = false,
   children,
 }: {
   slug: string;
@@ -28,6 +30,10 @@ export async function ClienteShell({
   // por Telegram). Sobrou como encaixe para o que cada tela precisar — a home
   // usa para o atalho do painel do Admin.
   acoes?: React.ReactNode;
+  // Tema escuro do painel, com o fundo de pontos. As telas do cliente passam
+  // para ele uma a uma; enquanto isso, as que ainda nao foram redesenhadas
+  // continuam no fundo claro. No tema escuro o titulo abre direto, sem trilha.
+  escuro?: boolean;
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
@@ -49,7 +55,8 @@ export async function ClienteShell({
   }
 
   return (
-    <div className="flex min-h-dvh bg-[#f6f8fb]">
+    <div className={`flex min-h-dvh ${escuro ? "relative isolate bg-black" : "bg-[#f6f8fb]"}`}>
+      {escuro && <FundoOndas paradoNoCelular />}
       <ClienteSidebar
         slug={slug}
         usuarioNome={session.user.name ?? "Você"}
@@ -61,10 +68,18 @@ export async function ClienteShell({
         {titulo && (
           <header className="hidden shrink-0 items-start justify-between gap-4 px-8 pb-1 pt-7 lg:flex">
             <div>
-              {trilha && trilha.length > 0 && (
+              {!escuro && trilha && trilha.length > 0 && (
                 <p className="astro-label">{trilha.join(" / ")}</p>
               )}
-              <h1 className="mt-1 text-2xl font-bold text-zinc-900">{titulo}</h1>
+              <h1
+                className={
+                  escuro
+                    ? "text-3xl font-bold tracking-tight text-white lg:text-4xl"
+                    : "mt-1 text-2xl font-bold text-zinc-900"
+                }
+              >
+                {titulo}
+              </h1>
             </div>
             {acoes}
           </header>
