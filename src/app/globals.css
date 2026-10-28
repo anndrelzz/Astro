@@ -113,6 +113,11 @@ body {
   from { opacity: 0; transform: translateY(8px) scale(0.97); }
 }
 
+/* Barra do cliente (BarraCliente): o icone some enquanto a bolha passa e
+   volta ja no lugar novo. A versao curta e a do icone que sai da bolha. */
+@keyframes nav-pisca { 0%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
+@keyframes nav-pisca-curto { 0%, 100% { opacity: 1; } 15%, 75% { opacity: 0; } }
+
 @keyframes girar-borda {
   to { --angulo-borda: 360deg; }
 }
