@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, CalendarDays, Car, Clock, CreditCard, Trash2, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Car, Clock, CreditCard, Ban, Trash2, X } from "lucide-react";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { FUSO, partesNoFuso } from "@/lib/fuso";
 
@@ -421,7 +421,7 @@ function Linha({
             aria-label={`Cancelar ${item.servicoNome}`}
             className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-500 transition hover:bg-red-100"
           >
-            <Trash2 className="h-4 w-4" />
+            <Ban className="h-4 w-4" />
           </button>
         )}
       </td>
@@ -508,7 +508,7 @@ function Card({
           aria-label="Cancelar agendamento"
           className="flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-lg bg-red-50 text-red-500 transition hover:bg-red-100"
         >
-          <Trash2 className="h-4 w-4" />
+          <Ban className="h-4 w-4" />
         </button>
       )}
     </div>
