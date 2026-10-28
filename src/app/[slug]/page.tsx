@@ -182,7 +182,7 @@ export default async function TenantPage({
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {painel}
-            <Logo variant="preto" className="h-4" />
+            <Logo variant="preto" className="h-6" />
           </div>
         </header>
 
