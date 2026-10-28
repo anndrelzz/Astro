@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Trash2, Clock, X } from "lucide-react";
+import { BarraCliente } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { FUSO, partesNoFuso } from "@/lib/fuso";
 
@@ -91,9 +92,11 @@ function faixaHorario(iso: string, duracaoMin: number) {
 }
 
 export function HistoricoLista({
+  slug,
   itens,
   horasLimite,
 }: {
+  slug: string;
   itens: Item[];
   horasLimite: number;
 }) {
@@ -183,6 +186,9 @@ export function HistoricoLista({
               Meus agendamentos
             </h1>
           </div>
+        </div>
+        <div className="mt-2">
+          <BarraCliente slug={slug} />
         </div>
       </header>
 

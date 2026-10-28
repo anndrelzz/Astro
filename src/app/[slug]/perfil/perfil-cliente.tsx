@@ -18,6 +18,7 @@ import {
   Phone,
   X,
 } from "lucide-react";
+import { BarraCliente } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { iniciais } from "@/lib/iniciais";
 import { VincularTelegram } from "./vincular-telegram";
@@ -90,7 +91,11 @@ export function PerfilCliente({
         </div>
       </div>
 
-      <main className="mx-auto -mt-4 max-w-md space-y-5 px-5 lg:mx-0 lg:mt-0 lg:grid lg:max-w-none lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-8">
+      <div className="mx-auto mt-2 max-w-md px-5 lg:hidden">
+        <BarraCliente slug={slug} />
+      </div>
+
+      <main className="mx-auto mt-5 max-w-md space-y-5 px-5 lg:mx-0 lg:mt-0 lg:grid lg:max-w-none lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-8">
         {/* Cartao do cliente — so no desktop. Reune o que no celular esta
             espalhado entre o cabecalho escuro e as estatisticas. */}
         <aside className="astro-dark hidden rounded-2xl p-6 lg:block">
