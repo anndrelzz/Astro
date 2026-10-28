@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -20,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { ConfirmarSaida } from "../admin/confirmar-saida";
 import { iniciais } from "@/lib/iniciais";
 import { VincularTelegram } from "./vincular-telegram";
 import { LIMITES } from "@/lib/validations/limites";
@@ -62,6 +62,7 @@ export function PerfilCliente({
 }) {
   const [editando, setEditando] = useState(false);
   const [removendo, setRemovendo] = useState<Veiculo | null>(null);
+  const [saindo, setSaindo] = useState(false);
   const inicial = iniciais(nome);
 
   return (
@@ -304,11 +305,11 @@ export function PerfilCliente({
 
             <VincularTelegram jaVinculado={telegramVinculado} />
 
-            {/* signOut com callbackUrl para o login DESTA estetica: a raiz do
-                dominio nao pertence a nenhuma delas (RN09). */}
+            {/* Pede confirmacao com o mesmo aviso do painel, que leva ao
+                login DESTA estetica (RN09). */}
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: `/${slug}/login` })}
+              onClick={() => setSaindo(true)}
               className="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-red-50/50"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
@@ -333,6 +334,15 @@ export function PerfilCliente({
           onFechar={() => setEditando(false)}
         />
       )}
+
+      <ConfirmarSaida
+        aberto={saindo}
+        onFechar={() => setSaindo(false)}
+        slug={slug}
+        usuarioNome={nome}
+        titulo="Sair da conta?"
+        ficar="Continuar na conta"
+      />
 
       {/* RN15 — confirmacao de remocao do veiculo */}
       {removendo && (
