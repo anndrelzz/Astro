@@ -51,6 +51,7 @@ export default async function HistoricoPage({
     duracaoMin: a.servico.duracaoMin,
     servicoNome: a.servico.nome,
     veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+    placa: a.veiculo.placa,
     segmento: a.veiculo.segmento.nome,
     valor: Number(a.valor),
     acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),

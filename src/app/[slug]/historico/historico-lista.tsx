@@ -1,9 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, Clock, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Car, Clock, CreditCard, Trash2, X } from "lucide-react";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { FUSO, partesNoFuso } from "@/lib/fuso";
 
@@ -13,6 +14,7 @@ type Item = {
   duracaoMin: number;
   servicoNome: string;
   veiculoMarcaModelo: string;
+  placa: string;
   segmento: string;
   valor: number;
   // Acrescimo cobrado na avaliacao presencial. O cliente aceitou a
@@ -82,6 +84,16 @@ const BADGE = {
   cancelado: { txt: "Cancelado", cls: "text-red-500" },
 } as const;
 
+// Como o cliente le cada status no resumo (os mesmos textos do cartao de
+// proximo horario da home).
+const SITUACAO: Record<string, string> = {
+  CONFIRMADO: "Confirmado",
+  PIX_PENDENTE: "PIX aguardando confirmação",
+  PENDENTE_PAGAMENTO: "Pagamento no local",
+  CANCELADO: "Cancelado",
+  CONCLUIDO: "Concluído",
+};
+
 // Formata "10:00 – 11:00" a partir do inicio + duracao.
 function faixaHorario(iso: string, duracaoMin: number) {
   const inicio = new Date(iso);
@@ -102,6 +114,7 @@ export function HistoricoLista({
   const [filtro, setFiltro] = useState<Categoria>("proximo");
   const [ordem, setOrdem] = useState<"recentes" | "antigos">("recentes");
   const [alvo, setAlvo] = useState<Item | null>(null); // agendamento no modal de cancelar
+  const [aberto, setAberto] = useState<ItemComEstado | null>(null); // agendamento no resumo
   const [cancelando, setCancelando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -244,7 +257,12 @@ export function HistoricoLista({
       {/* Lista em cartoes — celular */}
       <main className="mx-auto mt-4 max-w-md space-y-3 px-4 lg:hidden">
         {visiveis.map((item) => (
-          <Card key={item.id} item={item} onCancelar={() => setAlvo(item)} />
+          <Card
+            key={item.id}
+            item={item}
+            onAbrir={() => setAberto(item)}
+            onCancelar={() => setAlvo(item)}
+          />
         ))}
         {visiveis.length === 0 && (
           <p className="rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-10 text-center text-sm text-zinc-400">
@@ -275,6 +293,7 @@ export function HistoricoLista({
                 <Linha
                   key={item.id}
                   item={item}
+                  onAbrir={() => setAberto(item)}
                   onCancelar={() => setAlvo(item)}
                 />
               ))}
@@ -289,6 +308,19 @@ export function HistoricoLista({
         </div>
       </div>
 
+
+      {/* Resumo do agendamento tocado. O "Cancelar" dele passa a vez para o
+          modal de cancelamento, um aviso de cada vez. */}
+      {aberto && (
+        <ModalResumo
+          item={aberto}
+          onFechar={() => setAberto(null)}
+          onCancelar={() => {
+            setAlvo(aberto);
+            setAberto(null);
+          }}
+        />
+      )}
 
       {/* Tela 14 — modal de cancelamento */}
       {alvo && (
@@ -309,7 +341,15 @@ export function HistoricoLista({
 }
 
 // Linha da tabela do desktop. Mesmos dados do Card, dispostos em colunas.
-function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => void }) {
+function Linha({
+  item,
+  onAbrir,
+  onCancelar,
+}: {
+  item: ItemComEstado;
+  onAbrir: () => void;
+  onCancelar: () => void;
+}) {
   const data = new Date(item.dataHoraISO);
   const mes = data
     .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
@@ -320,7 +360,10 @@ function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => vo
   const proximo = cat === "proximo";
 
   return (
-    <tr className="align-middle transition hover:bg-zinc-50/60">
+    <tr
+      {...abreAoTocar(onAbrir, `Ver resumo de ${item.servicoNome}`)}
+      className="cursor-pointer align-middle transition hover:bg-zinc-50/60 focus-visible:bg-zinc-50 focus-visible:outline-none"
+    >
       <td className="px-4 py-3">
         <div
           className={
@@ -370,7 +413,11 @@ function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => vo
             a celula fica vazia: um botao desabilitado convidaria ao clique. */}
         {item.cancelavel && (
           <button
-            onClick={onCancelar}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancelar();
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
             aria-label={`Cancelar ${item.servicoNome}`}
             className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-500 transition hover:bg-red-100"
           >
@@ -383,7 +430,16 @@ function Linha({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => vo
 }
 
 // Card de agendamento (data + status + servico + preco).
-function Card({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => void }) {
+// O cartao inteiro abre o resumo; a lixeira dentro dele so cancela.
+function Card({
+  item,
+  onAbrir,
+  onCancelar,
+}: {
+  item: ItemComEstado;
+  onAbrir: () => void;
+  onCancelar: () => void;
+}) {
   const data = new Date(item.dataHoraISO);
   const mes = data
     .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
@@ -396,11 +452,12 @@ function Card({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => voi
 
   return (
     <div
-      className={
+      {...abreAoTocar(onAbrir, `Ver resumo de ${item.servicoNome}`)}
+      className={`flex cursor-pointer items-stretch gap-3 rounded-2xl bg-white p-3 transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-astro-blue ${
         proximo
-          ? "flex items-stretch gap-3 rounded-2xl border border-astro-blue/30 bg-white p-3 shadow-lg shadow-astro-blue/10 ring-1 ring-astro-blue/20"
-          : "flex items-stretch gap-3 rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]"
-      }
+          ? "border border-astro-blue/30 shadow-lg shadow-astro-blue/10 ring-1 ring-astro-blue/20"
+          : "border border-zinc-200/80 shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]"
+      }`}
     >
       {/* Bloco de data */}
       <div
@@ -443,7 +500,11 @@ function Card({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => voi
       {/* Acao cancelar (so em proximos dentro do prazo) */}
       {item.cancelavel && (
         <button
-          onClick={onCancelar}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCancelar();
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
           aria-label="Cancelar agendamento"
           className="flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-lg bg-red-50 text-red-500 transition hover:bg-red-100"
         >
@@ -451,6 +512,159 @@ function Card({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => voi
         </button>
       )}
     </div>
+  );
+}
+
+// Cartao e linha abrem o resumo ao toque. Nao sao <button> porque ja tem a
+// lixeira dentro (botao dentro de botao nao vale); entao recebem papel de
+// botao, foco pelo Tab e Enter/Espaco, como um botao de verdade.
+function abreAoTocar(onAbrir: () => void, rotulo: string) {
+  return {
+    role: "button",
+    tabIndex: 0,
+    "aria-label": rotulo,
+    onClick: onAbrir,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onAbrir();
+      }
+    },
+  };
+}
+
+// Resumo de um agendamento: tudo o que o cartao mostra apertado, por extenso,
+// e os atalhos que fazem sentido para ele (pagar o PIX, cancelar).
+function ModalResumo({
+  item,
+  onFechar,
+  onCancelar,
+}: {
+  item: ItemComEstado;
+  onFechar: () => void;
+  onCancelar: () => void;
+}) {
+  const { slug } = useParams<{ slug: string }>();
+  const data = new Date(item.dataHoraISO);
+  const diaExtenso = data.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: FUSO,
+  });
+  const mes = data
+    .toLocaleDateString("pt-BR", { month: "short", timeZone: FUSO })
+    .replace(".", "")
+    .toUpperCase();
+  const badge = BADGE[item.cat];
+  const proximo = item.cat === "proximo";
+  const pixAberto = proximo && item.status === "PIX_PENDENTE";
+  // Horario que ja passou sem ser cancelado conta como feito, como no filtro.
+  const situacao = item.cat === "concluido" ? "Concluído" : (SITUACAO[item.status] ?? item.status);
+
+  const linhas = [
+    { icone: CalendarDays, rotulo: "Data", valor: diaExtenso },
+    { icone: Clock, rotulo: "Horário", valor: faixaHorario(item.dataHoraISO, item.duracaoMin) },
+    {
+      icone: Car,
+      rotulo: "Veículo",
+      valor: `${item.veiculoMarcaModelo} · ${item.segmento}`,
+      extra: item.placa,
+    },
+    {
+      icone: CreditCard,
+      rotulo: "Pagamento",
+      valor: FORMA_ROTULO[item.formaPagamento] ?? item.formaPagamento,
+      extra: situacao,
+    },
+  ];
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <button
+        aria-label="Fechar"
+        onClick={onFechar}
+        className="absolute inset-0 animate-[escurecer_250ms_ease-out] bg-black/40 backdrop-blur-sm motion-reduce:animate-none"
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-resumo"
+        className="relative w-full max-w-sm animate-[subir_400ms_cubic-bezier(0.22,1,0.36,1)] rounded-3xl bg-white p-6 shadow-2xl motion-reduce:animate-none"
+      >
+        <button
+          onClick={onFechar}
+          aria-label="Fechar"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 hover:bg-zinc-200"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="flex items-center gap-3 pr-10">
+          <div
+            className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 text-white ${
+              proximo ? "bg-astro-blue" : "bg-astro-bg"
+            }`}
+          >
+            <span className="text-[0.6rem] font-medium opacity-70">{mes}</span>
+            <span className="text-xl font-bold leading-none">{partesNoFuso(data).dia}</span>
+            <span className="text-[0.6rem] opacity-50">{partesNoFuso(data).ano}</span>
+          </div>
+          <div className="min-w-0">
+            <p className={`astro-label !text-[0.62rem] ${badge.cls}`}>• {badge.txt}</p>
+            <h2 id="titulo-resumo" className="mt-0.5 font-bold leading-snug text-zinc-900">
+              {item.servicoNome}
+            </h2>
+          </div>
+        </div>
+
+        <dl className="mt-5 divide-y divide-zinc-100 rounded-2xl bg-zinc-50 px-4">
+          {linhas.map(({ icone: Icone, rotulo, valor, extra }) => (
+            <div key={rotulo} className="flex items-start gap-3 py-3">
+              <Icone className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+              <dt className="w-20 shrink-0 text-sm text-zinc-500">{rotulo}</dt>
+              <dd className="min-w-0 flex-1 text-right text-sm font-medium text-zinc-900">
+                <span className="block first-letter:uppercase">{valor}</span>
+                {extra && <span className="block text-xs font-normal text-zinc-500">{extra}</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-4 flex items-end justify-between px-1">
+          <span className="text-sm text-zinc-500">Valor</span>
+          <span className="text-right">
+            <span className="text-xl font-bold text-zinc-900">{BRL(item.valor)}</span>
+            {item.acrescimoAplicado !== null && (
+              <span className="block text-xs text-amber-600">
+                + {BRL(item.acrescimoAplicado)} de acréscimo, pago no local
+              </span>
+            )}
+          </span>
+        </div>
+
+        {pixAberto && (
+          <Link
+            href={`/${slug}/pagamento/${item.id}`}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-[0_12px_28px_-12px_var(--color-astro-blue)] transition hover:brightness-110"
+          >
+            Ver código PIX
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
+        {item.cancelavel && (
+          <button
+            onClick={onCancelar}
+            className={`${pixAberto ? "mt-2" : "mt-5"} w-full rounded-full py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50`}
+          >
+            Cancelar agendamento
+          </button>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }
 
