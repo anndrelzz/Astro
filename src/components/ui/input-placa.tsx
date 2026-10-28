@@ -17,13 +17,13 @@ export function InputPlaca({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border-[5px] border-zinc-900 bg-white shadow-sm transition focus-within:ring-4 focus-within:ring-astro-blue/30">
-      <div className="relative flex h-8 items-center justify-center bg-[#1C3FAA]">
+      <div className="relative flex h-7 items-center justify-center bg-[#1C3FAA]">
         <span
-          className={`${letraPlaca.className} text-xl leading-none tracking-[0.12em] text-white`}
+          className={`${letraPlaca.className} text-lg leading-none tracking-[0.12em] text-white`}
         >
           BRASIL
         </span>
-        <BandeiraBrasil className="absolute right-2 h-5 w-7 ring-1 ring-white" />
+        <BandeiraBrasil className="absolute right-2 h-4 w-6 ring-1 ring-white" />
       </div>
 
       <input
@@ -36,7 +36,7 @@ export function InputPlaca({
         required
         aria-label="Placa do veículo"
         data-placa
-        className={`${letraPlaca.className} block h-[4.5rem] w-full bg-transparent px-4 text-center text-[3.4rem] uppercase leading-none tracking-[0.06em] text-zinc-900 placeholder:text-zinc-900/20 focus:outline-none`}
+        className={`${letraPlaca.className} block h-14 w-full bg-transparent px-4 text-center text-[2.6rem] uppercase leading-none tracking-[0.06em] text-zinc-900 placeholder:text-zinc-900/20 focus:outline-none`}
       />
     </div>
   );
