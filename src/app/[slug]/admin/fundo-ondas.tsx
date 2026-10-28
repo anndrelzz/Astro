@@ -12,7 +12,10 @@
 // Com `claro`, a mesma grade fica sobre o fundo claro do cliente: pontos
 // escuros apagados e luz na cor pura da estetica, sem clarear para o branco.
 //
-// Fica fixo na tela e atras de tudo: -z-10 dentro do layout do Admin, que tem
+// Com `contido`, fica preso ao bloco em que esta (que precisa ser `relative`
+// e `overflow-hidden`), em vez de cobrir a tela: e o topo escuro do perfil.
+//
+// Sem ele, fica fixo na tela e atras de tudo: -z-10 dentro do layout do Admin, que tem
 // `isolate` para que a camada negativa fique acima do fundo preto dele e
 // abaixo da sidebar e do conteudo.
 
@@ -75,12 +78,17 @@ function Ondas({
 export function FundoOndas({
   paradoNoCelular = false,
   claro = false,
+  contido = false,
 }: {
   paradoNoCelular?: boolean;
   claro?: boolean;
+  contido?: boolean;
 }) {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div
+      aria-hidden
+      className={`pointer-events-none inset-0 overflow-hidden ${contido ? "absolute" : "fixed -z-10"}`}
+    >
       {/* Grade apagada: os pontos que a luz nao alcanca */}
       <div className={`${claro ? "pontos-base-claro" : "pontos-base"} absolute inset-0`} />
 
