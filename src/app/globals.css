@@ -113,6 +113,13 @@ body {
   from { opacity: 0; transform: translateY(8px) scale(0.97); }
 }
 
+/* Aviso "sem veiculo" do cliente (HomeServicos): sobe ate o centro da tela
+   enquanto o fundo escurece. */
+@keyframes subir {
+  from { opacity: 0; transform: translateY(48px) scale(0.96); }
+}
+@keyframes escurecer { from { opacity: 0; } }
+
 /* Barra do cliente (BarraCliente): o icone some enquanto a bolha passa e
    volta ja no lugar novo. A versao curta e a do icone que sai da bolha. */
 @keyframes nav-pisca { 0%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }

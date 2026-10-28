@@ -190,24 +190,24 @@ export function HomeServicos({
         </p>
       )}
 
-      {/* Tela 07 — aviso "sem veiculo" (RN04). No celular sobe de baixo, perto
-          do polegar; no computador fica no centro. Vai direto para o <body>:
+      {/* Tela 07 — aviso "sem veiculo" (RN04). Fica no centro da tela e entra
+          subindo. Vai direto para o <body>:
           aqui dentro ele ficaria preso na camada da pagina (o `isolate` da
           ClienteShell) e a barra do cliente, que vem do layout, passaria por
           cima dele. */}
       {semVeiculo &&
         createPortal(
-          <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
             <button
               aria-label="Fechar"
               onClick={() => setSemVeiculo(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 animate-[escurecer_250ms_ease-out] bg-black/40 backdrop-blur-sm motion-reduce:animate-none"
             />
             <div
               role="dialog"
               aria-modal="true"
               aria-labelledby="titulo-sem-veiculo"
-              className="relative w-full max-w-sm rounded-t-3xl bg-white p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] text-center shadow-2xl sm:rounded-3xl sm:pb-6"
+              className="relative w-full max-w-sm animate-[subir_400ms_cubic-bezier(0.22,1,0.36,1)] rounded-3xl bg-white p-6 text-center shadow-2xl motion-reduce:animate-none"
             >
               <span
                 className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-white"
