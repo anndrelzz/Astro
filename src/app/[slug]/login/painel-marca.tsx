@@ -68,7 +68,7 @@ export function PainelMarca({
   return (
     <aside className="relative lg:absolute lg:inset-y-0 lg:left-0 lg:w-[56%]">
       <div
-        className={`painel-auth relative h-full overflow-hidden px-5 text-white ${eLogin ? "pt-5 pb-12" : "pt-4 pb-8 [@media(min-height:720px)]:pt-5 [@media(min-height:720px)]:pb-12"} lg:flex lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]`}
+        className={`painel-auth relative h-full overflow-hidden rounded-t-[1.75rem] px-5 lg:rounded-none lg:rounded-l-[2rem] text-white ${eLogin ? "pt-5 pb-12" : "pt-4 pb-8 [@media(min-height:720px)]:pt-5 [@media(min-height:720px)]:pb-12"} lg:flex lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]`}
         style={{
           backgroundImage:
             "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
@@ -121,12 +121,14 @@ export function PainelMarca({
         </div>
       </div>
 
+      {/* Os cantos arredondados se repetem nas camadas de dentro porque o
+          Safari nao recorta filho com mascara pelo arredondado do cartao. */}
       {/* Sombra preta sobre o azul, ao longo da curva: o lado escuro do
           formulario parece uma folha por cima do azul. E o recorte inverso
           da curva, na cor do cartao, com a sombra projetada para o lado do
           azul (o filtro fica no elemento de fora, a mascara no de dentro). */}
       <div aria-hidden className="painel-auth-sombra pointer-events-none absolute inset-0">
-        <div className="painel-auth-inverso h-full w-full bg-[#0b0b0f]" />
+        <div className="painel-auth-inverso h-full w-full rounded-t-[1.75rem] bg-[#0b0b0f] lg:rounded-none lg:rounded-l-[2rem]" />
       </div>
     </aside>
   );
