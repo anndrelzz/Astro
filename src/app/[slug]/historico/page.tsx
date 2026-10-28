@@ -65,7 +65,6 @@ export default async function HistoricoPage({
       titulo="Meus agendamentos"
     >
       <HistoricoLista
-        slug={slug}
         itens={itens}
         horasLimite={tenant.cancelamentoHorasLimite}
       />

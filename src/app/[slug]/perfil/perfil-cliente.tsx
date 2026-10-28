@@ -18,7 +18,6 @@ import {
   Phone,
   X,
 } from "lucide-react";
-import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { iniciais } from "@/lib/iniciais";
 import { VincularTelegram } from "./vincular-telegram";
@@ -314,7 +313,6 @@ export function PerfilCliente({
         </div>
       </main>
 
-      <BottomNav slug={slug} />
 
       {/* Tela 05 — modal Editar perfil */}
       {editando && (
