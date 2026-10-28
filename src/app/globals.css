@@ -121,6 +121,11 @@ body {
 }
 @keyframes escurecer { from { opacity: 0; } }
 
+/* Botao "Copiar" do PIX (CopiarPix): o botao da um pulo e o check entra
+   girando de leve. */
+@keyframes copiado-pulo { 40% { transform: scale(1.12); } }
+@keyframes copiado-check { from { opacity: 0; transform: scale(0.4) rotate(-30deg); } }
+
 /* Barra do cliente (BarraCliente): o icone some enquanto a bolha passa e
    volta ja no lugar novo. A versao curta e a do icone que sai da bolha. */
 @keyframes nav-pisca { 0%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
