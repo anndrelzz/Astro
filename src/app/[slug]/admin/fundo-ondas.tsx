@@ -7,6 +7,8 @@
 // Como funciona: a camada de luz tem uma mascara de pontos (.pontos-luz), e
 // so a luz se move (transform), que a placa de video resolve sem redesenhar a
 // grade. Com "reduzir movimento" ligado no sistema, as ondas ficam paradas.
+// As telas do cliente pedem `paradoNoCelular`: quem agenda pelo telefone nao
+// precisa de animacao continua gastando bateria atras da lista de servicos.
 //
 // Fica fixo na tela e atras de tudo: -z-10 dentro do layout do Admin, que tem
 // `isolate` para que a camada negativa fique acima do fundo preto dele e
@@ -35,12 +37,20 @@ function faixa(centro: number, amplitude: number, espessura: number, periodo: nu
 const PARA_ESQUERDA = [faixa(260, 80, 55, 1440, 0), faixa(690, 60, 45, 720, 2.1)];
 const PARA_DIREITA = [faixa(480, 100, 40, 1440, 1.4)];
 
-function Ondas({ caminhos, sentido }: { caminhos: string[]; sentido: "esquerda" | "direita" }) {
+function Ondas({
+  caminhos,
+  sentido,
+  paradoNoCelular,
+}: {
+  caminhos: string[];
+  sentido: "esquerda" | "direita";
+  paradoNoCelular: boolean;
+}) {
   return (
     <svg
       className={`absolute inset-y-0 left-0 h-full w-[200%] will-change-transform ${
         sentido === "esquerda" ? "animate-[ondas-esquerda_16s_linear_infinite]" : "animate-[ondas-direita_24s_linear_infinite]"
-      } motion-reduce:animate-none`}
+      } motion-reduce:animate-none ${paradoNoCelular ? "max-lg:animate-none" : ""}`}
       viewBox={`0 0 ${2 * LARGURA} ${ALTURA}`}
       preserveAspectRatio="none"
     >
@@ -58,7 +68,7 @@ function Ondas({ caminhos, sentido }: { caminhos: string[]; sentido: "esquerda" 
   );
 }
 
-export function FundoOndas() {
+export function FundoOndas({ paradoNoCelular = false }: { paradoNoCelular?: boolean }) {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       {/* Grade apagada: os pontos que a luz nao alcanca */}
@@ -66,8 +76,8 @@ export function FundoOndas() {
 
       {/* Luz em ondas, vista so atraves dos pontos */}
       <div className="pontos-luz absolute inset-0 opacity-75">
-        <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" />
-        <Ondas caminhos={PARA_DIREITA} sentido="direita" />
+        <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" paradoNoCelular={paradoNoCelular} />
+        <Ondas caminhos={PARA_DIREITA} sentido="direita" paradoNoCelular={paradoNoCelular} />
       </div>
     </div>
   );

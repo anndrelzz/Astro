@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Plus, Clock, Car, ArrowRight } from "lucide-react";
+import { ArrowRight, Car, ChevronRight, Clock, Sparkles } from "lucide-react";
+
 type Servico = {
   id: string;
   nome: string;
@@ -17,7 +17,7 @@ type Servico = {
 export type SegmentoView = { id: string; nome: string };
 
 function formatarPreco(valor: number) {
-  return `R$ ${valor.toFixed(2).replace(".", ",")}`;
+  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function formatarDuracao(min: number) {
@@ -27,7 +27,11 @@ function formatarDuracao(min: number) {
   return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
-// Tela 06 — seletor de segmento (preview de precos, RF04) + cards de servico.
+// Tela 06 — seletor de segmento (preview de precos, RF04) + lista de servicos.
+//
+// No celular e uma lista vertical, e nao um carrossel: no carrossel o cliente
+// via um servico e meio e nao sabia que havia outros. O card inteiro e o
+// botao de agendar, com o preco do tipo escolhido sempre a vista.
 export function HomeServicos({
   slug,
   servicos,
@@ -44,10 +48,8 @@ export function HomeServicos({
   temVeiculo: boolean;
 }) {
   const [segmento, setSegmento] = useState(segmentoInicial);
-  // RN04 — logado sem veiculo cai no modal "sem veiculo" (tela 07) ao agendar.
+  // RN04 — logado sem veiculo cai no aviso "sem veiculo" (tela 07) ao agendar.
   const [semVeiculo, setSemVeiculo] = useState(false);
-
-  const nomeSegmento = segmentos.find((s) => s.id === segmento)?.nome ?? "";
 
   // Destino do agendamento conforme estado do usuario.
   function hrefAgendar(servicoId: string) {
@@ -57,162 +59,166 @@ export function HomeServicos({
   }
 
   return (
-    <div className="mt-6">
-      <p className="text-sm text-zinc-500">
-        Selecione o segmento do seu veículo para ver os preços.
-      </p>
+    <section aria-labelledby="titulo-servicos" className="mt-2 lg:mt-3">
+      <h2 id="titulo-servicos" className="text-xl font-bold text-white lg:text-2xl">
+        Serviços
+      </h2>
 
       {/* Seletor de segmento. Os tipos vem da estetica (RN01 revisada), entao a
           quantidade varia: uma pode ter tres, outra sete. No celular rola na
-          horizontal; no desktop os chips quebram em linhas. */}
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible">
+          horizontal; no desktop os chips quebram em linhas. Ja abre no tipo do
+          carro do cliente. */}
+      <p id="rotulo-segmento" className="mt-1 text-sm text-astro-muted">
+        Preços para o tipo do seu carro
+      </p>
+      <div
+        role="radiogroup"
+        aria-labelledby="rotulo-segmento"
+        className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
+      >
         {segmentos.map((s) => {
           const ativo = s.id === segmento;
           return (
             <button
               key={s.id}
+              type="button"
+              role="radio"
+              aria-checked={ativo}
               onClick={() => setSegmento(s.id)}
-              className={
+              className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
                 ativo
-                  ? "flex shrink-0 items-center gap-2 rounded-full bg-astro-bg px-5 py-2.5 text-sm font-semibold text-white"
-                  : "flex shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-sm text-zinc-600"
-              }
+                  ? "bg-white text-black"
+                  : "border border-white/15 text-slate-300 hover:border-white/30 hover:text-white"
+              }`}
             >
-              {ativo && <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />}
               {s.nome}
             </button>
           );
         })}
       </div>
 
-      {/* Cabecalho da secao */}
-      <div className="mt-6 flex items-end justify-between">
-        <h2 className="text-xl font-bold text-zinc-900">Nossos Serviços</h2>
-      </div>
-
-      {/* Cards de servico. No celular e um carrossel horizontal de cards de
-          224px; no desktop vira grade (tela 06 do mockup), que mostra o
-          catalogo inteiro sem rolar. As colunas acompanham a largura da tela
-          para nao esticar o card quando a estetica tem poucos servicos. */}
-      <div className="mt-4 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] lg:gap-5 lg:overflow-visible">
-        {servicos.map((servico) => (
-          <div
-            key={servico.id}
-            className="flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition lg:w-auto lg:shrink lg:hover:-translate-y-0.5 lg:hover:shadow-md"
-          >
-            {/* Imagem placeholder com badge de duracao. Enquanto nao ha foto
-                real do servico, a logo do Astro entra como marca d'agua. */}
-            <div className="relative flex h-36 items-end justify-center bg-gradient-to-br from-astro-surface-2 to-astro-bg p-3 lg:h-44">
-              <Image
-                src="/logo-astro-branco.png"
-                alt=""
-                width={96}
-                height={96}
-                className="pointer-events-none absolute inset-0 m-auto h-20 w-20 object-contain opacity-20 lg:h-24 lg:w-24"
-              />
-              <span className="relative flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
-                <Clock className="h-3 w-3" />
-                {formatarDuracao(servico.duracaoMin)}
+      <ul className="mt-4 grid gap-3 lg:grid-cols-[repeat(auto-fill,minmax(22rem,1fr))] lg:gap-4">
+        {servicos.map((servico) => {
+          const preco = servico.precos[segmento];
+          const conteudo = (
+            <>
+              <span
+                aria-hidden
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--color-astro-blue-bright), color-mix(in srgb, var(--color-astro-blue) 60%, black))",
+                }}
+              >
+                <Sparkles className="h-5 w-5" />
               </span>
-            </div>
 
-            <div className="flex flex-1 flex-col p-4">
-              <h3 className="font-semibold text-zinc-900">{servico.nome}</h3>
-              {servico.descricao && (
-                <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500">
-                  {servico.descricao}
-                </p>
-              )}
-              <div className="mt-3 flex items-end justify-between">
-                <div>
-                  <p className="text-[0.65rem] uppercase tracking-wide text-zinc-400">
-                    {nomeSegmento}
-                  </p>
-                  {/* Preco ausente so acontece na janela entre o Admin criar um
-                      tipo novo e precificar os servicos. Melhor dizer que falta
-                      combinar do que exibir R$ 0,00 como se fosse de graca. */}
-                  <p className="text-lg font-bold text-zinc-900">
-                    {servico.precos[segmento] === undefined ? (
-                      <span className="text-sm font-medium text-zinc-400">
-                        Sob consulta
-                      </span>
-                    ) : (
-                      formatarPreco(servico.precos[segmento])
-                    )}
-                  </p>
-                </div>
-                {logado && !temVeiculo ? (
-                  <button
-                    onClick={() => setSemVeiculo(true)}
-                    aria-label={`Agendar ${servico.nome}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-astro-blue text-white shadow-lg shadow-astro-blue/30"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
-                ) : (
-                  <Link
-                    href={hrefAgendar(servico.id)}
-                    aria-label={`Agendar ${servico.nome}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-astro-blue text-white shadow-lg shadow-astro-blue/30"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Link>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold leading-snug text-white">{servico.nome}</span>
+                {servico.descricao && (
+                  <span className="mt-0.5 line-clamp-1 text-sm text-astro-muted">
+                    {servico.descricao}
+                  </span>
                 )}
-              </div>
-            </div>
-          </div>
-        ))}
+                <span className="mt-2 flex items-center gap-3 text-sm">
+                  {/* Preco ausente so acontece na janela entre o Admin criar
+                      um tipo novo e precificar os servicos. Melhor dizer que
+                      falta combinar do que exibir R$ 0,00 como se fosse gratis. */}
+                  {preco === undefined ? (
+                    <span className="text-astro-muted">Sob consulta</span>
+                  ) : (
+                    <span className="font-bold text-white tabular-nums">{formatarPreco(preco)}</span>
+                  )}
+                  <span className="flex items-center gap-1 text-astro-muted">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatarDuracao(servico.duracaoMin)}
+                  </span>
+                </span>
+              </span>
 
-        {servicos.length === 0 && (
-          <p className="text-sm text-zinc-500">Nenhum serviço cadastrado ainda.</p>
-        )}
-      </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white" />
+            </>
+          );
+          const classe =
+            "vidro group flex w-full items-center gap-3.5 rounded-2xl p-4 text-left transition hover:border-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-astro-blue-bright";
 
-      {/* Tela 07 — modal "sem veiculo" (RN04) */}
+          return (
+            <li key={servico.id}>
+              {logado && !temVeiculo ? (
+                <button
+                  type="button"
+                  onClick={() => setSemVeiculo(true)}
+                  aria-label={`Agendar ${servico.nome}`}
+                  className={classe}
+                >
+                  {conteudo}
+                </button>
+              ) : (
+                <Link href={hrefAgendar(servico.id)} aria-label={`Agendar ${servico.nome}`} className={classe}>
+                  {conteudo}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {servicos.length === 0 && (
+        <p className="mt-4 text-sm text-astro-muted">Nenhum serviço cadastrado ainda.</p>
+      )}
+
+      {/* Tela 07 — aviso "sem veiculo" (RN04). No celular sobe de baixo, perto
+          do polegar; no computador fica no centro. */}
       {semVeiculo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
           <button
             aria-label="Fechar"
             onClick={() => setSemVeiculo(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           />
-          <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
-            <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-astro-blue/10">
-              <Car className="h-6 w-6 text-astro-blue" />
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-astro-blue text-[0.7rem] font-bold text-white">
-                !
-              </span>
-            </div>
-            <h2 className="mt-4 text-lg font-bold text-zinc-900">
-              Veículo não cadastrado
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-sem-veiculo"
+            className="relative w-full max-w-sm rounded-t-3xl border border-white/10 bg-[#0d0d11] p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] text-center shadow-2xl sm:rounded-3xl sm:pb-6"
+          >
+            <span
+              className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-white"
+              style={{
+                background: "linear-gradient(135deg, var(--color-astro-blue), var(--color-astro-blue-bright))",
+                boxShadow: "0 0 0 8px color-mix(in srgb, var(--color-astro-blue) 18%, transparent)",
+              }}
+            >
+              <Car className="h-6 w-6" />
+            </span>
+            <h2 id="titulo-sem-veiculo" className="mt-5 text-lg font-bold text-white">
+              Cadastre seu veículo primeiro
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-              Você ainda não possui um veículo cadastrado. Só conseguirá
-              prosseguir para o agendamento se realizar o cadastro.
+            <p className="mt-2 text-sm leading-relaxed text-astro-muted">
+              O preço e o horário dependem do tipo do carro. Leva menos de um minuto.
             </p>
 
-            {/* Fecha este alerta ao entregar a vez para o cadastro. Como o
+            {/* Fecha este aviso ao entregar a vez para o cadastro. Como o
                 cadastro e rota interceptada, ele abre como pop-up SEM desmontar
-                esta pagina — e sem fechar aqui, os dois modais ficariam
-                empilhados, cada um com seu proprio fundo escurecido. Um modal
-                de cada vez. */}
+                esta pagina — e sem fechar aqui, os dois ficariam empilhados,
+                cada um com seu proprio fundo escurecido. Um de cada vez. */}
             <Link
               onClick={() => setSemVeiculo(false)}
               href={`/${slug}/veiculos/novo?callbackUrl=/${slug}`}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-astro-blue to-astro-blue-bright py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25"
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-[0_12px_28px_-12px_var(--color-astro-blue)] transition hover:brightness-110"
             >
               Cadastrar veículo
               <ArrowRight className="h-4 w-4" />
             </Link>
             <button
               onClick={() => setSemVeiculo(false)}
-              className="mt-2 w-full py-2 text-sm font-semibold text-astro-blue"
+              className="mt-2 w-full rounded-full py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/5 hover:text-white"
             >
               Agora não
             </button>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

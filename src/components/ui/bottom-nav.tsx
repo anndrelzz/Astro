@@ -35,13 +35,22 @@ export function itemAtivo(pathname: string, item: ItemCliente) {
 // lg:hidden — no desktop quem navega e a barra lateral (ClienteShell). Uma
 // pilula presa no rodape e convencao de polegar; com mouse ela fica orfa no
 // pe de um monitor largo.
-export function BottomNav({ slug }: { slug: string }) {
+//
+// `escuro` e para as telas do cliente que ja passaram para o tema escuro do
+// painel; as outras seguem com a pilula clara ate serem redesenhadas.
+export function BottomNav({ slug, escuro = false }: { slug: string; escuro?: boolean }) {
   const pathname = usePathname();
   const itens = itensCliente(slug);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:hidden">
-      <div className="flex items-center gap-1 rounded-full border border-black/5 bg-white/90 p-2 shadow-xl shadow-black/10 backdrop-blur">
+      <div
+        className={`flex items-center gap-1 rounded-full p-2 backdrop-blur ${
+          escuro
+            ? "border border-white/10 bg-[#111114]/90 shadow-xl shadow-black/60"
+            : "border border-black/5 bg-white/90 shadow-xl shadow-black/10"
+        }`}
+      >
         {itens.map((item) => {
           const ativo = itemAtivo(pathname, item);
           const Icone = item.icone;
@@ -53,7 +62,9 @@ export function BottomNav({ slug }: { slug: string }) {
               className={
                 ativo
                   ? "flex items-center gap-2 rounded-full bg-astro-blue px-5 py-2.5 text-sm font-semibold text-white"
-                  : "flex items-center rounded-full px-4 py-2.5 text-zinc-400 hover:text-zinc-600"
+                  : `flex items-center rounded-full px-4 py-2.5 ${
+                      escuro ? "text-white/50 hover:text-white" : "text-zinc-400 hover:text-zinc-600"
+                    }`
               }
             >
               <Icone className="h-5 w-5" />

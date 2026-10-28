@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { LayoutDashboard, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { LayoutDashboard, MapPin, MessageCircle } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
@@ -10,10 +10,13 @@ import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { ClienteShell } from "./cliente-shell";
 import { HomeServicos } from "./home-servicos";
+import { ProximoHorario, type Proximo } from "./proximo-horario";
 
 // RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
-// Home do cliente conforme mockup (tela 06): saudacao, card da estetica,
-// selecao de segmento e cards de servico com preco por segmento (RF01, RF04).
+// Home do cliente (tela 06): saudacao, cartao da estetica com o WhatsApp,
+// o proximo horario marcado (quando houver), selecao de segmento e a lista de
+// servicos com preco por segmento (RF01, RF04). Tema escuro do painel, pensada
+// primeiro para o celular.
 export default async function TenantPage({
   params,
 }: {
@@ -35,7 +38,9 @@ export default async function TenantPage({
     redirect(`/${slug}/login`);
   }
 
-  const { servicosTenant, veiculos, segmentos } = await withTenant(tenant.id, async (tx) => {
+  const agora = new Date();
+
+  const { servicosTenant, veiculos, segmentos, marcados } = await withTenant(tenant.id, async (tx) => {
     // RN14 — a vitrine mostra apenas servicos ativos. Pausado sai daqui, mas
     // continua existindo para os agendamentos que ja o referenciam.
     const servicosTenant = await tx.servico.findMany({
@@ -55,8 +60,37 @@ export default async function TenantPage({
       where: { tenantId: tenant.id, ativo: true },
       orderBy: { ordem: "asc" },
     });
-    return { servicosTenant, veiculos, segmentos };
+    // Candidatos a "proximo horario": os ativos a partir de ontem, para pegar
+    // tambem um servico de varias horas que comecou e ainda nao terminou.
+    // Quem decide se ja acabou e o fim (inicio + duracao), logo abaixo.
+    const marcados = await tx.agendamento.findMany({
+      where: {
+        tenantId: tenant.id,
+        usuarioId: session!.user.id,
+        status: { in: ["CONFIRMADO", "PIX_PENDENTE", "PENDENTE_PAGAMENTO"] },
+        dataHora: { gte: new Date(agora.getTime() - 24 * 60 * 60 * 1000) },
+      },
+      include: { servico: true, veiculo: true },
+      orderBy: { dataHora: "asc" },
+      take: 5,
+    });
+    return { servicosTenant, veiculos, segmentos, marcados };
   });
+
+  const marcado = marcados.find(
+    (a) => a.dataHora.getTime() + a.servico.duracaoMin * 60000 > agora.getTime()
+  );
+  const proximo: Proximo | null = marcado
+    ? {
+        id: marcado.id,
+        dataHora: marcado.dataHora,
+        duracaoMin: marcado.servico.duracaoMin,
+        servicoNome: marcado.servico.nome,
+        veiculo: `${marcado.veiculo.marca} ${marcado.veiculo.modelo}`,
+        placa: marcado.veiculo.placa,
+        status: marcado.status as Proximo["status"],
+      }
+    : null;
 
   const servicos = servicosTenant.map((s) => ({
     id: s.id,
@@ -93,70 +127,54 @@ export default async function TenantPage({
     .join("")
     .toUpperCase();
 
+  // Mensagem ja escrita no WhatsApp: quem chega por aqui geralmente nao
+  // conseguiu agendar pelo app e quer falar com a loja.
+  const linkWhatsapp = tenant.whatsapp
+    ? `https://wa.me/55${tenant.whatsapp}?text=${encodeURIComponent(
+        `Olá! Vim pelo app de agendamento da ${tenant.nome}.`
+      )}`
+    : null;
+
+  const painel =
+    session?.user.role === "ADMIN" ? (
+      <Link
+        href={`/${slug}/admin/agendamentos`}
+        className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+      >
+        <LayoutDashboard className="h-3.5 w-3.5" />
+        Painel
+      </Link>
+    ) : undefined;
+
   return (
-    <ClienteShell
-      slug={slug}
-      // Sem trilha aqui: esta e a raiz do app do cliente, entao "Inicio /
-      // Servicos" nao levaria a lugar nenhum acima. A saudacao ja diz onde ele
-      // esta, e a barra lateral marca o item ativo.
-      titulo={`Olá, ${primeiroNome}`}
-      acoes={
-        session?.user.role === "ADMIN" ? (
-          <Link
-            href={`/${slug}/admin/agendamentos`}
-            className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-2 text-xs font-medium text-zinc-600 transition hover:border-zinc-300"
-          >
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            Painel
-          </Link>
-        ) : undefined
-      }
-    >
-      <div className="min-h-dvh bg-[#f6f8fb] pb-28 lg:min-h-0 lg:pb-10">
-        <ThemeColor color="#f6f8fb" />
+    <ClienteShell slug={slug} escuro titulo={`Olá, ${primeiroNome}`} acoes={painel}>
+      <ThemeColor color="#000000" />
+      <div className="pb-[calc(env(safe-area-inset-bottom)+7rem)] lg:pb-10">
         {/* Cabecalho do celular. No desktop quem apresenta a saudacao e o
             atalho do painel e o cabecalho da casca. */}
-        <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-astro-bg text-sm font-semibold text-white">
+        <header className="mx-auto flex max-w-md items-center justify-between gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-black">
               {primeiroNome[0]?.toUpperCase() ?? "U"}
-            </div>
-            <div className="leading-tight">
-              <p className="text-xs text-zinc-400">Olá,</p>
-              <p className="font-semibold text-zinc-900">{primeiroNome}</p>
-            </div>
+            </span>
+            <p className="truncate text-xl font-bold text-white">Olá, {primeiroNome}</p>
           </div>
-
-          <div className="flex items-center gap-3">
-            {session?.user.role === "ADMIN" && (
-              <Link
-                href={`/${slug}/admin/agendamentos`}
-                className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600"
-              >
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                Painel
-              </Link>
-            )}
-            <Logo variant="preto" className="h-4" />
+          <div className="flex shrink-0 items-center gap-3">
+            {painel}
+            <Logo className="h-4" />
           </div>
         </header>
 
-        <main className="mx-auto max-w-md px-5 lg:max-w-none lg:px-8">
-          {/* Card da estetica — descricao, endereco e contatos vem das
-              Configuracoes do Admin (UC13) */}
-          <div className="astro-dark mt-5 rounded-2xl px-5 py-6 lg:mt-4 lg:px-7 lg:py-7">
-            <div className="flex items-start justify-between gap-4">
-              {/* Trava de largura no desktop: sem ela a descricao se estica
-                  por toda a tela e vira uma linha unica dificil de ler. */}
-              <div className="min-w-0 lg:max-w-2xl">
-                <h1 className="text-xl font-bold text-white lg:text-2xl">{tenant.nome}</h1>
-                {tenant.descricao && (
-                  <p className="mt-1.5 text-sm leading-relaxed text-astro-muted">
-                    {tenant.descricao}
-                  </p>
-                )}
-              </div>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
+        <main className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)] gap-4 px-4 pt-5 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-5 lg:px-8 lg:pt-5">
+          {/* Cartao da estetica — nome, logo, descricao e endereco vem das
+              Configuracoes do Admin (UC13). Um contato so, o WhatsApp: e por
+              onde o cliente fala com a loja quando nao consegue agendar. */}
+          <section
+            aria-label={tenant.nome}
+            className={`vidro flex flex-col rounded-3xl p-5 lg:p-6 ${proximo ? "" : "lg:col-span-2"}`}
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
                 {tenant.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -170,61 +188,47 @@ export default async function TenantPage({
                   </span>
                 )}
               </div>
+              <h2 className="min-w-0 text-lg font-bold leading-snug text-white">{tenant.nome}</h2>
             </div>
 
+            {tenant.descricao && (
+              <p className="mt-3 text-sm leading-relaxed text-astro-muted">{tenant.descricao}</p>
+            )}
             {endereco && (
-              <p className="mt-4 flex items-start gap-2 text-sm text-astro-muted">
-                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <p className="mt-3 flex items-start gap-2 text-sm text-slate-300">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-astro-muted" />
                 {endereco}
               </p>
             )}
 
-            {(tenant.whatsapp || tenant.telefone || tenant.emailContato) && (
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
-                {tenant.whatsapp && (
-                  <a
-                    href={`https://wa.me/55${tenant.whatsapp}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" />
-                    WhatsApp
-                  </a>
-                )}
-                {tenant.telefone && (
-                  <a
-                    href={`tel:+55${tenant.telefone}`}
-                    className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white"
-                  >
-                    <Phone className="h-3.5 w-3.5" />
-                    Ligar
-                  </a>
-                )}
-                {tenant.emailContato && (
-                  <a
-                    href={`mailto:${tenant.emailContato}`}
-                    className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white"
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    E-mail
-                  </a>
-                )}
-              </div>
+            {linkWhatsapp && (
+              <a
+                href={linkWhatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 lg:mt-auto lg:self-start lg:px-5"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Falar no WhatsApp
+              </a>
             )}
-          </div>
+          </section>
 
-          <HomeServicos
-            slug={slug}
-            servicos={servicos}
-            segmentos={segmentos.map((s) => ({ id: s.id, nome: s.nome }))}
-            segmentoInicial={segmentoInicial}
-            logado={logado}
-            temVeiculo={veiculos.length > 0}
-          />
+          {proximo && <ProximoHorario slug={slug} proximo={proximo} agora={agora} />}
+
+          <div className="lg:col-span-2">
+            <HomeServicos
+              slug={slug}
+              servicos={servicos}
+              segmentos={segmentos.map((s) => ({ id: s.id, nome: s.nome }))}
+              segmentoInicial={segmentoInicial}
+              logado={logado}
+              temVeiculo={veiculos.length > 0}
+            />
+          </div>
         </main>
 
-        <BottomNav slug={slug} />
+        <BottomNav slug={slug} escuro />
       </div>
     </ClienteShell>
   );
