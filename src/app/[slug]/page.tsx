@@ -7,13 +7,14 @@ import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { Logo } from "@/components/ui/astro";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { BarraCliente } from "@/components/ui/bottom-nav";
 import { ClienteShell } from "./cliente-shell";
 import { HomeServicos } from "./home-servicos";
 import { ProximoHorario, type Marcado } from "./proximo-horario";
 
 // RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
 // Home do cliente (tela 06): saudacao, cartao da estetica com o WhatsApp, o
-// proximo horario (ou o ultimo servico) e a lista de servicos
+// menu (celular), o proximo horario (ou o ultimo servico) e a lista de servicos
 // com o preco do carro do cliente (RF01, RF04). Fundo claro de pontos, pensada
 // primeiro para o celular.
 export default async function TenantPage({
@@ -170,7 +171,7 @@ export default async function TenantPage({
   return (
     <ClienteShell slug={slug} pontos titulo={`Olá, ${primeiroNome}`} acoes={painel}>
       <ThemeColor color="#f6f8fb" />
-      <div className="pb-[calc(env(safe-area-inset-bottom)+7.5rem)] lg:pb-10">
+      <div className="pb-[calc(env(safe-area-inset-bottom)+2rem)] lg:pb-10">
         {/* Cabecalho do celular. No desktop quem apresenta a saudacao e o
             atalho do painel e o cabecalho da casca. */}
         <header className="mx-auto flex max-w-md items-center justify-between gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden">
@@ -235,6 +236,9 @@ export default async function TenantPage({
           {destaque && (
             <ProximoHorario slug={slug} marcado={destaque.marcado} modo={destaque.modo} agora={agora} />
           )}
+
+          {/* Menu do celular, logo acima da lista de servicos */}
+          <BarraCliente slug={slug} />
 
           <div className="lg:col-span-2">
             <HomeServicos
