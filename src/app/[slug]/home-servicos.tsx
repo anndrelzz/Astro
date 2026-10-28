@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, Car, ChevronRight, Clock, Sparkles } from "lucide-react";
+import { ArrowRight, Car, ChevronRight, Clock, Info, Sparkles } from "lucide-react";
 
 type Servico = {
   id: string;
@@ -14,11 +14,16 @@ type Servico = {
   precos: Record<string, number>;
 };
 
-export type SegmentoView = { id: string; nome: string };
+// O carro que define o preco exibido: o principal da garagem do cliente.
+export type CarroPreco = { segmentoId: string; segmentoNome: string; nome: string };
 
-function formatarPreco(valor: number) {
-  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
+const reais = (valor: number, centavos = true) =>
+  valor.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: centavos ? 2 : 0,
+    maximumFractionDigits: centavos ? 2 : 0,
+  });
 
 function formatarDuracao(min: number) {
   if (min < 60) return `${min} min`;
@@ -27,27 +32,44 @@ function formatarDuracao(min: number) {
   return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
-// Tela 06 — seletor de segmento (preview de precos, RF04) + lista de servicos.
+// Preco do card. Com carro cadastrado, o valor exato do tipo dele (RF04); sem
+// carro, a faixa do mais barato ao mais caro entre os tipos da estetica.
+// Preco ausente so acontece na janela entre o Admin criar um tipo novo e
+// precificar os servicos — melhor dizer "sob consulta" que exibir R$ 0,00.
+function precoDoCard(servico: Servico, carro: CarroPreco | null) {
+  if (carro) {
+    const valor = servico.precos[carro.segmentoId];
+    return valor === undefined ? null : reais(valor);
+  }
+  const valores = Object.values(servico.precos);
+  if (valores.length === 0) return null;
+  const min = Math.min(...valores);
+  const max = Math.max(...valores);
+  return min === max ? reais(min) : `${reais(min, false)} – ${reais(max, false)}`;
+}
+
+// Tela 06 — lista de servicos (RF01, RF04).
+//
+// Sem o seletor de tipo de carro: ele confundia o cliente, que nao sabia em
+// qual tipo o carro dele se encaixava. O preco ja vem do carro cadastrado, e
+// o aviso embaixo do titulo explica que o valor depende do tipo.
 //
 // No celular e uma lista vertical, e nao um carrossel: no carrossel o cliente
 // via um servico e meio e nao sabia que havia outros. O card inteiro e o
-// botao de agendar, com o preco do tipo escolhido sempre a vista.
+// botao de agendar.
 export function HomeServicos({
   slug,
   servicos,
-  segmentos,
-  segmentoInicial,
+  carro,
   logado,
   temVeiculo,
 }: {
   slug: string;
   servicos: Servico[];
-  segmentos: SegmentoView[];
-  segmentoInicial: string;
+  carro: CarroPreco | null;
   logado: boolean;
   temVeiculo: boolean;
 }) {
-  const [segmento, setSegmento] = useState(segmentoInicial);
   // RN04 — logado sem veiculo cai no aviso "sem veiculo" (tela 07) ao agendar.
   const [semVeiculo, setSemVeiculo] = useState(false);
 
@@ -60,46 +82,24 @@ export function HomeServicos({
 
   return (
     <section aria-labelledby="titulo-servicos" className="mt-2 lg:mt-3">
-      <h2 id="titulo-servicos" className="text-xl font-bold text-white lg:text-2xl">
+      <h2 id="titulo-servicos" className="text-xl font-bold text-zinc-900 lg:text-2xl">
         Serviços
       </h2>
-
-      {/* Seletor de segmento. Os tipos vem da estetica (RN01 revisada), entao a
-          quantidade varia: uma pode ter tres, outra sete. No celular rola na
-          horizontal; no desktop os chips quebram em linhas. Ja abre no tipo do
-          carro do cliente. */}
-      <p id="rotulo-segmento" className="mt-1 text-sm text-astro-muted">
-        Preços para o tipo do seu carro
+      <p className="mt-2 flex items-start gap-2 rounded-2xl border border-zinc-200/80 bg-white/70 px-3.5 py-2.5 text-sm text-zinc-600 backdrop-blur">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-astro-blue" />
+        {carro ? (
+          <span>
+            Preços para o seu <strong className="font-semibold text-zinc-900">{carro.nome}</strong> ({carro.segmentoNome}).
+            O valor muda conforme o tipo do carro.
+          </span>
+        ) : (
+          <span>O preço varia conforme o tipo do carro. O valor exato aparece ao cadastrar o seu.</span>
+        )}
       </p>
-      <div
-        role="radiogroup"
-        aria-labelledby="rotulo-segmento"
-        className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
-      >
-        {segmentos.map((s) => {
-          const ativo = s.id === segmento;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="radio"
-              aria-checked={ativo}
-              onClick={() => setSegmento(s.id)}
-              className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-                ativo
-                  ? "bg-white text-black"
-                  : "border border-white/15 text-slate-300 hover:border-white/30 hover:text-white"
-              }`}
-            >
-              {s.nome}
-            </button>
-          );
-        })}
-      </div>
 
       <ul className="mt-4 grid gap-3 lg:grid-cols-[repeat(auto-fill,minmax(22rem,1fr))] lg:gap-4">
         {servicos.map((servico) => {
-          const preco = servico.precos[segmento];
+          const preco = precoDoCard(servico, carro);
           const conteudo = (
             <>
               <span
@@ -107,40 +107,35 @@ export function HomeServicos({
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white"
                 style={{
                   background:
-                    "linear-gradient(135deg, var(--color-astro-blue-bright), color-mix(in srgb, var(--color-astro-blue) 60%, black))",
+                    "linear-gradient(135deg, var(--color-astro-blue-bright), color-mix(in srgb, var(--color-astro-blue) 70%, black))",
                 }}
               >
                 <Sparkles className="h-5 w-5" />
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold leading-snug text-white">{servico.nome}</span>
+                <span className="block font-semibold leading-snug text-zinc-900">{servico.nome}</span>
                 {servico.descricao && (
-                  <span className="mt-0.5 line-clamp-1 text-sm text-astro-muted">
-                    {servico.descricao}
-                  </span>
+                  <span className="mt-0.5 line-clamp-1 text-sm text-zinc-500">{servico.descricao}</span>
                 )}
-                <span className="mt-2 flex items-center gap-3 text-sm">
-                  {/* Preco ausente so acontece na janela entre o Admin criar
-                      um tipo novo e precificar os servicos. Melhor dizer que
-                      falta combinar do que exibir R$ 0,00 como se fosse gratis. */}
-                  {preco === undefined ? (
-                    <span className="text-astro-muted">Sob consulta</span>
+                <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {preco === null ? (
+                    <span className="text-zinc-400">Sob consulta</span>
                   ) : (
-                    <span className="font-bold text-white tabular-nums">{formatarPreco(preco)}</span>
+                    <span className="font-bold text-zinc-900 tabular-nums">{preco}</span>
                   )}
-                  <span className="flex items-center gap-1 text-astro-muted">
+                  <span className="flex items-center gap-1 text-zinc-500">
                     <Clock className="h-3.5 w-3.5" />
                     {formatarDuracao(servico.duracaoMin)}
                   </span>
                 </span>
               </span>
 
-              <ChevronRight className="h-5 w-5 shrink-0 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white" />
+              <ChevronRight className="h-5 w-5 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-zinc-600" />
             </>
           );
           const classe =
-            "vidro group flex w-full items-center gap-3.5 rounded-2xl p-4 text-left transition hover:border-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-astro-blue-bright";
+            "group flex w-full items-center gap-3.5 rounded-2xl border border-zinc-200/80 bg-white/85 p-4 text-left shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)] backdrop-blur transition hover:border-zinc-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-astro-blue";
 
           return (
             <li key={servico.id}>
@@ -164,7 +159,7 @@ export function HomeServicos({
       </ul>
 
       {servicos.length === 0 && (
-        <p className="mt-4 text-sm text-astro-muted">Nenhum serviço cadastrado ainda.</p>
+        <p className="mt-4 text-sm text-zinc-500">Nenhum serviço cadastrado ainda.</p>
       )}
 
       {/* Tela 07 — aviso "sem veiculo" (RN04). No celular sobe de baixo, perto
@@ -174,27 +169,27 @@ export function HomeServicos({
           <button
             aria-label="Fechar"
             onClick={() => setSemVeiculo(false)}
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           />
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="titulo-sem-veiculo"
-            className="relative w-full max-w-sm rounded-t-3xl border border-white/10 bg-[#0d0d11] p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] text-center shadow-2xl sm:rounded-3xl sm:pb-6"
+            className="relative w-full max-w-sm rounded-t-3xl bg-white p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] text-center shadow-2xl sm:rounded-3xl sm:pb-6"
           >
             <span
               className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-white"
               style={{
                 background: "linear-gradient(135deg, var(--color-astro-blue), var(--color-astro-blue-bright))",
-                boxShadow: "0 0 0 8px color-mix(in srgb, var(--color-astro-blue) 18%, transparent)",
+                boxShadow: "0 0 0 8px color-mix(in srgb, var(--color-astro-blue) 15%, transparent)",
               }}
             >
               <Car className="h-6 w-6" />
             </span>
-            <h2 id="titulo-sem-veiculo" className="mt-5 text-lg font-bold text-white">
+            <h2 id="titulo-sem-veiculo" className="mt-5 text-lg font-bold text-zinc-900">
               Cadastre seu veículo primeiro
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-astro-muted">
+            <p className="mt-2 text-sm leading-relaxed text-zinc-500">
               O preço e o horário dependem do tipo do carro. Leva menos de um minuto.
             </p>
 
@@ -212,7 +207,7 @@ export function HomeServicos({
             </Link>
             <button
               onClick={() => setSemVeiculo(false)}
-              className="mt-2 w-full rounded-full py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/5 hover:text-white"
+              className="mt-2 w-full rounded-full py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900"
             >
               Agora não
             </button>

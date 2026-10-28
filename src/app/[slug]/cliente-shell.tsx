@@ -17,7 +17,7 @@ export async function ClienteShell({
   titulo,
   trilha,
   acoes,
-  escuro = false,
+  pontos = false,
   children,
 }: {
   slug: string;
@@ -30,10 +30,10 @@ export async function ClienteShell({
   // por Telegram). Sobrou como encaixe para o que cada tela precisar — a home
   // usa para o atalho do painel do Admin.
   acoes?: React.ReactNode;
-  // Tema escuro do painel, com o fundo de pontos. As telas do cliente passam
-  // para ele uma a uma; enquanto isso, as que ainda nao foram redesenhadas
-  // continuam no fundo claro. No tema escuro o titulo abre direto, sem trilha.
-  escuro?: boolean;
+  // Fundo de pontos do painel, na versao clara: pontos que acendem na cor da
+  // estetica. As telas do cliente passam para ele uma a uma; com ele, o
+  // titulo abre direto, sem a trilha em caixa alta.
+  pontos?: boolean;
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
@@ -55,8 +55,8 @@ export async function ClienteShell({
   }
 
   return (
-    <div className={`flex min-h-dvh ${escuro ? "relative isolate bg-black" : "bg-[#f6f8fb]"}`}>
-      {escuro && <FundoOndas paradoNoCelular />}
+    <div className={`flex min-h-dvh bg-[#f6f8fb] ${pontos ? "relative isolate" : ""}`}>
+      {pontos && <FundoOndas claro paradoNoCelular />}
       <ClienteSidebar
         slug={slug}
         usuarioNome={session.user.name ?? "Você"}
@@ -68,13 +68,13 @@ export async function ClienteShell({
         {titulo && (
           <header className="hidden shrink-0 items-start justify-between gap-4 px-8 pb-1 pt-7 lg:flex">
             <div>
-              {!escuro && trilha && trilha.length > 0 && (
+              {!pontos && trilha && trilha.length > 0 && (
                 <p className="astro-label">{trilha.join(" / ")}</p>
               )}
               <h1
                 className={
-                  escuro
-                    ? "text-3xl font-bold tracking-tight text-white lg:text-4xl"
+                  pontos
+                    ? "text-3xl font-bold tracking-tight text-zinc-900 lg:text-4xl"
                     : "mt-1 text-2xl font-bold text-zinc-900"
                 }
               >

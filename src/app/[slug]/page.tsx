@@ -6,16 +6,16 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { Logo } from "@/components/ui/astro";
-import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { ClienteShell } from "./cliente-shell";
 import { HomeServicos } from "./home-servicos";
-import { ProximoHorario, type Proximo } from "./proximo-horario";
+import { MenuCliente } from "./menu-cliente";
+import { ProximoHorario, type Marcado } from "./proximo-horario";
 
 // RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
-// Home do cliente (tela 06): saudacao, cartao da estetica com o WhatsApp,
-// o proximo horario marcado (quando houver), selecao de segmento e a lista de
-// servicos com preco por segmento (RF01, RF04). Tema escuro do painel, pensada
+// Home do cliente (tela 06): saudacao, cartao da estetica com o WhatsApp, o
+// menu em abas, o proximo horario (ou o ultimo servico) e a lista de servicos
+// com o preco do carro do cliente (RF01, RF04). Fundo claro de pontos, pensada
 // primeiro para o celular.
 export default async function TenantPage({
   params,
@@ -40,12 +40,14 @@ export default async function TenantPage({
 
   const agora = new Date();
 
-  const { servicosTenant, veiculos, segmentos, marcados } = await withTenant(tenant.id, async (tx) => {
+  const { servicosTenant, veiculos, marcados, anterior } = await withTenant(tenant.id, async (tx) => {
     // RN14 — a vitrine mostra apenas servicos ativos. Pausado sai daqui, mas
     // continua existindo para os agendamentos que ja o referenciam.
     const servicosTenant = await tx.servico.findMany({
       where: { tenantId: tenant.id, ativo: true },
-      include: { precos: true },
+      // So os precos dos tipos que a estetica ainda atende: um tipo removido
+      // nao pode alargar a faixa de precos de quem nao tem carro cadastrado.
+      include: { precos: { where: { segmento: { ativo: true } } } },
       orderBy: { nome: "asc" },
     });
     // RN15 — aposentado nao conta para o "tem veiculo?" da RN04. Quem so tem
@@ -53,12 +55,6 @@ export default async function TenantPage({
     const veiculos = await tx.veiculo.findMany({
       where: { usuarioId: session!.user.id, ativo: true },
       include: { segmento: true },
-    });
-    // Os tipos que ESTA estetica atende, na ordem que ela definiu (RN01
-    // revisada). Aposentado fica de fora do seletor.
-    const segmentos = await tx.segmento.findMany({
-      where: { tenantId: tenant.id, ativo: true },
-      orderBy: { ordem: "asc" },
     });
     // Candidatos a "proximo horario": os ativos a partir de ontem, para pegar
     // tambem um servico de varias horas que comecou e ainda nao terminou.
@@ -74,31 +70,51 @@ export default async function TenantPage({
       orderBy: { dataHora: "asc" },
       take: 5,
     });
-    return { servicosTenant, veiculos, segmentos, marcados };
+    // Sem nada marcado, o cartao mostra o ultimo servico feito. Cancelado nao
+    // conta; um horario que ja passou conta como feito, mesmo sem o status
+    // CONCLUIDO, que nenhuma rota grava sozinha.
+    const anterior = await tx.agendamento.findFirst({
+      where: {
+        tenantId: tenant.id,
+        usuarioId: session!.user.id,
+        status: { not: "CANCELADO" },
+        dataHora: { lt: agora },
+      },
+      include: { servico: true, veiculo: true },
+      orderBy: { dataHora: "desc" },
+    });
+    return { servicosTenant, veiculos, marcados, anterior };
   });
 
-  const marcado = marcados.find(
+  type ComServico = (typeof marcados)[number];
+  const paraCartao = (a: ComServico, status: Marcado["status"]): Marcado => ({
+    id: a.id,
+    dataHora: a.dataHora,
+    duracaoMin: a.servico.duracaoMin,
+    servicoId: a.servicoId,
+    servicoNome: a.servico.nome,
+    servicoAtivo: a.servico.ativo,
+    veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+    placa: a.veiculo.placa,
+    status,
+  });
+
+  const emAberto = marcados.find(
     (a) => a.dataHora.getTime() + a.servico.duracaoMin * 60000 > agora.getTime()
   );
-  const proximo: Proximo | null = marcado
-    ? {
-        id: marcado.id,
-        dataHora: marcado.dataHora,
-        duracaoMin: marcado.servico.duracaoMin,
-        servicoNome: marcado.servico.nome,
-        veiculo: `${marcado.veiculo.marca} ${marcado.veiculo.modelo}`,
-        placa: marcado.veiculo.placa,
-        status: marcado.status as Proximo["status"],
-      }
-    : null;
+  const destaque = emAberto
+    ? { modo: "proximo" as const, marcado: paraCartao(emAberto, emAberto.status as Marcado["status"]) }
+    : anterior
+      ? { modo: "ultimo" as const, marcado: paraCartao(anterior, "CONCLUIDO") }
+      : null;
 
   const servicos = servicosTenant.map((s) => ({
     id: s.id,
     nome: s.nome,
     descricao: s.descricao,
     duracaoMin: s.duracaoMin,
-    // Mapa segmentoId -> preco. Servico sem preco para um segmento simplesmente
-    // nao aparece naquele filtro, em vez de aparecer com valor inventado.
+    // Mapa segmentoId -> preco. Tipo sem preco fica de fora do mapa, e o card
+    // mostra "Sob consulta" em vez de um valor inventado.
     precos: Object.fromEntries(
       s.precos.map((p) => [p.segmentoId, Number(p.valor)])
     ) as Record<string, number>,
@@ -114,11 +130,17 @@ export default async function TenantPage({
     .filter(Boolean)
     .join(" · ");
 
-  // Abre no tipo do carro que o cliente ja tem; sem carro, no primeiro da
-  // estetica. Antes o padrao era "SUV" fixo, que agora pode nem existir.
-  // Carro de um tipo removido nao conta: abriria num tipo que nem esta na lista.
-  const segmentoInicial =
-    veiculos.find((v) => v.segmento.ativo)?.segmentoId ?? segmentos[0]?.id ?? "";
+  // O preco mostrado e o do carro do cliente (o primeiro da garagem, o mesmo
+  // que aparece como principal no perfil). Carro de um tipo que a estetica
+  // removeu nao conta; sem carro valido, os cards mostram a faixa de precos.
+  const carroPrincipal = veiculos.find((v) => v.segmento.ativo);
+  const carro = carroPrincipal
+    ? {
+        segmentoId: carroPrincipal.segmentoId,
+        segmentoNome: carroPrincipal.segmento.nome,
+        nome: `${carroPrincipal.marca} ${carroPrincipal.modelo}`,
+      }
+    : null;
   const primeiroNome = session?.user.name?.split(" ")[0] ?? "";
   const iniciais = tenant.nome
     .split(" ")
@@ -139,7 +161,7 @@ export default async function TenantPage({
     session?.user.role === "ADMIN" ? (
       <Link
         href={`/${slug}/admin/agendamentos`}
-        className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+        className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 transition hover:border-zinc-300"
       >
         <LayoutDashboard className="h-3.5 w-3.5" />
         Painel
@@ -147,34 +169,34 @@ export default async function TenantPage({
     ) : undefined;
 
   return (
-    <ClienteShell slug={slug} escuro titulo={`Olá, ${primeiroNome}`} acoes={painel}>
-      <ThemeColor color="#000000" />
-      <div className="pb-[calc(env(safe-area-inset-bottom)+7rem)] lg:pb-10">
+    <ClienteShell slug={slug} pontos titulo={`Olá, ${primeiroNome}`} acoes={painel}>
+      <ThemeColor color="#f6f8fb" />
+      <div className="pb-[calc(env(safe-area-inset-bottom)+2rem)] lg:pb-10">
         {/* Cabecalho do celular. No desktop quem apresenta a saudacao e o
             atalho do painel e o cabecalho da casca. */}
         <header className="mx-auto flex max-w-md items-center justify-between gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-black">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-sm font-bold text-white">
               {primeiroNome[0]?.toUpperCase() ?? "U"}
             </span>
-            <p className="truncate text-xl font-bold text-white">Olá, {primeiroNome}</p>
+            <p className="truncate text-xl font-bold text-zinc-900">Olá, {primeiroNome}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {painel}
-            <Logo className="h-4" />
+            <Logo variant="preto" className="h-4" />
           </div>
         </header>
 
         <main className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)] gap-4 px-4 pt-5 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-5 lg:px-8 lg:pt-5">
-          {/* Cartao da estetica — nome, logo, descricao e endereco vem das
-              Configuracoes do Admin (UC13). Um contato so, o WhatsApp: e por
-              onde o cliente fala com a loja quando nao consegue agendar. */}
+          {/* Cartao da estetica — logo, nome e endereco vem das Configuracoes
+              do Admin (UC13). Um contato so, o WhatsApp: e por onde o cliente
+              fala com a loja quando nao consegue agendar. */}
           <section
             aria-label={tenant.nome}
-            className={`vidro flex flex-col rounded-3xl p-5 lg:p-6 ${proximo ? "" : "lg:col-span-2"}`}
+            className={`flex flex-col rounded-3xl border border-zinc-200/80 bg-white/85 p-5 shadow-[0_10px_30px_-18px_rgb(15_23_42/0.25)] backdrop-blur lg:p-6 ${destaque ? "" : "lg:col-span-2"}`}
           >
             <div className="flex items-center gap-3.5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-astro-bg">
                 {tenant.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -188,15 +210,12 @@ export default async function TenantPage({
                   </span>
                 )}
               </div>
-              <h2 className="min-w-0 text-lg font-bold leading-snug text-white">{tenant.nome}</h2>
+              <h2 className="min-w-0 text-lg font-bold leading-snug text-zinc-900">{tenant.nome}</h2>
             </div>
 
-            {tenant.descricao && (
-              <p className="mt-3 text-sm leading-relaxed text-astro-muted">{tenant.descricao}</p>
-            )}
             {endereco && (
-              <p className="mt-3 flex items-start gap-2 text-sm text-slate-300">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-astro-muted" />
+              <p className="mt-4 flex items-start gap-2 text-sm text-zinc-600">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
                 {endereco}
               </p>
             )}
@@ -206,7 +225,7 @@ export default async function TenantPage({
                 href={linkWhatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 lg:mt-auto lg:self-start lg:px-5"
+                className="mt-5 flex items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:border-zinc-300 hover:bg-zinc-50 lg:mt-auto lg:self-start lg:px-5"
               >
                 <MessageCircle className="h-4 w-4" />
                 Falar no WhatsApp
@@ -214,21 +233,22 @@ export default async function TenantPage({
             )}
           </section>
 
-          {proximo && <ProximoHorario slug={slug} proximo={proximo} agora={agora} />}
+          <MenuCliente slug={slug} />
+
+          {destaque && (
+            <ProximoHorario slug={slug} marcado={destaque.marcado} modo={destaque.modo} agora={agora} />
+          )}
 
           <div className="lg:col-span-2">
             <HomeServicos
               slug={slug}
               servicos={servicos}
-              segmentos={segmentos.map((s) => ({ id: s.id, nome: s.nome }))}
-              segmentoInicial={segmentoInicial}
+              carro={carro}
               logado={logado}
               temVeiculo={veiculos.length > 0}
             />
           </div>
         </main>
-
-        <BottomNav slug={slug} escuro />
       </div>
     </ClienteShell>
   );
