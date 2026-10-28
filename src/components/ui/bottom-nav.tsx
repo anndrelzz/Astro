@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Car, CalendarDays, User } from "lucide-react";
 
@@ -30,43 +30,6 @@ export function itemAtivo(pathname: string, item: ItemCliente) {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-// Barra de navegacao flutuante do app mobile (telas 06, 13, etc.).
-// Item ativo vira pill azul com label; inativos sao so icone.
-//
-// lg:hidden — no desktop quem navega e a barra lateral (ClienteShell). Uma
-// pilula presa no rodape e convencao de polegar; com mouse ela fica orfa no
-// pe de um monitor largo.
-export function BottomNav({ slug }: { slug: string }) {
-  const pathname = usePathname();
-  const itens = itensCliente(slug);
-
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:hidden">
-      <div className="flex items-center gap-1 rounded-full border border-black/5 bg-white/90 p-2 shadow-xl shadow-black/10 backdrop-blur">
-        {itens.map((item) => {
-          const ativo = itemAtivo(pathname, item);
-          const Icone = item.icone;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={ativo ? "page" : undefined}
-              className={
-                ativo
-                  ? "flex items-center gap-2 rounded-full bg-astro-blue px-5 py-2.5 text-sm font-semibold text-white"
-                  : "flex items-center rounded-full px-4 py-2.5 text-zinc-400 hover:text-zinc-600"
-              }
-            >
-              <Icone className="h-5 w-5" />
-              {ativo && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
 // Recorte do circulo, adaptado do "Navigation bar with circle flexible
 // highlight POC" (Zed Dash, CodePen KKPeOPm): um circulo branco e, por baixo,
 // a barra com um vao em arco ao redor dele. No original o vao e transparente;
@@ -81,13 +44,13 @@ const RECORTE =
 // circulo de 84px fica encostado no canto no primeiro e no ultimo item.
 const centro = (i: number) => `calc(42px + ${i} * (100% - 84px) / 2)`;
 
-// Tempo do deslize. A troca de tela espera ele terminar (ver `ir`).
+// Tempo do deslize do circulo.
 const DESLIZE_MS = 450;
 
-// Menu da home do cliente no celular (so na tela de Servicos, logo acima da
-// lista; as outras telas seguem com a BottomNav): uma barra branca em que o item ativo sobe para
-// um circulo, separado da barra por um vao em arco. Ao tocar em outro item, o
-// circulo desliza ate ele e so entao a tela troca.
+// Menu do cliente no celular, preso no rodape de Servicos, Agendamentos e
+// Perfil: uma barra branca em que o item ativo sobe para um circulo, separado
+// da barra por um vao em arco. Ao tocar em outro item, o circulo desliza ate
+// ele.
 //
 // Como o deslize funciona: a barra e montada em pedacos — canto, faixa,
 // circulo, faixa, canto — e as duas faixas dividem a sobra. No primeiro item
@@ -99,15 +62,29 @@ const DESLIZE_MS = 450;
 // Enquanto o circulo passa, os icones somem e voltam (nav-pisca), para nao
 // aparecer um icone "atravessando" o circulo.
 //
+// Fica no layout de /[slug], e nao em cada pagina: assim ela continua montada
+// entre as tres telas e o circulo desliza de um item ao outro enquanto a tela
+// nova carrega (numa pagina, ela nasceria de novo a cada troca). Ela mesma
+// decide onde aparece: so nessas tres rotas; agendar, pagar, login e o painel
+// ficam sem ela.
+//
 // lg:hidden — no desktop quem navega e a barra lateral (ClienteShell).
 export function BarraCliente({ slug }: { slug: string }) {
   const pathname = usePathname();
-  const router = useRouter();
   const itens = itensCliente(slug);
   const daRota = itens.findIndex((item) => item.href === pathname);
 
-  // O toque move o circulo na hora; a rota so muda quando ele chega.
+  // O toque move o circulo na hora, sem esperar a outra tela carregar. Quando
+  // a rota muda (a navegacao terminou, ou o cliente voltou pelo navegador), o
+  // toque e esquecido e quem manda de novo e a rota. Zerar durante a
+  // renderizacao, comparando com a rota anterior, e o padrao do React para
+  // estado que depende de uma prop; com efeito, o circulo piscaria no item velho.
   const [toque, setToque] = useState<number | null>(null);
+  const [rotaAnterior, setRotaAnterior] = useState(pathname);
+  if (pathname !== rotaAnterior) {
+    setRotaAnterior(pathname);
+    setToque(null);
+  }
   const ativo = toque ?? Math.max(daRota, 0);
 
   // De onde o circulo saiu, para saber quais icones piscam. `vez` reinicia as
@@ -117,30 +94,22 @@ export function BarraCliente({ slug }: { slug: string }) {
     setMovimento({ de: movimento.para, para: ativo, vez: movimento.vez + 1 });
   }
 
-  // Clique comum: anima e navega depois do deslize, senao a tela nova
-  // chegaria antes e o cliente nunca veria o circulo andar. Ctrl/Cmd+clique
-  // e clique do meio seguem o link normal (abrir em outra aba). Com "reduzir
-  // movimento" ligado no sistema, a troca e imediata.
-  function ir(e: React.MouseEvent<HTMLAnchorElement>, i: number, href: string) {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    if (i === ativo) return;
-    setToque(i);
-    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setTimeout(() => router.push(href), reduzido ? 0 : DESLIZE_MS);
-  }
+  if (daRota === -1) return null;
 
   const { de, vez } = movimento;
   const atravessado = Math.abs(ativo - de) === 2 ? 1 : -1;
 
   return (
-    <nav aria-label="Menu" className="pt-[31px] lg:hidden">
+    <nav
+      aria-label="Menu"
+      className="fixed inset-x-0 bottom-0 z-40 px-4 pt-[31px] pb-[calc(env(safe-area-inset-bottom)+0.75rem)] lg:hidden"
+    >
       {/* 62px: o nome do item ativo fica abaixo do anel, que desce ate 42px. */}
-      <div className="relative h-[62px] w-full">
-        {/* A barra recortada. Sombra curta e so para baixo, como a dos cards. */}
+      <div className="relative mx-auto h-[62px] w-full max-w-[23rem]">
+        {/* A barra recortada. Sombra curta e para baixo, como a dos cards. */}
         <div
           aria-hidden
-          className="absolute inset-0 flex [filter:drop-shadow(0_6px_10px_rgb(15_23_42/0.07))]"
+          className="absolute inset-0 flex [filter:drop-shadow(0_6px_14px_rgb(15_23_42/0.12))]"
         >
           <div className="w-4 rounded-l-2xl bg-white shadow-[0.25rem_0_0_white]" />
           <div className="flex flex-1">
@@ -187,7 +156,7 @@ export function BarraCliente({ slug }: { slug: string }) {
                 <Link
                   href={item.href}
                   aria-current={eAtivo ? "page" : undefined}
-                  onClick={(e) => ir(e, i, item.href)}
+                  onClick={() => setToque(i)}
                   className="relative flex h-full flex-col items-center"
                 >
                   {/* Ativo: sobe ate o centro do circulo depois que ja sumiu;
