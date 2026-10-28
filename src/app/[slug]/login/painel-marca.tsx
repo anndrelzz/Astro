@@ -68,7 +68,7 @@ export function PainelMarca({
   return (
     <aside className="relative lg:absolute lg:inset-y-0 lg:left-0 lg:w-[56%]">
       <div
-        className={`painel-auth relative h-full overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+1.25rem)] text-white ${eLogin ? "pb-12" : "pb-9 [@media(min-height:720px)]:pb-12"} lg:flex lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]`}
+        className={`painel-auth relative h-full overflow-hidden px-5 text-white ${eLogin ? "pt-5 pb-12" : "pt-4 pb-8 [@media(min-height:720px)]:pt-5 [@media(min-height:720px)]:pb-12"} lg:flex lg:flex-col lg:justify-between lg:p-10 lg:pr-[14%]`}
         style={{
           backgroundImage:
             "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",

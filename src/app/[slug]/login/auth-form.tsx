@@ -30,9 +30,10 @@ const REGRAS_SENHA = [
 //
 // Layout: um cartao sobre o fundo de pontos com ondas (o mesmo do painel). O
 // lado colorido, na cor da estetica, tem a borda em curva; o formulario fica
-// no lado escuro. No celular o cartao ocupa a tela inteira, o lado colorido
-// vira a faixa do topo e tudo cabe na area visivel sem rolar (conferido de
-// 375x635, o iPhone X com as barras do Safari, para cima).
+// no lado escuro. No celular o cartao continua solto sobre o fundo, com uma
+// margem curta, o lado colorido vira a faixa do topo e tudo cabe na area
+// visivel sem rolar (conferido de 375x635, o iPhone X com as barras do
+// Safari, para cima).
 export function AuthForm({
   modo,
   estetica,
@@ -150,7 +151,7 @@ export function AuthForm({
   }
 
   return (
-    <div className="relative isolate flex min-h-dvh justify-center bg-black lg:items-center lg:p-6 [@media(min-height:820px)]:lg:p-10">
+    <div className="relative isolate flex min-h-dvh items-center justify-center bg-black px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:p-6 [@media(min-height:820px)]:lg:p-10">
       <ThemeColor color="#000000" />
       <FundoOndas />
 
@@ -163,21 +164,21 @@ export function AuthForm({
         )}
       </AnimatePresence>
 
-      <div className="relative flex w-full max-w-5xl flex-col">
-        <div className="relative flex flex-1 flex-col overflow-hidden bg-[#0b0b0f] lg:grid lg:min-h-[34rem] lg:flex-none lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:rounded-[2rem] lg:border lg:border-white/10 lg:shadow-[0_40px_120px_-40px_var(--color-astro-blue)]">
+      <div className="relative w-full max-w-5xl">
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0b0b0f] shadow-[0_40px_120px_-40px_var(--color-astro-blue)] lg:grid lg:min-h-[34rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:rounded-[2rem]">
           <PainelMarca modo={modo} estetica={estetica} />
           {/* Coluna 1 vazia no computador: o painel colorido fica por baixo, absoluto */}
           <div aria-hidden className="hidden lg:block" />
 
           {/* Formulario */}
           <div
-            className={`relative flex flex-1 flex-col px-6 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] lg:px-12 ${eLogin ? "lg:py-10" : "lg:py-7"}`}
+            className={`relative flex flex-col px-5 pt-1 pb-4 lg:px-12 ${eLogin ? "lg:py-10" : "lg:py-7"}`}
           >
             <div className="hidden justify-end lg:flex">
               <Logo className="h-9" />
             </div>
 
-            <div className="my-auto">
+            <div className="lg:my-auto">
               <h1
                 className={`text-2xl font-bold text-white ${eLogin ? "lg:text-3xl" : ""}`}
               >
@@ -311,7 +312,7 @@ export function AuthForm({
                 </div>
 
                 {!eLogin && (
-                  <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-astro-muted lg:text-sm">
+                  <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-snug text-astro-muted lg:text-sm lg:leading-normal">
                     <input
                       type="checkbox"
                       checked={aceitouTermos}
@@ -392,7 +393,7 @@ function CampoAuth({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm text-slate-300 lg:mb-1.5">
+      <label htmlFor={id} className="mb-0.5 block text-sm text-slate-300 lg:mb-1.5">
         {rotulo}
       </label>
       <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] py-1 pr-1.5 pl-4 transition focus-within:border-astro-blue-bright/70 focus-within:bg-white/[0.08]">
