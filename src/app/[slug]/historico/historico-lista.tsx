@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, CalendarDays, Car, Clock, CreditCard, Ban, Trash2, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Car, Clock, CreditCard, Ban, X } from "lucide-react";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { FUSO, partesNoFuso } from "@/lib/fuso";
 
@@ -712,7 +712,7 @@ function ModalCancelar({
       {/* Card */}
       <div className="relative w-full max-w-sm animate-[subir_400ms_cubic-bezier(0.22,1,0.36,1)] rounded-3xl bg-white p-6 text-center shadow-2xl motion-reduce:animate-none">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
-          <Trash2 className="h-6 w-6 text-red-500" />
+          <Ban className="h-6 w-6 text-red-500" />
         </div>
 
         <h2 className="mt-4 text-lg font-bold text-zinc-900">
