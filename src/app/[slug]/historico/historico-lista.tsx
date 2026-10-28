@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Trash2, Clock, X } from "lucide-react";
 import { ThemeColor } from "@/components/ui/theme-color";
 import { FUSO, partesNoFuso } from "@/lib/fuso";
@@ -172,14 +173,14 @@ export function HistoricoLista({
   }
 
   return (
-    <div className="min-h-dvh bg-[#f6f8fb] pb-28 lg:min-h-0 lg:bg-transparent lg:pb-10">
+    <div className="min-h-dvh pb-[calc(env(safe-area-inset-bottom)+7.5rem)] lg:min-h-0 lg:pb-10">
       <ThemeColor color="#f6f8fb" />
 
       {/* Cabecalho — celular. No desktop o titulo vem da casca. */}
-      <header className="mx-auto max-w-md px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
+      <header className="mx-auto max-w-md px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden">
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900">
+            <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
               Meus agendamentos
             </h1>
           </div>
@@ -204,7 +205,7 @@ export function HistoricoLista({
       </div>
 
       {/* Filtros, e a ordenacao ao lado no desktop */}
-      <div className="mx-auto mt-4 max-w-md px-5 lg:mx-0 lg:max-w-none lg:px-8">
+      <div className="mx-auto mt-4 max-w-md px-4 lg:mx-0 lg:max-w-none lg:px-8">
         <div className="lg:flex lg:items-center lg:justify-between lg:rounded-t-2xl lg:border lg:border-b-0 lg:border-zinc-100 lg:bg-white lg:p-4">
           <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] lg:pb-0">
             {FILTROS.map((f) => {
@@ -241,7 +242,7 @@ export function HistoricoLista({
       </div>
 
       {/* Lista em cartoes — celular */}
-      <main className="mx-auto mt-4 max-w-md space-y-3 px-5 lg:hidden">
+      <main className="mx-auto mt-4 max-w-md space-y-3 px-4 lg:hidden">
         {visiveis.map((item) => (
           <Card key={item.id} item={item} onCancelar={() => setAlvo(item)} />
         ))}
@@ -398,7 +399,7 @@ function Card({ item, onCancelar }: { item: ItemComEstado; onCancelar: () => voi
       className={
         proximo
           ? "flex items-stretch gap-3 rounded-2xl border border-astro-blue/30 bg-white p-3 shadow-lg shadow-astro-blue/10 ring-1 ring-astro-blue/20"
-          : "flex items-stretch gap-3 rounded-2xl border border-zinc-100 bg-white p-3"
+          : "flex items-stretch gap-3 rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]"
       }
     >
       {/* Bloco de data */}
@@ -482,17 +483,20 @@ function ModalCancelar({
     .replace(".", "")
     .toUpperCase();
 
-  return (
+  // Vai direto para o <body>: dentro da pagina ficaria preso na camada do
+  // fundo de pontos (o `isolate` da ClienteShell) e a barra do cliente, que
+  // vem do layout, passaria por cima. Entra subindo, como o aviso da home.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
       {/* Backdrop */}
       <button
         aria-label="Fechar"
         onClick={onFechar}
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 animate-[escurecer_250ms_ease-out] bg-black/40 backdrop-blur-sm motion-reduce:animate-none"
       />
 
       {/* Card */}
-      <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+      <div className="relative w-full max-w-sm animate-[subir_400ms_cubic-bezier(0.22,1,0.36,1)] rounded-3xl bg-white p-6 text-center shadow-2xl motion-reduce:animate-none">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
           <Trash2 className="h-6 w-6 text-red-500" />
         </div>
@@ -569,6 +573,7 @@ function ModalCancelar({
           Cancelamento permitido com no mínimo {horasLimite}h de antecedência.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -61,7 +61,7 @@ export default async function HistoricoPage({
   return (
     <ClienteShell
       slug={slug}
-      trilha={["Conta", "Agendamentos"]}
+      pontos
       titulo="Meus agendamentos"
     >
       <HistoricoLista
