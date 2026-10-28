@@ -80,9 +80,10 @@ body {
 /* iOS Safari da um zoom automatico ao focar campos com fonte < 16px. No
    mobile, fixamos 16px nos controles de formulario para evitar esse zoom —
    sem recorrer a maximum-scale/user-scalable=no, que quebrariam o pinch-zoom
-   e a acessibilidade. O !important vence as utilitarias text-sm dos inputs. */
+   e a acessibilidade. O !important vence as utilitarias text-sm dos inputs.
+   A placa (InputPlaca, data-placa) fica de fora: a letra dela ja e maior. */
 @media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([data-placa]),
   select,
   textarea {
     font-size: 16px !important;
