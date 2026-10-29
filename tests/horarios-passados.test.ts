@@ -1,5 +1,4 @@
-import test, { after, before, describe } from "node:test";
-import assert from "node:assert/strict";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { instanteNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { calcularSlotsDisponiveis } from "@/lib/slots";
@@ -14,8 +13,7 @@ import { withTenant } from "@/lib/tenant-db";
 // em que o teste roda.
 //
 // Requer um PostgreSQL real com as migrations aplicadas (o mesmo DATABASE_URL
-// da aplicacao). Rodar com:
-//   npm run test:horarios
+// da aplicacao), como os testes de RLS.
 
 const PREFIXO = "__test__horarios";
 
@@ -73,7 +71,7 @@ async function slotsVistosAs(hora: number, minuto: number, dias = 0) {
   });
 }
 
-before(async () => {
+beforeAll(async () => {
   // Remove sobras de uma execucao anterior interrompida.
   const orfaos = await prisma.tenant.findMany({
     where: { slug: { startsWith: PREFIXO } },
@@ -84,37 +82,37 @@ before(async () => {
   f = await criarFixture();
 });
 
-after(async () => {
+afterAll(async () => {
   if (f) await removerFixture(f.tenantId);
   await prisma.$disconnect();
 });
 
 describe("horarios que ja passaram", () => {
   test("hoje as 13:00: so a partir das 14:00 (13:00 ja comecou)", async () => {
-    assert.deepEqual(await slotsVistosAs(13, 0), ["14:00", "15:00", "16:00", "17:00"]);
+    expect(await slotsVistosAs(13, 0)).toEqual(["14:00", "15:00", "16:00", "17:00"]);
   });
 
   test("hoje as 12:55: 13:00 fica de fora, falta menos de 30 minutos", async () => {
-    assert.deepEqual(await slotsVistosAs(12, 55), ["14:00", "15:00", "16:00", "17:00"]);
+    expect(await slotsVistosAs(12, 55)).toEqual(["14:00", "15:00", "16:00", "17:00"]);
   });
 
   test("hoje as 12:30: 13:00 ainda entra, faltam exatos 30 minutos", async () => {
-    assert.deepEqual(await slotsVistosAs(12, 30), ["13:00", "14:00", "15:00", "16:00", "17:00"]);
+    expect(await slotsVistosAs(12, 30)).toEqual(["13:00", "14:00", "15:00", "16:00", "17:00"]);
   });
 
   test("hoje antes de abrir: o dia inteiro", async () => {
-    assert.deepEqual(await slotsVistosAs(6, 0), TODOS);
+    expect(await slotsVistosAs(6, 0)).toEqual(TODOS);
   });
 
   test("hoje depois do ultimo horario: nenhum", async () => {
-    assert.deepEqual(await slotsVistosAs(17, 45), []);
+    expect(await slotsVistosAs(17, 45)).toEqual([]);
   });
 
   test("amanha: o dia inteiro, mesmo tarde da noite", async () => {
-    assert.deepEqual(await slotsVistosAs(23, 50, 1), TODOS);
+    expect(await slotsVistosAs(23, 50, 1)).toEqual(TODOS);
   });
 
   test("ontem: nenhum", async () => {
-    assert.deepEqual(await slotsVistosAs(9, 0, -1), []);
+    expect(await slotsVistosAs(9, 0, -1)).toEqual([]);
   });
 });
