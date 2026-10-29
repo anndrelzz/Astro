@@ -1,9 +1,10 @@
 # CI: confere cada PR e cada push na main antes do merge.
 #
 # Dois jobs, que rodam ao mesmo tempo e aparecem no PR como checks separados:
-# - conferir: lint, checagem de tipos, testes de unidade com cobertura e build;
-# - rls: os testes de isolamento entre esteticas, contra um PostgreSQL
-#   temporario com as migrations aplicadas.
+# - conferir: lint, checagem de tipos e build;
+# - back: todos os testes do backend (regras, rotas da API e isolamento entre
+#   esteticas) com cobertura, contra um PostgreSQL temporario com as
+#   migrations aplicadas.
 name: CI
 
 on:
@@ -21,12 +22,12 @@ permissions:
 
 jobs:
   conferir:
-    name: Lint, tipos, testes e build
+    name: Lint, tipos e build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # Valores de mentira: o build e os testes de unidade nao conectam no
-      # banco nem enviam nada, mas o Prisma e o NextAuth leem estas variaveis.
+      # Valores de mentira: o build nao conecta no banco nem envia nada, mas o
+      # Prisma e o NextAuth leem estas variaveis.
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       NEXTAUTH_SECRET: ci-segredo-sem-uso-real
       NEXTAUTH_URL: http://localhost:3000
@@ -51,22 +52,11 @@ jobs:
       - name: Checagem de tipos
         run: npx tsc --noEmit
 
-      - name: Testes com cobertura
-        run: npx vitest run --coverage --exclude tests/rls-isolamento.test.ts
-
-      - name: Guardar o relatorio de cobertura
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: cobertura
-          path: coverage/
-          retention-days: 14
-
       - name: Build
         run: npx next build
 
-  rls:
-    name: Isolamento entre esteticas (RLS)
+  back:
+    name: Testes do backend
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Banco que existe so durante o job e some no fim.
@@ -115,5 +105,13 @@ jobs:
       - name: Aplicar as migrations
         run: npx prisma migrate deploy
 
-      - name: Testes de RLS
-        run: npm run test:rls
+      - name: Testes do backend com cobertura
+        run: npx vitest run --project back --coverage
+
+      - name: Guardar o relatorio de cobertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cobertura
+          path: coverage/
+          retention-days: 14
