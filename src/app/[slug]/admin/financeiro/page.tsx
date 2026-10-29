@@ -1,52 +1,18 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, partesNoFuso } from "@/lib/fuso";
+import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/lib/financeiro";
+import { FUSO, chaveDia, inicioDoDia } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
-import { FinanceiroDashboard, type Periodo } from "./financeiro-dashboard";
-import type { Prisma } from "@/generated/prisma/client";
+import { FinanceiroDashboard, type ItemAcrescimo, type ItemPagamento } from "./financeiro-dashboard";
 
-// RF12, UC11 — dashboard financeiro: receita por periodo, por servico e por
-// forma de pagamento.
+// RF12, UC11 — dashboard financeiro: receita total, receita por dia, por
+// servico, os 5 clientes que mais gastaram e o que ainda falta receber.
 //
 // Uma consulta so, agregada em memoria. Com o volume de uma estetica isso e
 // mais barato que varios groupBy no banco; se um dia a base crescer a ponto de
 // pesar, o caminho e mover a agregacao para SQL, nao paginar aqui.
-
-const PERIODOS: Periodo[] = ["hoje", "7dias", "30dias", "90dias", "ano"];
-
-// RF12 — receita conta apenas o que ja foi confirmado. O que aguarda
-// pagamento aparece em separado, nunca somado a receita.
-const RECEBIDO = ["CONFIRMADO", "CONCLUIDO"] as const;
-
-// Dias contados no relogio da estetica (lib/fuso.ts), nao no do servidor.
-const DIAS_ATRAS: Record<Exclude<Periodo, "ano">, number> = {
-  hoje: 0,
-  "7dias": 6,
-  "30dias": 29,
-  "90dias": 89,
-};
-
-// O que entrou de fato: o valor combinado no agendamento mais o acrescimo que o
-// Admin lancou na avaliacao presencial. Somar so `valor` fazia o relatorio
-// divergir do caixa — uma lavacao combinada por R$ 120,00 e cobrada por
-// R$ 156,00 aparecia como R$ 120,00.
-function totalCobrado(a: { valor: Prisma.Decimal; acrescimoAplicado: Prisma.Decimal | null }) {
-  return Number(a.valor) + Number(a.acrescimoAplicado ?? 0);
-}
-
-function janela(periodo: Periodo) {
-  const agora = new Date();
-  const fim = fimDoDia(agora);
-
-  const inicio =
-    periodo === "ano"
-      ? instanteNoFuso(partesNoFuso(agora).ano, 1, 1)
-      : inicioDoDia(agora, -DIAS_ATRAS[periodo]);
-
-  return { inicio, fim };
-}
 
 export default async function AdminFinanceiroPage({
   params,
@@ -69,59 +35,26 @@ export default async function AdminFinanceiroPage({
     redirect(`/${slug}`);
   }
 
-  const periodo: Periodo = PERIODOS.includes(periodoBruto as Periodo)
-    ? (periodoBruto as Periodo)
-    : "30dias";
-
+  const periodo = lerPeriodo(periodoBruto);
   const { inicio, fim } = janela(periodo);
 
-  // Periodo anterior de mesma duracao, para a variacao dos indicadores.
-  const duracaoMs = fim.getTime() - inicio.getTime();
-  const inicioAnterior = new Date(inicio.getTime() - duracaoMs);
-  const fimAnterior = new Date(inicio.getTime() - 1);
-
-  const dados = await withTenant(tenant.id, async (tx) => {
-    const atual = await tx.agendamento.findMany({
+  const atual = await withTenant(tenant.id, (tx) =>
+    tx.agendamento.findMany({
       where: {
         tenantId: tenant.id,
         status: { not: "CANCELADO" },
         dataHora: { gte: inicio, lte: fim },
       },
-      include: { servico: true, usuario: true },
+      include: { servico: true, usuario: true, veiculo: true },
       orderBy: { dataHora: "asc" },
-    });
-
-    // findMany em vez de aggregate: o _sum soma UMA coluna, e a receita agora
-    // sao duas (valor + acrescimoAplicado).
-    const anteriores = await tx.agendamento.findMany({
-      where: {
-        tenantId: tenant.id,
-        status: { in: [...RECEBIDO] },
-        dataHora: { gte: inicioAnterior, lte: fimAnterior },
-      },
-      select: { valor: true, acrescimoAplicado: true },
-    });
-
-    return {
-      atual,
-      receitaAnterior: anteriores.reduce((s, a) => s + totalCobrado(a), 0),
-    };
-  });
-
-  const recebidos = dados.atual.filter((a) =>
-    (RECEBIDO as readonly string[]).includes(a.status)
+    })
   );
+
+  const recebidos = atual.filter((a) => foiRecebido(a.status));
+  const pendentes = atual.filter((a) => !foiRecebido(a.status));
 
   const receitaTotal = recebidos.reduce((s, a) => s + totalCobrado(a), 0);
-  const ticketMedio = recebidos.length ? receitaTotal / recebidos.length : 0;
-
-  const recebidoPix = recebidos
-    .filter((a) => a.formaPagamento === "PIX")
-    .reduce((s, a) => s + totalCobrado(a), 0);
-
-  const pendentes = dados.atual.filter(
-    (a) => !(RECEBIDO as readonly string[]).includes(a.status)
-  );
+  const recebidoPix = recebidos.filter((a) => a.formaPagamento === "PIX").reduce((s, a) => s + totalCobrado(a), 0);
   const aReceber = pendentes.reduce((s, a) => s + Number(a.valor), 0);
 
   // Serie diaria: cada dia do periodo, mesmo sem movimento — buraco no meio da
@@ -130,42 +63,57 @@ export default async function AdminFinanceiroPage({
   for (let i = 0, d = inicio; d <= fim; i++, d = inicioDoDia(inicio, i)) {
     porDia.set(chaveDia(d), { recebido: 0, pendente: 0 });
   }
-  for (const a of dados.atual) {
+  for (const a of atual) {
     const alvo = porDia.get(chaveDia(a.dataHora));
     if (!alvo) continue;
-    if ((RECEBIDO as readonly string[]).includes(a.status)) {
-      alvo.recebido += totalCobrado(a);
-    } else {
-      alvo.pendente += Number(a.valor);
-    }
+    if (foiRecebido(a.status)) alvo.recebido += totalCobrado(a);
+    else alvo.pendente += Number(a.valor);
   }
 
   const porServico = new Map<string, { nome: string; receita: number; qtd: number }>();
   for (const a of recebidos) {
-    const atual = porServico.get(a.servicoId) ?? {
-      nome: a.servico.nome,
-      receita: 0,
-      qtd: 0,
-    };
-    atual.receita += totalCobrado(a);
-    atual.qtd += 1;
-    porServico.set(a.servicoId, atual);
+    const item = porServico.get(a.servicoId) ?? { nome: a.servico.nome, receita: 0, qtd: 0 };
+    item.receita += totalCobrado(a);
+    item.qtd += 1;
+    porServico.set(a.servicoId, item);
   }
 
   const porCliente = new Map<string, { nome: string; receita: number; visitas: number }>();
   for (const a of recebidos) {
-    const atual = porCliente.get(a.usuarioId) ?? {
-      nome: a.usuario.nome,
-      receita: 0,
-      visitas: 0,
-    };
-    atual.receita += totalCobrado(a);
-    atual.visitas += 1;
-    porCliente.set(a.usuarioId, atual);
+    const item = porCliente.get(a.usuarioId) ?? { nome: a.usuario.nome, receita: 0, visitas: 0 };
+    item.receita += totalCobrado(a);
+    item.visitas += 1;
+    porCliente.set(a.usuarioId, item);
   }
 
-  const pagamentoPix = recebidos.filter((a) => a.formaPagamento === "PIX").length;
-  const pagamentoLocal = recebidos.length - pagamentoPix;
+  // Acrescimos por condicao do veiculo (cobrados na avaliacao presencial) nos
+  // pagamentos confirmados do periodo, do mais recente ao mais antigo.
+  const acrescimos: ItemAcrescimo[] = recebidos
+    .filter((a) => Number(a.acrescimoAplicado ?? 0) > 0)
+    .sort((a, b) => b.dataHora.getTime() - a.dataHora.getTime())
+    .map((a) => ({
+      id: a.id,
+      dia: a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: FUSO }),
+      cliente: a.usuario.nome,
+      veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+      placa: a.veiculo.placa,
+      valor: Number(a.valor),
+      acrescimo: Number(a.acrescimoAplicado),
+    }));
+
+  // O que ainda falta entrar, do mais antigo (o que esta atrasado) ao mais novo.
+  const hojeChave = chaveDia(new Date());
+  const aReceberLista: ItemPagamento[] = pendentes.slice(0, 4).map((a) => ({
+    id: a.id,
+    dia:
+      chaveDia(a.dataHora) === hojeChave
+        ? "Hoje"
+        : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
+    cliente: a.usuario.nome,
+    servico: a.servico.nome,
+    forma: a.formaPagamento,
+    valor: Number(a.valor),
+  }));
 
   return (
     <FinanceiroDashboard
@@ -174,19 +122,15 @@ export default async function AdminFinanceiroPage({
       inicioISO={inicio.toISOString()}
       fimISO={fim.toISOString()}
       receitaTotal={receitaTotal}
-      receitaAnterior={dados.receitaAnterior}
-      ticketMedio={ticketMedio}
       recebidoPix={recebidoPix}
-      aReceber={aReceber}
       atendimentos={recebidos.length}
+      aReceber={aReceber}
       pendentesQtd={pendentes.length}
       serieDiaria={[...porDia.entries()].map(([dia, v]) => ({ dia, ...v }))}
       porServico={[...porServico.values()].sort((a, b) => b.receita - a.receita)}
-      porCliente={[...porCliente.values()]
-        .sort((a, b) => b.receita - a.receita)
-        .slice(0, 8)}
-      pagamentoPix={pagamentoPix}
-      pagamentoLocal={pagamentoLocal}
+      porCliente={[...porCliente.values()].sort((a, b) => b.receita - a.receita).slice(0, 5)}
+      aReceberLista={aReceberLista}
+      acrescimos={acrescimos}
     />
   );
 }
