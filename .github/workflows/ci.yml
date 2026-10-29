@@ -1,11 +1,9 @@
 # CI: confere cada PR e cada push na main antes do merge.
 #
-# Etapas: instalar (npm ci), gerar o cliente do Prisma, lint, checagem de
-# tipos, testes com cobertura e build. O resultado aparece no PR como um
-# check verde ou vermelho.
-#
-# Os testes de RLS ficam de fora por enquanto: eles precisam de um PostgreSQL
-# com as migrations aplicadas. Rodam localmente com `npm run test:rls`.
+# Dois jobs, que rodam ao mesmo tempo e aparecem no PR como checks separados:
+# - conferir: lint, checagem de tipos, testes de unidade com cobertura e build;
+# - rls: os testes de isolamento entre esteticas, contra um PostgreSQL
+#   temporario com as migrations aplicadas.
 name: CI
 
 on:
@@ -66,3 +64,56 @@ jobs:
 
       - name: Build
         run: npx next build
+
+  rls:
+    name: Isolamento entre esteticas (RLS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Banco que existe so durante o job e some no fim.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # A aplicacao conecta com o role astro, nunca com o postgres: o
+      # superuser ignora as policies e os testes passariam sem provar nada.
+      DATABASE_URL: postgresql://astro:astro@localhost:5432/astro
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Gerar o cliente do Prisma
+        run: npx prisma generate
+
+      # Mesmo arranjo da producao: o astro e dono das tabelas (roda as
+      # migrations), mas nao e superuser nem tem BYPASSRLS. O FORCE ROW LEVEL
+      # SECURITY das migrations faz as policies valerem tambem para o dono.
+      - name: Criar o role e o banco da aplicacao
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE astro LOGIN PASSWORD 'astro' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;" \
+            -c "CREATE DATABASE astro OWNER astro;"
+
+      - name: Aplicar as migrations
+        run: npx prisma migrate deploy
+
+      - name: Testes de RLS
+        run: npm run test:rls
