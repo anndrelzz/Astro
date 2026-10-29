@@ -39,8 +39,9 @@ function formatarDuracao(min: number) {
 
 // Preco do card. Com carro cadastrado, o valor exato do tipo dele (RF04); sem
 // carro, a faixa do mais barato ao mais caro entre os tipos da estetica.
-// Preco ausente so acontece na janela entre o Admin criar um tipo novo e
-// precificar os servicos — melhor dizer "sob consulta" que exibir R$ 0,00.
+// null = sem preco: acontece na janela entre o Admin criar um tipo novo e
+// preencher a tabela (o R$ 0 provisorio ja chega aqui fora do mapa). O card
+// desse servico nem aparece, e o agendamento tambem e recusado no servidor.
 function precoDoCard(servico: Servico, carro: CarroPreco | null) {
   if (carro) {
     const valor = servico.precos[carro.segmentoId];
@@ -80,6 +81,13 @@ export function HomeServicos({
   // RN04 — logado sem veiculo cai no aviso "sem veiculo" (tela 07) ao agendar.
   const [semVeiculo, setSemVeiculo] = useState(false);
 
+  // So entra o que tem preco para o carro do cliente (ou, sem carro, para
+  // algum tipo). Os outros tipos de carro seguem vendo o servico normalmente.
+  const disponiveis = servicos.flatMap((servico) => {
+    const preco = precoDoCard(servico, carro);
+    return preco === null ? [] : [{ servico, preco }];
+  });
+
   // Destino do agendamento conforme estado do usuario.
   function hrefAgendar(servicoId: string) {
     return logado
@@ -114,8 +122,7 @@ export function HomeServicos({
       </p>
 
       <ul className="mt-4 grid gap-3 lg:grid-cols-[repeat(auto-fill,minmax(22rem,1fr))] lg:gap-4">
-        {servicos.map((servico) => {
-          const preco = precoDoCard(servico, carro);
+        {disponiveis.map(({ servico, preco }) => {
           const conteudo = (
             <>
               <span
@@ -139,13 +146,9 @@ export function HomeServicos({
                   </span>
                 )}
                 <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                  {preco === null ? (
-                    <span className="text-zinc-400">Sob consulta</span>
-                  ) : (
-                    <span className="font-bold text-zinc-900 tabular-nums">
-                      {preco}
-                    </span>
-                  )}
+                  <span className="font-bold text-zinc-900 tabular-nums">
+                    {preco}
+                  </span>
                   <span className="flex items-center gap-1 text-zinc-500">
                     <Clock className="h-3.5 w-3.5" />
                     {formatarDuracao(servico.duracaoMin)}
@@ -187,6 +190,12 @@ export function HomeServicos({
       {servicos.length === 0 && (
         <p className="mt-4 text-sm text-zinc-500">
           Nenhum serviço cadastrado ainda.
+        </p>
+      )}
+
+      {servicos.length > 0 && disponiveis.length === 0 && (
+        <p className="mt-4 text-sm text-zinc-500">
+          Nenhum serviço disponível para esse tipo de veículo no momento.
         </p>
       )}
 
