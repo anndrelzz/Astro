@@ -11,18 +11,25 @@ import { Loader2, LogOut } from "lucide-react";
 // Mostra quem esta saindo e de qual estetica, para quem divide o computador
 // da loja ter certeza de que a conta e a sua. Sair nao apaga nada, entao o
 // botao usa a cor da estetica, nao o vermelho de acao destrutiva.
+//
+// O perfil do cliente usa o mesmo aviso, com `titulo` e `ficar` trocando o
+// "painel" por "conta".
 export function ConfirmarSaida({
   aberto,
   onFechar,
   slug,
   usuarioNome,
   tenantNome,
+  titulo = "Sair do painel?",
+  ficar = "Continuar no painel",
 }: {
   aberto: boolean;
   onFechar: () => void;
   slug: string;
   usuarioNome?: string;
   tenantNome?: string;
+  titulo?: string;
+  ficar?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const cancelar = useRef<HTMLButtonElement>(null);
@@ -92,7 +99,7 @@ export function ConfirmarSaida({
         </span>
 
         <h2 id="titulo-sair" className="mt-5 text-xl font-bold text-white">
-          Sair do painel?
+          {titulo}
         </h2>
         <p id="texto-sair" className="mt-2 text-sm leading-relaxed text-astro-muted">
           Para voltar, é só entrar de novo com seu e-mail e senha.
@@ -119,7 +126,7 @@ export function ConfirmarSaida({
             disabled={saindo}
             className="rounded-full border border-admin-border px-4 py-3 text-sm font-semibold whitespace-nowrap text-slate-200 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
           >
-            Continuar no painel
+            {ficar}
           </button>
           <button
             type="button"

@@ -183,9 +183,6 @@ export function PagamentoForm({
               <div className="flex-1">
                 <p className="flex items-center gap-2 font-semibold text-zinc-900">
                   Pagar com PIX
-                  <span className="rounded-full bg-astro-blue/10 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-astro-blue">
-                    Instantâneo
-                  </span>
                 </p>
                 <p className="text-xs text-zinc-500">
                   Copia e cola. Garante seu horário.
@@ -310,8 +307,8 @@ export function PagamentoForm({
               O valor pode mudar na avaliação
             </h2>
             <p className="mt-2 text-center text-sm leading-relaxed text-zinc-600">
-              Se o veículo chegar em condição muito ruim, a estética pode cobrar
-              até <strong>{acrescimoCondicaoPercent}% a mais</strong> por este
+              Se o veículo estiver com a condição de sujeira severa, a estética
+              pode cobrar até <strong>{acrescimoCondicaoPercent}% a mais</strong> por este
               serviço.
             </p>
 

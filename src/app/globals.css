@@ -80,9 +80,10 @@ body {
 /* iOS Safari da um zoom automatico ao focar campos com fonte < 16px. No
    mobile, fixamos 16px nos controles de formulario para evitar esse zoom —
    sem recorrer a maximum-scale/user-scalable=no, que quebrariam o pinch-zoom
-   e a acessibilidade. O !important vence as utilitarias text-sm dos inputs. */
+   e a acessibilidade. O !important vence as utilitarias text-sm dos inputs.
+   A placa (InputPlaca, data-placa) fica de fora: a letra dela ja e maior. */
 @media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([data-placa]),
   select,
   textarea {
     font-size: 16px !important;
@@ -112,6 +113,23 @@ body {
 @keyframes surgir {
   from { opacity: 0; transform: translateY(8px) scale(0.97); }
 }
+
+/* Aviso "sem veiculo" do cliente (HomeServicos): sobe ate o centro da tela
+   enquanto o fundo escurece. */
+@keyframes subir {
+  from { opacity: 0; transform: translateY(48px) scale(0.96); }
+}
+@keyframes escurecer { from { opacity: 0; } }
+
+/* Botao "Copiar" do PIX (CopiarPix): o botao da um pulo e o check entra
+   girando de leve. */
+@keyframes copiado-pulo { 40% { transform: scale(1.12); } }
+@keyframes copiado-check { from { opacity: 0; transform: scale(0.4) rotate(-30deg); } }
+
+/* Barra do cliente (BarraCliente): o icone some enquanto a bolha passa e
+   volta ja no lugar novo. A versao curta e a do icone que sai da bolha. */
+@keyframes nav-pisca { 0%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
+@keyframes nav-pisca-curto { 0%, 100% { opacity: 1; } 15%, 75% { opacity: 0; } }
 
 @keyframes girar-borda {
   to { --angulo-borda: 360deg; }
@@ -173,6 +191,11 @@ body {
 @layer components {
   .pontos-base {
     background-image: radial-gradient(circle, rgb(255 255 255 / 0.09) 1.2px, transparent 1.6px);
+    background-size: 14px 14px;
+  }
+  /* Mesma grade sobre fundo claro (telas do cliente): pontos escuros. */
+  .pontos-base-claro {
+    background-image: radial-gradient(circle, rgb(15 23 42 / 0.1) 1.2px, transparent 1.6px);
     background-size: 14px 14px;
   }
   .pontos-luz {
