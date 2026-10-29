@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:back": "vitest run --project back",
     "test:cobertura": "vitest run --coverage",
     "test:rls": "vitest run tests/rls-isolamento.test.ts"
   },
