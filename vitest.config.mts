@@ -17,12 +17,23 @@ export default defineConfig(({ mode }) => ({
     alias: { "@": path.resolve(import.meta.dirname, "src") },
   },
   test: {
-    include: ["tests/**/*.test.ts"],
-    environment: "node",
     env: loadEnv(mode, process.cwd(), ""),
     // Os testes de RLS criam e apagam duas esteticas inteiras no banco.
     hookTimeout: 30_000,
     testTimeout: 15_000,
+    // Um projeto por lado do sistema, cada um com o seu ambiente:
+    // `npm run test:back` roda so o backend. O front entra como segundo
+    // projeto, com um navegador simulado (jsdom).
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "back",
+          include: ["tests/**/*.test.ts"],
+          environment: "node",
+        },
+      },
+    ],
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
