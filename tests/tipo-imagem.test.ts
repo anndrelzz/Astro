@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import { tipoDaImagem } from "../src/lib/imagem";
 
 // O upload do logo decide o formato pelo conteudo do arquivo. Estes casos
