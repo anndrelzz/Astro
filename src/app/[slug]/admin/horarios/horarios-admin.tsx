@@ -1,17 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Check, Clock, Info } from "lucide-react";
-import { AdminHeader } from "../admin-header";
+import { useEffect, useState } from "react";
+import { Check, Clock, Copy } from "lucide-react";
 
-// UC09, RF02 — grade semanal de funcionamento (tela "Grade de horarios" do
-// mockup do admin). Um dia desligado significa estetica fechada: a rota
-// PUT /api/tenant/horarios remove o registro daquele dia.
+// UC09, RF02 — grade semanal de funcionamento. Um dia desligado significa
+// estetica fechada: a rota PUT /api/tenant/horarios remove o registro daquele
+// dia.
 //
-// No mockup a capacidade e definida por dia da semana; hoje ela e uma so, do
-// tenant inteiro (RN06), e fica na tela de Configuracoes. Por isso aqui ela
-// aparece apenas como informacao, com link para onde se altera.
+// Cada dia mostra, alem dos campos, uma barra com o trecho aberto dentro do
+// dia: empilhadas, as sete barras deixam ver a semana de relance (sabado meio
+// periodo, domingo fechado) sem ler hora por hora.
 
 type HorarioDia = {
   diaSemana: number;
@@ -21,178 +20,521 @@ type HorarioDia = {
   horaFim: string;
 };
 
+// Para onde copiar o horario de um dia. Dias uteis = segunda a sexta.
+const DESTINOS = [
+  { chave: "uteis", rotulo: "Segunda a sexta" },
+  { chave: "abertos", rotulo: "Todos os dias abertos" },
+  { chave: "todos", rotulo: "Todos os dias" },
+] as const;
+type Destino = (typeof DESTINOS)[number]["chave"];
+
+function paraMinutos(hora: string) {
+  const [h, m] = hora.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function formatarDuracao(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}min`;
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+
+const invalido = (dia: HorarioDia) => dia.ativo && dia.horaInicio >= dia.horaFim;
+
+function hhmm(min: number) {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+// Situacao da estetica agora, pela grade SALVA (a que o cliente ve).
+function situacaoAgora(grade: HorarioDia[], agora: { diaSemana: number; minuto: number }) {
+  const valido = (h?: HorarioDia) => !!h && h.ativo && !invalido(h);
+  const hoje = grade.find((h) => h.diaSemana === agora.diaSemana);
+  if (valido(hoje)) {
+    const inicio = paraMinutos(hoje!.horaInicio);
+    const fim = paraMinutos(hoje!.horaFim);
+    if (agora.minuto >= inicio && agora.minuto < fim) {
+      return { aberto: true, titulo: "Aberto agora", detalhe: `Fecha às ${hoje!.horaFim} · em ${formatarDuracao(fim - agora.minuto)}` };
+    }
+    if (agora.minuto < inicio) {
+      return { aberto: false, titulo: "Fechado agora", detalhe: `Abre hoje às ${hoje!.horaInicio}` };
+    }
+  }
+  for (let i = 1; i <= 7; i++) {
+    const dia = grade.find((h) => h.diaSemana === (agora.diaSemana + i) % 7);
+    if (valido(dia)) {
+      const quando = i === 1 ? "amanhã" : dia!.nome.toLowerCase();
+      return { aberto: false, titulo: "Fechado agora", detalhe: `Abre ${quando} às ${dia!.horaInicio}` };
+    }
+  }
+  return { aberto: false, titulo: "Fechado", detalhe: "Nenhum dia aberto na semana. O cliente não consegue agendar." };
+}
+
+// Como os horarios sao oferecidos ao cliente (RF02, RN06): quantos carros ao
+// mesmo tempo e de quantos em quantos minutos. Moravam em Configuracoes; ficam
+// aqui porque e onde o dono pensa em horario. Salvam pela rota de
+// configuracoes (PATCH /api/tenant), junto com a grade, num botao so.
+type Oferta = { capacidade: number; intervalo: number };
+const INTERVALOS = [15, 30, 60];
+
 export function HorariosAdmin({
   horariosIniciais,
-  capacidadeSimultanea,
-  linkConfiguracoes,
+  agora,
+  ofertaInicial,
 }: {
   horariosIniciais: HorarioDia[];
-  capacidadeSimultanea: number;
-  linkConfiguracoes: string;
+  agora: { diaSemana: number; minuto: number };
+  ofertaInicial: Oferta;
 }) {
   const router = useRouter();
   const [horarios, setHorarios] = useState(horariosIniciais);
+  const [salvos, setSalvos] = useState(horariosIniciais);
+  const [oferta, setOferta] = useState(ofertaInicial);
+  const [ofertaSalva, setOfertaSalva] = useState(ofertaInicial);
+  const [intervaloLivre, setIntervaloLivre] = useState(!INTERVALOS.includes(ofertaInicial.intervalo));
   const [erro, setErro] = useState<string | null>(null);
-  const [sucesso, setSucesso] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [copiandoDe, setCopiandoDe] = useState<number | null>(null);
 
-  function atualizarDia(
-    diaSemana: number,
-    campo: keyof HorarioDia,
-    valor: string | boolean
-  ) {
+  const gradeAlterada = JSON.stringify(horarios) !== JSON.stringify(salvos);
+  const ofertaAlterada = JSON.stringify(oferta) !== JSON.stringify(ofertaSalva);
+  const alterado = gradeAlterada || ofertaAlterada;
+  const ofertaInvalida = !(oferta.capacidade >= 1) || !(oferta.intervalo >= 5);
+  const temErro = horarios.some(invalido) || ofertaInvalida;
+
+  // Fechar ou recarregar a aba com alteracao pendente pede confirmacao.
+  useEffect(() => {
+    if (!alterado) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [alterado]);
+
+  function atualizarDia(diaSemana: number, campo: keyof HorarioDia, valor: string | boolean) {
+    setHorarios((atual) => atual.map((h) => (h.diaSemana === diaSemana ? { ...h, [campo]: valor } : h)));
+  }
+
+  function copiar(origem: HorarioDia, destino: Destino) {
     setHorarios((atual) =>
-      atual.map((h) => (h.diaSemana === diaSemana ? { ...h, [campo]: valor } : h))
+      atual.map((h) => {
+        if (h.diaSemana === origem.diaSemana) return h;
+        const util = h.diaSemana >= 1 && h.diaSemana <= 5;
+        if (destino === "uteis" && !util) return h;
+        if (destino === "abertos" && !h.ativo) return h;
+        return { ...h, ativo: true, horaInicio: origem.horaInicio, horaFim: origem.horaFim };
+      })
     );
-    setSucesso(null);
+    setCopiandoDe(null);
   }
 
   async function salvar() {
     setErro(null);
-    setSucesso(null);
     setSalvando(true);
 
-    const resposta = await fetch("/api/tenant/horarios", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        horarios.map(({ diaSemana, ativo, horaInicio, horaFim }) => ({
-          diaSemana,
-          ativo,
-          horaInicio,
-          horaFim,
-        }))
-      ),
-    });
+    // So envia o que mudou: a grade e a oferta sao rotas diferentes.
+    if (gradeAlterada) {
+      const resposta = await fetch("/api/tenant/horarios", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          horarios.map(({ diaSemana, ativo, horaInicio, horaFim }) => ({ diaSemana, ativo, horaInicio, horaFim }))
+        ),
+      });
+      if (!resposta.ok) {
+        const json = await resposta.json().catch(() => null);
+        setErro(json?.error ?? "Não foi possível salvar a grade.");
+        setSalvando(false);
+        return;
+      }
+      setSalvos(horarios);
+    }
+    if (ofertaAlterada) {
+      const resposta = await fetch("/api/tenant", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ capacidadeSimultanea: oferta.capacidade, intervaloMinutos: oferta.intervalo }),
+      });
+      if (!resposta.ok) {
+        const json = await resposta.json().catch(() => null);
+        setErro(json?.error ?? "Não foi possível salvar a capacidade e o intervalo.");
+        setSalvando(false);
+        return;
+      }
+      setOfertaSalva(oferta);
+    }
 
     setSalvando(false);
-
-    if (!resposta.ok) {
-      const json = await resposta.json().catch(() => null);
-      setErro(json?.error ?? "Nao foi possivel salvar a grade.");
-      return;
-    }
-    setSucesso("Grade salva.");
     router.refresh();
   }
 
-  const diasAbertos = horarios.filter((h) => h.ativo).length;
+  const abertos = horarios.filter((h) => h.ativo && !invalido(h));
+  // O cartao do topo mostra a grade SALVA: e o que esta valendo para o cliente.
+  const situacao = situacaoAgora(salvos, agora);
+
+  // Escala das barras: das 6h as 22h, alargada se algum dia passar disso.
+  const escalaInicio = Math.min(6 * 60, ...abertos.map((h) => Math.floor(paraMinutos(h.horaInicio) / 60) * 60));
+  const escalaFim = Math.max(22 * 60, ...abertos.map((h) => Math.ceil(paraMinutos(h.horaFim) / 60) * 60));
+  const pct = (min: number) => ((min - escalaInicio) / (escalaFim - escalaInicio)) * 100;
+  const marcas = Array.from({ length: Math.floor((escalaFim - escalaInicio) / 180) + 1 }, (_, i) => escalaInicio + i * 180);
 
   return (
-    <div className="space-y-4">
-      {/* O botao de salvar mora na barra do topo, como no mockup */}
-      <AdminHeader
-        trilha="Operacao · Semana padrao"
-        titulo="Grade de horarios"
-        acao={
-          <button
-            onClick={salvar}
-            disabled={salvando}
-            className="flex items-center gap-2 rounded-lg bg-astro-blue px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50"
-          >
-            <Check className="h-4 w-4" />
-            {salvando ? "Salvando..." : "Salvar grade"}
-          </button>
-        }
-      />
-
-      <p className="text-sm text-astro-muted">
-        {diasAbertos === 0
-          ? "Nenhum dia de funcionamento definido."
-          : `${diasAbertos} de 7 dias abertos.`}
-      </p>
+    <div>
+      <h1 className="mb-7 text-3xl font-bold tracking-tight text-white lg:text-4xl">Grade de horários</h1>
 
       {erro && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
-          {erro}
-        </p>
-      )}
-      {sucesso && (
-        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-300">
-          {sucesso}
-        </p>
+        <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{erro}</p>
       )}
 
-      <section className="rounded-2xl border border-admin-border bg-admin-surface p-5 lg:p-6">
-        <h2 className="text-lg font-semibold text-white">
-          Quando sua estetica atende
-        </h2>
-
-        <div className="mt-5 space-y-2">
-          {horarios.map((dia) => (
-            <div
-              key={dia.diaSemana}
-              className={
-                dia.ativo
-                  ? "flex flex-wrap items-center gap-4 rounded-xl border border-admin-border bg-admin-surface-2 px-4 py-3.5"
-                  : "flex flex-wrap items-center gap-4 rounded-xl border border-admin-border px-4 py-3.5 opacity-50"
-              }
-            >
-              {/* Interruptor do dia */}
-              <label className="flex w-40 shrink-0 cursor-pointer items-center gap-3">
-                <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
-                  <input
-                    type="checkbox"
-                    checked={dia.ativo}
-                    onChange={(e) =>
-                      atualizarDia(dia.diaSemana, "ativo", e.target.checked)
-                    }
-                    className="peer sr-only"
-                  />
-                  <span className="h-6 w-11 rounded-full bg-admin-surface-2 transition peer-checked:bg-astro-blue" />
-                  <span className="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
-                </span>
-                <span className="text-sm font-semibold text-white">{dia.nome}</span>
-              </label>
-
-              <div className="flex flex-wrap items-center gap-4">
-                <CampoHora
-                  rotulo="Abre"
-                  valor={dia.horaInicio}
-                  ativo={dia.ativo}
-                  onChange={(v) => atualizarDia(dia.diaSemana, "horaInicio", v)}
-                />
-                <CampoHora
-                  rotulo="Fecha"
-                  valor={dia.horaFim}
-                  ativo={dia.ativo}
-                  onChange={(v) => atualizarDia(dia.diaSemana, "horaFim", v)}
-                />
-              </div>
-
-              <span className="ml-auto font-mono text-xs text-astro-muted">
-                {dia.ativo ? `${capacidadeSimultanea} carros / horario` : "fechado"}
+      {/* Cartao de destaque, no mesmo estilo do faturamento (Dashboard) e dos
+          tipos de veiculo (Catalogo): a situacao da estetica agora. */}
+      <section
+        aria-label="Situação agora"
+        className="borda-viva relative mb-6 overflow-hidden rounded-3xl p-5 text-white sm:p-6"
+        style={{
+          backgroundImage:
+            "radial-gradient(120% 140% at 100% 0%, var(--color-astro-blue-bright) 0%, var(--color-astro-blue) 40%, color-mix(in srgb, var(--color-astro-blue) 55%, black) 100%)",
+          boxShadow:
+            "0 24px 60px -24px color-mix(in srgb, var(--color-astro-blue) 80%, transparent), 0 0 50px -10px color-mix(in srgb, var(--color-astro-blue-bright) 45%, transparent)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-20 right-12 h-64 w-64 rounded-full border border-white/20 shadow-[0_0_0_40px_rgba(255,255,255,0.04),0_0_0_90px_rgba(255,255,255,0.03)] sm:right-40"
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-semibold text-white/85">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  situacao.aberto ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" : "bg-white/50"
+                }`}
+              />
+              {situacao.titulo}
+            </p>
+            <p className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{situacao.detalhe}</p>
+          </div>
+          {/* Salvar mora no cartao. Sobre o azul: vidro quando nao ha o que
+              salvar, pilula branca quando ha (como o "Hoje" do faturamento). */}
+          <div className="flex flex-wrap items-center gap-3">
+            {alterado && (
+              <span className="flex items-center gap-2 text-sm text-white/90">
+                <span className="h-2 w-2 rounded-full bg-amber-300" />
+                Alterações não salvas
               </span>
-            </div>
-          ))}
+            )}
+            <button
+              type="button"
+              onClick={salvar}
+              disabled={!alterado || salvando || temErro}
+              className={`flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed ${
+                alterado && !temErro
+                  ? "bg-white text-astro-blue shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] hover:bg-white/90"
+                  : "border border-white/25 bg-white/10 text-white/80 backdrop-blur-sm"
+              }`}
+            >
+              <Check className="h-4 w-4" />
+              {salvando ? "Salvando..." : alterado ? "Salvar grade" : "Grade salva"}
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* Explicacao da capacidade, como no rodape do mockup */}
-      <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-astro-blue/30 bg-astro-blue/10 px-5 py-4">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-astro-blue/20 text-astro-blue-bright">
-          <Info className="h-4 w-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">Capacidade simultanea</p>
-          <p className="text-sm text-astro-muted">
-            Quantos veiculos podem ser atendidos ao mesmo tempo em cada horario.
-            Hoje o valor e {capacidadeSimultanea} para todos os dias.
-          </p>
+      <section className="rounded-3xl border border-admin-border bg-admin-surface p-4 sm:p-6">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-white">Quando sua estética atende</h2>
+          <span className="text-sm text-astro-muted">O cliente só vê horários dentro dessas faixas.</span>
         </div>
-        <a
-          href={linkConfiguracoes}
-          className="shrink-0 text-sm font-semibold text-astro-blue-bright hover:underline"
-        >
-          Alterar →
-        </a>
+
+        {/* Marcas de hora acima das barras (so no computador, onde as barras
+            ficam alinhadas numa coluna) */}
+        <div className="hidden grid-cols-[11rem_19rem_minmax(0,1fr)_2.75rem] gap-4 px-4 xl:grid">
+          <span />
+          <span />
+          <div className="relative h-5">
+            {marcas.map((m) => (
+              <span
+                key={m}
+                className="absolute -translate-x-1/2 font-mono text-[0.65rem] text-astro-muted"
+                style={{ left: `${pct(m)}%` }}
+              >
+                {m / 60}h
+              </span>
+            ))}
+          </div>
+          <span />
+        </div>
+
+        <ul className="grid gap-2">
+          {horarios.map((dia) => {
+            const errado = invalido(dia);
+            const hoje = dia.diaSemana === agora.diaSemana;
+            const inicio = paraMinutos(dia.horaInicio);
+            const fim = paraMinutos(dia.horaFim);
+            return (
+              <li
+                key={dia.diaSemana}
+                className={`grid items-center gap-x-4 gap-y-3 rounded-2xl border px-4 py-3.5 transition sm:grid-cols-[11rem_19rem_minmax(0,1fr)] xl:grid-cols-[11rem_19rem_minmax(0,1fr)_2.75rem] ${
+                  errado
+                    ? "border-red-500/50 bg-red-500/5"
+                    : dia.ativo
+                      ? "border-admin-border bg-admin-surface-2"
+                      : "border-admin-border/60"
+                }`}
+              >
+                <label className="flex cursor-pointer items-center gap-3">
+                  <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
+                    <input
+                      type="checkbox"
+                      checked={dia.ativo}
+                      onChange={(e) => atualizarDia(dia.diaSemana, "ativo", e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <span className="h-6 w-11 rounded-full bg-zinc-700 transition peer-checked:bg-emerald-500 peer-focus-visible:ring-2 peer-focus-visible:ring-astro-blue-bright" />
+                    <span className="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+                  </span>
+                  <span className={`text-sm font-semibold ${dia.ativo ? "text-white" : "text-astro-muted"}`}>{dia.nome}</span>
+                  {hoje && (
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.65rem] font-semibold text-white">Hoje</span>
+                  )}
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <CampoHora
+                    rotulo={`${dia.nome}, abre`}
+                    valor={dia.horaInicio}
+                    ativo={dia.ativo}
+                    onChange={(v) => atualizarDia(dia.diaSemana, "horaInicio", v)}
+                  />
+                  <span className="text-xs text-astro-muted">às</span>
+                  <CampoHora
+                    rotulo={`${dia.nome}, fecha`}
+                    valor={dia.horaFim}
+                    ativo={dia.ativo}
+                    onChange={(v) => atualizarDia(dia.diaSemana, "horaFim", v)}
+                  />
+                </div>
+
+                {/* Barra do dia, com a duracao ao lado */}
+                <div className="flex min-w-0 items-center gap-3 sm:col-span-full xl:col-span-1">
+                  {errado ? (
+                    <p className="text-sm text-red-300">O horário de fechar precisa ser depois do de abrir.</p>
+                  ) : (
+                    <>
+                      <div className="relative h-2.5 min-w-0 flex-1 rounded-full bg-white/[0.06]">
+                        {dia.ativo && (
+                          <span
+                            className="absolute inset-y-0 rounded-full bg-astro-blue shadow-[0_0_14px_-2px_var(--color-astro-blue)]"
+                            style={{ left: `${pct(inicio)}%`, width: `${pct(fim) - pct(inicio)}%` }}
+                          />
+                        )}
+                        {/* "Agora" no dia de hoje, como a linha vermelha das agendas */}
+                        {hoje && agora.minuto >= escalaInicio && agora.minuto <= escalaFim && (
+                          <span
+                            title={`Agora, ${hhmm(agora.minuto)}`}
+                            className="absolute -top-1.5 -bottom-1.5 w-0.5 -translate-x-1/2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                            style={{ left: `${pct(agora.minuto)}%` }}
+                          />
+                        )}
+                      </div>
+                      <span
+                        className={`w-14 shrink-0 text-right font-mono text-xs ${dia.ativo ? "text-slate-200" : "text-astro-muted"}`}
+                      >
+                        {dia.ativo ? formatarDuracao(fim - inicio) : "fechado"}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Copiar este horario para outros dias */}
+                <div className="relative hidden justify-end xl:flex">
+                  {dia.ativo && !errado && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setCopiandoDe(copiandoDe === dia.diaSemana ? null : dia.diaSemana)}
+                        aria-label={`Copiar o horário de ${dia.nome} para outros dias`}
+                        aria-expanded={copiandoDe === dia.diaSemana}
+                        title="Copiar para outros dias"
+                        className="grid h-9 w-9 place-items-center rounded-full border border-admin-border text-astro-muted transition hover:border-astro-blue hover:text-white"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                      {copiandoDe === dia.diaSemana && (
+                        <MenuCopiar nome={dia.nome} onEscolher={(d) => copiar(dia, d)} onFechar={() => setCopiandoDe(null)} />
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* No celular e tablet o botao de copiar vira um link de texto */}
+                {dia.ativo && !errado && (
+                  <div className="relative xl:hidden">
+                    <button
+                      type="button"
+                      onClick={() => setCopiandoDe(copiandoDe === dia.diaSemana ? null : dia.diaSemana)}
+                      aria-expanded={copiandoDe === dia.diaSemana}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-astro-blue-bright"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copiar para outros dias
+                    </button>
+                    {copiandoDe === dia.diaSemana && (
+                      <MenuCopiar nome={dia.nome} onEscolher={(d) => copiar(dia, d)} onFechar={() => setCopiandoDe(null)} />
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* Como os horarios sao oferecidos */}
+      <section className="mt-6 rounded-3xl border border-admin-border bg-admin-surface p-4 sm:p-6">
+        <h2 className="text-base font-semibold text-white">Como os horários são oferecidos</h2>
+        <p className="mt-0.5 text-sm text-astro-muted">Vale para todos os dias abertos.</p>
+
+        <div className="mt-5 grid gap-6 md:grid-cols-2">
+          <div>
+            <p className="text-sm font-semibold text-white">Carros ao mesmo tempo</p>
+            <p className="mt-0.5 text-sm text-astro-muted">Quantos veículos a estética atende num mesmo horário.</p>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Diminuir"
+                disabled={oferta.capacidade <= 1}
+                onClick={() => setOferta({ ...oferta, capacidade: Math.max(1, oferta.capacidade - 1) })}
+                className="grid h-11 w-11 place-items-center rounded-full border border-admin-border text-lg text-white transition hover:border-astro-blue disabled:opacity-40"
+              >
+                −
+              </button>
+              <span className="w-12 text-center text-2xl font-bold text-white" aria-live="polite">
+                {oferta.capacidade}
+              </span>
+              <button
+                type="button"
+                aria-label="Aumentar"
+                onClick={() => setOferta({ ...oferta, capacidade: oferta.capacidade + 1 })}
+                className="grid h-11 w-11 place-items-center rounded-full border border-admin-border text-lg text-white transition hover:border-astro-blue"
+              >
+                +
+              </button>
+              <span className="text-sm text-astro-muted">{oferta.capacidade === 1 ? "carro por vez" : "carros por vez"}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-white">Intervalo entre horários</p>
+            <p className="mt-0.5 text-sm text-astro-muted">De quantos em quantos minutos o cliente pode marcar.</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {INTERVALOS.map((m) => {
+                const marcado = !intervaloLivre && oferta.intervalo === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={marcado}
+                    onClick={() => {
+                      setIntervaloLivre(false);
+                      setOferta({ ...oferta, intervalo: m });
+                    }}
+                    className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition ${
+                      marcado ? "border-transparent bg-astro-blue text-white" : "border-admin-border text-astro-muted hover:text-white"
+                    }`}
+                  >
+                    {m === 60 ? "1 hora" : `${m} min`}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                aria-pressed={intervaloLivre}
+                onClick={() => setIntervaloLivre(true)}
+                className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition ${
+                  intervaloLivre ? "border-transparent bg-astro-blue text-white" : "border-admin-border text-astro-muted hover:text-white"
+                }`}
+              >
+                Outro
+              </button>
+            </div>
+            {intervaloLivre && (
+              <label className="mt-3 flex items-center gap-2 text-sm text-astro-muted">
+                <input
+                  type="number"
+                  min={5}
+                  step={5}
+                  value={oferta.intervalo}
+                  onChange={(e) => setOferta({ ...oferta, intervalo: Number(e.target.value) })}
+                  className="w-24 rounded-xl border border-admin-border bg-admin-bg px-3 py-2 text-right font-mono text-sm text-white outline-none focus:border-astro-blue"
+                />
+                minutos
+              </label>
+            )}
+            {oferta.intervalo >= 5 ? (
+              <p className="mt-3 text-sm text-astro-muted">
+                O cliente verá:{" "}
+                <span className="font-mono text-slate-200">{previaHorarios(horarios, oferta.intervalo)}</span>
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-red-300">Use um intervalo de pelo menos 5 minutos.</p>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   );
 }
 
-// Campo de hora com o icone de relogio dentro, como no mockup. Dia desligado
-// deixa o campo esmaecido e travado.
+// "09:00, 09:30, 10:00..." a partir da abertura do primeiro dia aberto.
+function previaHorarios(grade: HorarioDia[], intervalo: number) {
+  const dia = grade.find((h) => h.ativo && !invalido(h));
+  const inicio = dia ? paraMinutos(dia.horaInicio) : 8 * 60;
+  return [0, 1, 2].map((i) => hhmm(inicio + i * intervalo)).join(", ") + "…";
+}
+
+function MenuCopiar({
+  nome,
+  onEscolher,
+  onFechar,
+}: {
+  nome: string;
+  onEscolher: (destino: Destino) => void;
+  onFechar: () => void;
+}) {
+  // Esc fecha o menu.
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => e.key === "Escape" && onFechar();
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [onFechar]);
+
+  return (
+    <>
+      {/* Camada invisivel: clicar fora fecha o menu */}
+      <button type="button" aria-hidden tabIndex={-1} onClick={onFechar} className="fixed inset-0 z-30 cursor-default" />
+      <div
+        role="menu"
+        className="absolute top-full left-0 z-40 mt-2 w-60 rounded-2xl border border-admin-border bg-admin-surface-2 p-1.5 shadow-2xl shadow-black/60 xl:right-0 xl:left-auto"
+      >
+        <p className="px-3 pt-1.5 pb-1 text-xs text-astro-muted">Usar o horário de {nome.toLowerCase()} em:</p>
+        {DESTINOS.map((d) => (
+          <button
+            key={d.chave}
+            type="button"
+            role="menuitem"
+            onClick={() => onEscolher(d.chave)}
+            className="block w-full rounded-xl px-3 py-2 text-left text-sm text-slate-100 transition hover:bg-white/[0.06]"
+          >
+            {d.rotulo}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// Campo de hora com o icone de relogio dentro. Dia desligado deixa o campo
+// esmaecido e travado.
 function CampoHora({
   rotulo,
   valor,
@@ -205,20 +547,18 @@ function CampoHora({
   onChange: (valor: string) => void;
 }) {
   return (
-    <div>
-      <p className="astro-label">{rotulo}</p>
-      <div
-        className={`mt-1 flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2 ${ativo ? "" : "opacity-40"}`}
-      >
-        <Clock className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
-        <input
-          type="time"
-          value={valor}
-          disabled={!ativo}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-24 bg-transparent font-mono text-sm text-slate-100 outline-none disabled:cursor-not-allowed"
-        />
-      </div>
+    <div
+      className={`flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-admin-border bg-admin-bg px-3 py-2 focus-within:border-astro-blue sm:flex-none ${ativo ? "" : "opacity-40"}`}
+    >
+      <Clock className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
+      <input
+        type="time"
+        aria-label={rotulo}
+        value={valor}
+        disabled={!ativo}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full min-w-[4.5rem] bg-transparent sm:min-w-[5.5rem] font-mono text-sm text-slate-100 outline-none disabled:cursor-not-allowed"
+      />
     </div>
   );
 }

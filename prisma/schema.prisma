@@ -99,8 +99,33 @@ model Tenant {
   agendamentos Agendamento[]
   horarios     HorarioFuncionamento[]
   notificacoes Notificacao[]
+  logo         LogoTenant?
 
   @@map("tenant")
+}
+
+/// Arquivo do logo da estetica (UC12, RF13). `tenant.logoUrl` continua sendo o
+/// endereco que as telas usam; o que mudou e onde os bytes moram.
+///
+/// Antes ficavam em public/uploads/logos, no disco do servidor — que o App
+/// Service apaga a cada deploy/restart e a Vercel nem deixa gravar. No banco o
+/// logo vai junto para qualquer hospedagem, sem conta nem chave a mais. Cabe
+/// aqui porque e um arquivo de ate 2MB por estetica; com muitos arquivos ou
+/// arquivos grandes o lugar certo seria um Blob Storage.
+///
+/// Tabela propria, e nao coluna em tenant: quase toda pagina busca o tenant
+/// inteiro (findUnique sem select) e passaria a carregar a imagem junto.
+model LogoTenant {
+  tenantId     String   @id
+  dados        Bytes
+  /// MIME conferido pelos primeiros bytes do arquivo, nao pelo que o navegador
+  /// declarou.
+  tipo         String
+  atualizadoEm DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("logo_tenant")
 }
 
 /// Tipos de veiculo que a estetica atende, definidos por ela (RN01 revisada).

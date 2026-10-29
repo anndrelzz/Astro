@@ -24,19 +24,11 @@ export type SegmentoOpcao = { id: string; nome: string };
 // `emModal` troca so o involucro: dentro do pop-up (rota interceptada) o
 // cabecalho escuro e o titulo ja vem do casulo, entao aqui sobra o formulario.
 // Os campos e as regras sao os mesmos nos dois casos.
-//
-// cidade/estado sao da estetica, nao do carro — servem so para a faixa de cima
-// da placa desenhada (ver InputPlaca). Vem da pagina porque o tenant e lido no
-// servidor.
 export function NovoVeiculoForm({
   emModal = false,
-  cidade,
-  estado,
   segmentos,
 }: {
   emModal?: boolean;
-  cidade?: string | null;
-  estado?: string | null;
   segmentos: SegmentoOpcao[];
 }) {
   const { slug } = useParams<{ slug: string }>();
@@ -188,8 +180,6 @@ export function NovoVeiculoForm({
             <InputPlaca
               valor={form.placa}
               aoMudar={(v) => set("placa", v)}
-              cidade={cidade}
-              estado={estado}
             />
           </div>
 
