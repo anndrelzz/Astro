@@ -15,6 +15,8 @@ type Veiculo = {
   ano: number;
   segmento: string;
   preco: number;
+  /// false = tipo removido do catalogo da estetica. Aparece na lista, travado.
+  atendido: boolean;
 };
 
 // As tres situacoes possiveis da lista de horarios, e so elas. Antes eram duas
@@ -98,7 +100,8 @@ function ListaVeiculos({ veiculos, veiculoId, aoEscolher, escuro }: ListaVeiculo
             key={v.id}
             type="button"
             onClick={() => aoEscolher(v.id)}
-            className={`${base} ${borda}`}
+            disabled={!v.atendido}
+            className={`${base} ${borda} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-astro-bg text-[0.6rem] font-semibold text-white">
@@ -111,6 +114,11 @@ function ListaVeiculos({ veiculos, veiculoId, aoEscolher, escuro }: ListaVeiculo
                 <p className={escuro ? "text-xs text-astro-muted" : "text-xs text-zinc-500"}>
                   {v.placa} · {v.segmento} · {v.ano}
                 </p>
+                {!v.atendido && (
+                  <p className={escuro ? "mt-0.5 text-xs text-white" : "mt-0.5 text-xs text-zinc-700"}>
+                    A estética não atende mais esse tipo de veículo
+                  </p>
+                )}
               </div>
             </div>
             {sel && (
@@ -158,7 +166,8 @@ export function AgendarForm({
 
   const [dataSel, setDataSel] = useState(isoLocal(hoje));
   const [hora, setHora] = useState<string | null>(null);
-  const [veiculoId, setVeiculoId] = useState(veiculos[0].id);
+  // A pagina so chega aqui com ao menos um veiculo atendido.
+  const [veiculoId, setVeiculoId] = useState(veiculos.find((v) => v.atendido)!.id);
   const [trocando, setTrocando] = useState(false);
   // Incrementado pelo "Tentar de novo": entra na chave da busca e por isso
   // refaz o fetch mesmo com o dia inalterado.

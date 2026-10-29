@@ -51,6 +51,7 @@ export default async function HistoricoPage({
     duracaoMin: a.servico.duracaoMin,
     servicoNome: a.servico.nome,
     veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+    placa: a.veiculo.placa,
     segmento: a.veiculo.segmento.nome,
     valor: Number(a.valor),
     acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),
@@ -61,11 +62,10 @@ export default async function HistoricoPage({
   return (
     <ClienteShell
       slug={slug}
-      trilha={["Conta", "Agendamentos"]}
+      pontos
       titulo="Meus agendamentos"
     >
       <HistoricoLista
-        slug={slug}
         itens={itens}
         horasLimite={tenant.cancelamentoHorasLimite}
       />
