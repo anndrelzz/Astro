@@ -4,7 +4,8 @@
 # - conferir: lint, checagem de tipos e build;
 # - back: todos os testes do backend (regras, rotas da API e isolamento entre
 #   esteticas) com cobertura, contra um PostgreSQL temporario com as
-#   migrations aplicadas.
+#   migrations aplicadas. No fim, envia a analise e a cobertura para o
+#   SonarQube Cloud.
 name: CI
 
 on:
@@ -77,8 +78,15 @@ jobs:
       # superuser ignora as policies e os testes passariam sem provar nada.
       DATABASE_URL: postgresql://astro:astro@localhost:5432/astro
       NEXT_TELEMETRY_DISABLED: 1
+      # So "true" ou "false", nunca o token: PR do Dependabot e de fork nao
+      # recebem os secrets, e ai a analise do SonarQube Cloud e pulada.
+      TEM_SONAR: ${{ secrets.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Historico completo: o SonarQube Cloud separa o codigo novo do PR
+          # pelo git.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -115,3 +123,12 @@ jobs:
           name: cobertura
           path: coverage/
           retention-days: 14
+
+      # Qualidade do codigo e a cobertura acima, no painel do SonarQube Cloud
+      # (configuracao em sonar-project.properties).
+      - name: Analise do SonarQube Cloud
+        if: env.TEM_SONAR == 'true'
+        uses: SonarSource/sonarqube-scan-action@v8.3.0
+        env:
+          # O token so existe neste passo, nao nos de instalacao e de testes.
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
