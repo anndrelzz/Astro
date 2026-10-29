@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { partesNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
 import { HorariosAdmin } from "./horarios-admin";
@@ -10,11 +11,11 @@ import { HorariosAdmin } from "./horarios-admin";
 const NOMES_DIAS = [
   "Domingo",
   "Segunda",
-  "Terca",
+  "Terça",
   "Quarta",
   "Quinta",
   "Sexta",
-  "Sabado",
+  "Sábado",
 ];
 
 // A semana e EXIBIDA comecando na segunda e terminando no domingo, como no
@@ -64,13 +65,16 @@ export default async function AdminHorariosPage({
   });
 
   // O cabecalho e renderizado DENTRO do componente cliente porque o botao
-  // "Salvar grade" mora na barra do topo (como no mockup) e depende do estado
-  // do formulario. O AdminHeader tem a area de acao justamente para isso.
+  // "Salvar grade" fica no topo e depende do estado do formulario.
+  // Dia e hora no relogio da estetica, para o cartao "aberto agora" e a
+  // marca do "agora" na barra de hoje.
+  const relogio = partesNoFuso(new Date());
+
   return (
     <HorariosAdmin
       horariosIniciais={horariosPorDia}
-      capacidadeSimultanea={tenant.capacidadeSimultanea}
-      linkConfiguracoes={`/${slug}/admin/configuracoes`}
+      agora={{ diaSemana: relogio.diaSemana, minuto: relogio.hora * 60 + relogio.minuto }}
+      ofertaInicial={{ capacidade: tenant.capacidadeSimultanea, intervalo: tenant.intervaloMinutos }}
     />
   );
 }

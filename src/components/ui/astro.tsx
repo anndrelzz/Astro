@@ -37,8 +37,16 @@ export function BackButton({ href }: { href: string }) {
 }
 
 // Label tecnica em maiuscula espacada.
-export function FieldLabel({ children }: { children: ReactNode }) {
-  return <label className="astro-label block">{children}</label>;
+//
+// htmlFor liga o rotulo ao campo pelo id dele. Sem essa ligacao o rotulo so
+// fica perto do campo na tela: o leitor de tela anuncia "caixa de texto" sem
+// dizer qual, e clicar no texto nao leva o cursor para o campo.
+export function FieldLabel({ htmlFor, children }: { htmlFor: string; children: ReactNode }) {
+  return (
+    <label htmlFor={htmlFor} className="astro-label block">
+      {children}
+    </label>
+  );
 }
 
 // Cabecalho escuro com botao voltar e titulo centralizado (telas 08, 10, 11).
