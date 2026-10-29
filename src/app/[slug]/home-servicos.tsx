@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, Car, ChevronRight, Clock, Info } from "lucide-react";
+import { ArrowRight, Car, Clock, Info, Plus } from "lucide-react";
 
 type Servico = {
   id: string;
@@ -156,7 +156,14 @@ export function HomeServicos({
                 </span>
               </span>
 
-              <ChevronRight className="h-5 w-5 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-zinc-600" />
+              {/* Botao de adicionar na cor da estetica: o card inteiro ja e o link
+                  de agendar, o circulo so deixa claro que tocar agenda. */}
+              <span
+                aria-hidden
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-astro-blue text-white shadow-[0_6px_16px_-8px_var(--color-astro-blue)] transition group-hover:scale-105 group-active:scale-95"
+              >
+                <Plus className="h-5 w-5" strokeWidth={2.5} />
+              </span>
             </>
           );
           const classe =
