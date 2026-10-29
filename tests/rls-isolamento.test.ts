@@ -1,4 +1,4 @@
-import test, { after, before, describe } from "node:test";
+import { afterAll, beforeAll, describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { prisma } from "@/lib/prisma";
 import { withTelegramTokenLookup, withTenant } from "@/lib/tenant-db";
@@ -153,7 +153,7 @@ async function removerTenantCompleto(f: Fixture | undefined) {
   await prisma.tenant.delete({ where: { id: f.tenantId } });
 }
 
-before(async () => {
+beforeAll(async () => {
   // Remove sobras de uma execucao anterior interrompida.
   const orfaos = await prisma.tenant.findMany({
     where: { slug: { startsWith: PREFIXO } },
@@ -174,7 +174,7 @@ before(async () => {
   tenantB = await criarTenantCompleto("b", null);
 });
 
-after(async () => {
+afterAll(async () => {
   await removerTenantCompleto(tenantA);
   await removerTenantCompleto(tenantB);
   await prisma.$disconnect();

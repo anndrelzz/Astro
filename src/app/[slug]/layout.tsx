@@ -1,10 +1,13 @@
+import { BarraCliente } from "@/components/ui/bottom-nav";
 import { ModalSlot } from "@/components/ui/modal-slot";
 import { getTenantPorSlug } from "@/lib/tenant";
 
-// Layout de /[slug] que existe por dois motivos: abrir o slot paralelo
+// Layout de /[slug] que existe por tres motivos: abrir o slot paralelo
 // @modal, usado pelas rotas interceptadas (o cadastro de veiculo), e aplicar
 // a cor de marca do tenant (RF13, UC12) via variavel CSS — vale tanto para o
-// site do cliente quanto para o Admin, que compartilham os tokens astro-*.
+// site do cliente quanto para o Admin, que compartilham os tokens astro-*. E
+// manter montada a barra de baixo do cliente, para o circulo do item ativo
+// deslizar entre as telas (ela mesma decide em quais rotas aparece).
 //
 // Ele nao desenha chrome. A casca visual do cliente continua sendo a
 // ClienteShell, um componente que cada tela importa se quiser — login,
@@ -42,6 +45,7 @@ export default async function SlugLayout({
       }
     >
       {children}
+      <BarraCliente slug={slug} />
       <ModalSlot>{modal}</ModalSlot>
     </div>
   );

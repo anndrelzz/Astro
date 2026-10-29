@@ -1,0 +1,119 @@
+# CI: confere cada PR e cada push na main antes do merge.
+#
+# Dois jobs, que rodam ao mesmo tempo e aparecem no PR como checks separados:
+# - conferir: lint, checagem de tipos, testes de unidade com cobertura e build;
+# - rls: os testes de isolamento entre esteticas, contra um PostgreSQL
+#   temporario com as migrations aplicadas.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Um push novo no mesmo PR cancela a execucao anterior, que ja ficou velha.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conferir:
+    name: Lint, tipos, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Valores de mentira: o build e os testes de unidade nao conectam no
+      # banco nem enviam nada, mas o Prisma e o NextAuth leem estas variaveis.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXTAUTH_SECRET: ci-segredo-sem-uso-real
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Gerar o cliente do Prisma
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Checagem de tipos
+        run: npx tsc --noEmit
+
+      - name: Testes com cobertura
+        run: npx vitest run --coverage --exclude tests/rls-isolamento.test.ts
+
+      - name: Guardar o relatorio de cobertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cobertura
+          path: coverage/
+          retention-days: 14
+
+      - name: Build
+        run: npx next build
+
+  rls:
+    name: Isolamento entre esteticas (RLS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Banco que existe so durante o job e some no fim.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # A aplicacao conecta com o role astro, nunca com o postgres: o
+      # superuser ignora as policies e os testes passariam sem provar nada.
+      DATABASE_URL: postgresql://astro:astro@localhost:5432/astro
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Gerar o cliente do Prisma
+        run: npx prisma generate
+
+      # Mesmo arranjo da producao: o astro e dono das tabelas (roda as
+      # migrations), mas nao e superuser nem tem BYPASSRLS. O FORCE ROW LEVEL
+      # SECURITY das migrations faz as policies valerem tambem para o dono.
+      - name: Criar o role e o banco da aplicacao
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE astro LOGIN PASSWORD 'astro' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;" \
+            -c "CREATE DATABASE astro OWNER astro;"
+
+      - name: Aplicar as migrations
+        run: npx prisma migrate deploy
+
+      - name: Testes de RLS
+        run: npm run test:rls

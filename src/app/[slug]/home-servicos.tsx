@@ -1,9 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Plus, Clock, Car, ArrowRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ArrowRight, Car, ChevronRight, Clock, Info } from "lucide-react";
+
 type Servico = {
   id: string;
   nome: string;
@@ -14,11 +15,20 @@ type Servico = {
   precos: Record<string, number>;
 };
 
-export type SegmentoView = { id: string; nome: string };
+// O carro que define o preco exibido: o principal da garagem do cliente.
+export type CarroPreco = {
+  segmentoId: string;
+  segmentoNome: string;
+  nome: string;
+};
 
-function formatarPreco(valor: number) {
-  return `R$ ${valor.toFixed(2).replace(".", ",")}`;
-}
+const reais = (valor: number, centavos = true) =>
+  valor.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: centavos ? 2 : 0,
+    maximumFractionDigits: centavos ? 2 : 0,
+  });
 
 function formatarDuracao(min: number) {
   if (min < 60) return `${min} min`;
@@ -27,31 +37,56 @@ function formatarDuracao(min: number) {
   return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
-// Tela 06 — seletor de segmento (preview de precos, RF04) + cards de servico.
+// Preco do card. Com carro cadastrado, o valor exato do tipo dele (RF04); sem
+// carro, a faixa do mais barato ao mais caro entre os tipos da estetica.
+// null = sem preco: acontece na janela entre o Admin criar um tipo novo e
+// preencher a tabela (o R$ 0 provisorio ja chega aqui fora do mapa). O card
+// desse servico nem aparece, e o agendamento tambem e recusado no servidor.
+function precoDoCard(servico: Servico, carro: CarroPreco | null) {
+  if (carro) {
+    const valor = servico.precos[carro.segmentoId];
+    return valor === undefined ? null : reais(valor);
+  }
+  const valores = Object.values(servico.precos);
+  if (valores.length === 0) return null;
+  const min = Math.min(...valores);
+  const max = Math.max(...valores);
+  return min === max
+    ? reais(min)
+    : `${reais(min, false)} – ${reais(max, false)}`;
+}
+
+// Tela 06 — lista de servicos (RF01, RF04).
+//
+// Sem o seletor de tipo de carro: ele confundia o cliente, que nao sabia em
+// qual tipo o carro dele se encaixava. O preco ja vem do carro cadastrado, e
+// o aviso embaixo do titulo explica que o valor depende do tipo.
+//
+// No celular e uma lista vertical, e nao um carrossel: no carrossel o cliente
+// via um servico e meio e nao sabia que havia outros. O card inteiro e o
+// botao de agendar.
 export function HomeServicos({
   slug,
   servicos,
-  segmentos,
-  segmentoInicial,
+  carro,
   logado,
   temVeiculo,
 }: {
   slug: string;
   servicos: Servico[];
-  segmentos: SegmentoView[];
-  segmentoInicial: string;
+  carro: CarroPreco | null;
   logado: boolean;
   temVeiculo: boolean;
 }) {
-  const [segmento, setSegmento] = useState(segmentoInicial);
-  // RN04 — logado sem veiculo cai no modal "sem veiculo" (tela 07) ao agendar.
+  // RN04 — logado sem veiculo cai no aviso "sem veiculo" (tela 07) ao agendar.
   const [semVeiculo, setSemVeiculo] = useState(false);
 
-  const nomeSegmento = segmentos.find((s) => s.id === segmento)?.nome ?? "";
-  // So entra o que tem preco para o tipo escolhido. Falta de preco acontece na
-  // janela entre o Admin criar um tipo novo e preencher a tabela; ate la, quem
-  // tem esse tipo de carro nao ve o servico, e os outros tipos seguem normais.
-  const servicosDoSegmento = servicos.filter((s) => s.precos[segmento] !== undefined);
+  // So entra o que tem preco para o carro do cliente (ou, sem carro, para
+  // algum tipo). Os outros tipos de carro seguem vendo o servico normalmente.
+  const disponiveis = servicos.flatMap((servico) => {
+    const preco = precoDoCard(servico, carro);
+    return preco === null ? [] : [{ servico, preco }];
+  });
 
   // Destino do agendamento conforme estado do usuario.
   function hrefAgendar(servicoId: string) {
@@ -61,159 +96,172 @@ export function HomeServicos({
   }
 
   return (
-    <div className="mt-6">
-      <p className="text-sm text-zinc-500">
-        Selecione o segmento do seu veículo para ver os preços.
+    <section aria-labelledby="titulo-servicos" className="mt-2 lg:mt-3">
+      <h2
+        id="titulo-servicos"
+        className="text-xl font-bold text-zinc-900 lg:text-2xl"
+      >
+        Serviços
+      </h2>
+      <p className="mt-2 flex items-start gap-2 rounded-2xl border border-zinc-200/80 bg-white/70 px-3.5 py-2.5 text-sm text-zinc-600 backdrop-blur">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-astro-blue" />
+        {carro ? (
+          <span>
+            Preços para o seu{" "}
+            <strong className="font-semibold text-zinc-900">
+              {carro.nome}
+            </strong>{" "}
+            ({carro.segmentoNome}). O valor muda conforme o tipo do carro.
+          </span>
+        ) : (
+          <span>
+            O preço varia conforme o tipo do carro. O valor exato aparece ao
+            cadastrar o seu.
+          </span>
+        )}
       </p>
 
-      {/* Seletor de segmento. Os tipos vem da estetica (RN01 revisada), entao a
-          quantidade varia: uma pode ter tres, outra sete. No celular rola na
-          horizontal; no desktop os chips quebram em linhas. */}
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible">
-        {segmentos.map((s) => {
-          const ativo = s.id === segmento;
+      <ul className="mt-4 grid gap-3 lg:grid-cols-[repeat(auto-fill,minmax(22rem,1fr))] lg:gap-4">
+        {disponiveis.map(({ servico, preco }) => {
+          const conteudo = (
+            <>
+              <span
+                aria-hidden
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--color-astro-blue-bright), color-mix(in srgb, var(--color-astro-blue) 70%, black))",
+                }}
+              >
+                <Car className="h-5 w-5" />
+              </span>
+
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold leading-snug text-zinc-900">
+                  {servico.nome}
+                </span>
+                {servico.descricao && (
+                  <span className="mt-0.5 line-clamp-1 text-sm text-zinc-500">
+                    {servico.descricao}
+                  </span>
+                )}
+                <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span className="font-bold text-zinc-900 tabular-nums">
+                    {preco}
+                  </span>
+                  <span className="flex items-center gap-1 text-zinc-500">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatarDuracao(servico.duracaoMin)}
+                  </span>
+                </span>
+              </span>
+
+              <ChevronRight className="h-5 w-5 shrink-0 text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-zinc-600" />
+            </>
+          );
+          const classe =
+            "group flex w-full items-center gap-3.5 rounded-2xl border border-zinc-200/80 bg-white/85 p-4 text-left shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)] backdrop-blur transition hover:border-zinc-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-astro-blue";
+
           return (
-            <button
-              key={s.id}
-              onClick={() => setSegmento(s.id)}
-              className={
-                ativo
-                  ? "flex shrink-0 items-center gap-2 rounded-full bg-astro-bg px-5 py-2.5 text-sm font-semibold text-white"
-                  : "flex shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-sm text-zinc-600"
-              }
-            >
-              {ativo && <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />}
-              {s.nome}
-            </button>
+            <li key={servico.id}>
+              {logado && !temVeiculo ? (
+                <button
+                  type="button"
+                  onClick={() => setSemVeiculo(true)}
+                  aria-label={`Agendar ${servico.nome}`}
+                  className={classe}
+                >
+                  {conteudo}
+                </button>
+              ) : (
+                <Link
+                  href={hrefAgendar(servico.id)}
+                  aria-label={`Agendar ${servico.nome}`}
+                  className={classe}
+                >
+                  {conteudo}
+                </Link>
+              )}
+            </li>
           );
         })}
-      </div>
+      </ul>
 
-      {/* Cabecalho da secao */}
-      <div className="mt-6 flex items-end justify-between">
-        <h2 className="text-xl font-bold text-zinc-900">Nossos Serviços</h2>
-      </div>
-
-      {/* Cards de servico. No celular e um carrossel horizontal de cards de
-          224px; no desktop vira grade (tela 06 do mockup), que mostra o
-          catalogo inteiro sem rolar. As colunas acompanham a largura da tela
-          para nao esticar o card quando a estetica tem poucos servicos. */}
-      <div className="mt-4 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] lg:gap-5 lg:overflow-visible">
-        {servicosDoSegmento.map((servico) => (
-          <div
-            key={servico.id}
-            className="flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition lg:w-auto lg:shrink lg:hover:-translate-y-0.5 lg:hover:shadow-md"
-          >
-            {/* Imagem placeholder com badge de duracao. Enquanto nao ha foto
-                real do servico, a logo do Astro entra como marca d'agua. */}
-            <div className="relative flex h-36 items-end justify-center bg-gradient-to-br from-astro-surface-2 to-astro-bg p-3 lg:h-44">
-              <Image
-                src="/logo-astro-branco.png"
-                alt=""
-                width={96}
-                height={96}
-                className="pointer-events-none absolute inset-0 m-auto h-20 w-20 object-contain opacity-20 lg:h-24 lg:w-24"
-              />
-              <span className="relative flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
-                <Clock className="h-3 w-3" />
-                {formatarDuracao(servico.duracaoMin)}
-              </span>
-            </div>
-
-            <div className="flex flex-1 flex-col p-4">
-              <h3 className="font-semibold text-zinc-900">{servico.nome}</h3>
-              {servico.descricao && (
-                <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500">
-                  {servico.descricao}
-                </p>
-              )}
-              <div className="mt-3 flex items-end justify-between">
-                <div>
-                  <p className="text-[0.65rem] uppercase tracking-wide text-zinc-400">
-                    {nomeSegmento}
-                  </p>
-                  <p className="text-lg font-bold text-zinc-900">
-                    {formatarPreco(servico.precos[segmento])}
-                  </p>
-                </div>
-                {logado && !temVeiculo ? (
-                  <button
-                    onClick={() => setSemVeiculo(true)}
-                    aria-label={`Agendar ${servico.nome}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-astro-blue text-white shadow-lg shadow-astro-blue/30"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
-                ) : (
-                  <Link
-                    href={hrefAgendar(servico.id)}
-                    aria-label={`Agendar ${servico.nome}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-astro-blue text-white shadow-lg shadow-astro-blue/30"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {servicos.length === 0 && (
-          <p className="text-sm text-zinc-500">Nenhum serviço cadastrado ainda.</p>
-        )}
-
-        {servicos.length > 0 && servicosDoSegmento.length === 0 && (
-          <p className="text-sm text-zinc-500">
-            Nenhum serviço disponível para esse tipo de veículo no momento.
-          </p>
-        )}
-      </div>
-
-      {/* Tela 07 — modal "sem veiculo" (RN04) */}
-      {semVeiculo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <button
-            aria-label="Fechar"
-            onClick={() => setSemVeiculo(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
-            <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-astro-blue/10">
-              <Car className="h-6 w-6 text-astro-blue" />
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-astro-blue text-[0.7rem] font-bold text-white">
-                !
-              </span>
-            </div>
-            <h2 className="mt-4 text-lg font-bold text-zinc-900">
-              Veículo não cadastrado
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-              Você ainda não possui um veículo cadastrado. Só conseguirá
-              prosseguir para o agendamento se realizar o cadastro.
-            </p>
-
-            {/* Fecha este alerta ao entregar a vez para o cadastro. Como o
-                cadastro e rota interceptada, ele abre como pop-up SEM desmontar
-                esta pagina — e sem fechar aqui, os dois modais ficariam
-                empilhados, cada um com seu proprio fundo escurecido. Um modal
-                de cada vez. */}
-            <Link
-              onClick={() => setSemVeiculo(false)}
-              href={`/${slug}/veiculos/novo?callbackUrl=/${slug}`}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-astro-blue to-astro-blue-bright py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25"
-            >
-              Cadastrar veículo
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <button
-              onClick={() => setSemVeiculo(false)}
-              className="mt-2 w-full py-2 text-sm font-semibold text-astro-blue"
-            >
-              Agora não
-            </button>
-          </div>
-        </div>
+      {servicos.length === 0 && (
+        <p className="mt-4 text-sm text-zinc-500">
+          Nenhum serviço cadastrado ainda.
+        </p>
       )}
-    </div>
+
+      {servicos.length > 0 && disponiveis.length === 0 && (
+        <p className="mt-4 text-sm text-zinc-500">
+          Nenhum serviço disponível para esse tipo de veículo no momento.
+        </p>
+      )}
+
+      {/* Tela 07 — aviso "sem veiculo" (RN04). Fica no centro da tela e entra
+          subindo. Vai direto para o <body>:
+          aqui dentro ele ficaria preso na camada da pagina (o `isolate` da
+          ClienteShell) e a barra do cliente, que vem do layout, passaria por
+          cima dele. */}
+      {semVeiculo &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <button
+              aria-label="Fechar"
+              onClick={() => setSemVeiculo(false)}
+              className="absolute inset-0 animate-[escurecer_250ms_ease-out] bg-black/40 backdrop-blur-sm motion-reduce:animate-none"
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="titulo-sem-veiculo"
+              className="relative w-full max-w-sm animate-[subir_400ms_cubic-bezier(0.22,1,0.36,1)] rounded-3xl bg-white p-6 text-center shadow-2xl motion-reduce:animate-none"
+            >
+              <span
+                className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--color-astro-blue), var(--color-astro-blue-bright))",
+                  boxShadow:
+                    "0 0 0 8px color-mix(in srgb, var(--color-astro-blue) 15%, transparent)",
+                }}
+              >
+                <Car className="h-6 w-6" />
+              </span>
+              <h2
+                id="titulo-sem-veiculo"
+                className="mt-5 text-lg font-bold text-zinc-900"
+              >
+                Cadastre seu veículo primeiro
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                O preço e o horário dependem do tipo do carro. Leva menos de um
+                minuto.
+              </p>
+
+              {/* Fecha este aviso ao entregar a vez para o cadastro. Como o
+                cadastro e rota interceptada, ele abre como pop-up SEM desmontar
+                esta pagina — e sem fechar aqui, os dois ficariam empilhados,
+                cada um com seu proprio fundo escurecido. Um de cada vez. */}
+              <Link
+                onClick={() => setSemVeiculo(false)}
+                href={`/${slug}/veiculos/novo?callbackUrl=/${slug}`}
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-[0_12px_28px_-12px_var(--color-astro-blue)] transition hover:brightness-110"
+              >
+                Cadastrar veículo
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <button
+                onClick={() => setSemVeiculo(false)}
+                className="mt-2 w-full rounded-full py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900"
+              >
+                Agora não
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </section>
   );
 }

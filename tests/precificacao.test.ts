@@ -1,5 +1,4 @@
-import test, { describe } from "node:test";
-import assert from "node:assert/strict";
+import { describe, expect, test } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import { calcularPreco } from "@/lib/precificacao";
 
@@ -8,8 +7,7 @@ import { calcularPreco } from "@/lib/precificacao";
 // POST /api/agendamentos dependem dela. R$ 0 e o valor provisorio de um tipo
 // recem-criado, entao conta como "sem preco".
 //
-// Nao usa banco. Rodar com:
-//   npm run test:precos
+// Nao usa banco.
 
 const HATCH = "hatch";
 const SUV = "suv";
@@ -21,19 +19,19 @@ const precos = [
 
 describe("preco por tipo de veiculo", () => {
   test("tipo com preco: devolve o valor da tabela", () => {
-    assert.equal(calcularPreco(precos, HATCH)?.toNumber(), 80);
+    expect(calcularPreco(precos, HATCH)?.toNumber()).toBe(80);
   });
 
   test("tipo com R$ 0 (ainda nao preenchido): sem preco", () => {
-    assert.equal(calcularPreco(precos, SUV), null);
+    expect(calcularPreco(precos, SUV)).toBeNull();
   });
 
   test("tipo sem linha de preco: sem preco", () => {
-    assert.equal(calcularPreco(precos, "van"), null);
+    expect(calcularPreco(precos, "van")).toBeNull();
   });
 
   test("centavos contam como preco", () => {
     const centavos = [{ segmentoId: HATCH, valor: new Prisma.Decimal("0.01") }];
-    assert.equal(calcularPreco(centavos, HATCH)?.toNumber(), 0.01);
+    expect(calcularPreco(centavos, HATCH)?.toNumber()).toBe(0.01);
   });
 });

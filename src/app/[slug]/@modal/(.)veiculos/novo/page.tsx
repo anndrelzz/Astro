@@ -30,10 +30,9 @@ export default async function NovoVeiculoModal({
 }) {
   const { slug } = await params;
 
-  // cidade/estado alimentam a faixa da placa desenhada no formulario.
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
-    select: { id: true, cidade: true, estado: true },
+    select: { id: true },
   });
   if (!tenant) notFound();
 
@@ -54,8 +53,6 @@ export default async function NovoVeiculoModal({
     <ModalRota titulo="Cadastrar veículo">
       <NovoVeiculoForm
         emModal
-        cidade={tenant.cidade}
-        estado={tenant.estado}
         segmentos={segmentos}
       />
     </ModalRota>
