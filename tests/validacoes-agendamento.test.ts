@@ -36,6 +36,12 @@ describe("data do agendamento", () => {
     expect(conferirDataAgendamento("2026-13-01", AGORA)).toBe("Data invalida");
   });
 
+  test("fora do formato AAAA-MM-DD: invalida, sem lancar erro", () => {
+    for (const data of ["", "abc", "2026-10", "2026-10-21-x", "21/10/2026", "2026-1-5", "2026-10-21T10:00"]) {
+      expect(conferirDataAgendamento(data, AGORA)).toBe("Data invalida");
+    }
+  });
+
   test("virada de mes e de ano dentro da janela", () => {
     const fimDeAno = instanteNoFuso(2026, 12, 28, 9, 0);
     expect(conferirDataAgendamento("2027-01-05", fimDeAno)).toBeNull();
