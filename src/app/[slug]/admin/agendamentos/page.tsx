@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { FUSO, chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { AgendamentosLista, type DiaSemana, type ItemAgendamento } from "./agendamentos-lista";
+import { authOptions } from "@/back/auth";
+import { FUSO, chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/compartilhado/fuso";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { AgendamentosLista, type DiaSemana, type ItemAgendamento } from "@/front/admin/agendamentos-lista";
 
 // RF11, UC10 — agenda do painel administrativo, em linha do tempo.
 //

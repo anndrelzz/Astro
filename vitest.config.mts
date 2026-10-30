@@ -8,14 +8,17 @@ import { defineConfig } from "vitest/config";
 // gera o relatorio de cobertura em coverage/ (abrir coverage/index.html).
 //
 // Variaveis de ambiente: lidas do .env da raiz, como o `next dev`. Os testes
-// de RLS e das rotas da API (tests/rotas) precisam do DATABASE_URL apontando
+// de RLS e das rotas da API (tests/back/rotas) precisam do DATABASE_URL apontando
 // para um banco com as migrations aplicadas, conectado com o role da
 // aplicacao. Eles criam esteticas de teste proprias e as apagam no fim.
 // No CI nao ha .env: as variaveis vem do proprio workflow.
 export default defineConfig(({ mode }) => ({
   resolve: {
     // Mesmo atalho do tsconfig.json ("@/*" -> "./src/*").
-    alias: { "@": path.resolve(import.meta.dirname, "src") },
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+      "server-only": path.resolve(import.meta.dirname, "tests/server-only.ts"),
+    },
   },
   test: {
     env: loadEnv(mode, process.cwd(), ""),
@@ -30,16 +33,17 @@ export default defineConfig(({ mode }) => ({
         extends: true,
         test: {
           name: "back",
-          include: ["tests/**/*.test.ts"],
+          include: ["tests/back/**/*.test.ts"],
           environment: "node",
         },
       },
     ],
     coverage: {
       provider: "v8",
-      // Backend: regras (src/lib), rotas da API e o proxy. As telas entram
-      // aqui junto com os testes do front.
-      include: ["src/lib/**/*.ts", "src/app/api/**/*.ts", "src/proxy.ts"],
+      // Backend: servidor (src/back), regras puras (src/compartilhado), rotas
+      // da API e o proxy. As telas (src/front) entram junto com os testes do
+      // front.
+      include: ["src/back/**/*.ts", "src/compartilhado/**/*.ts", "src/app/api/**/*.ts", "src/proxy.ts"],
       // text: tabela no terminal; html: relatorio navegavel; lcov: formato
       // lido por ferramentas como o SonarQube Cloud.
       reporter: ["text", "html", "lcov"],

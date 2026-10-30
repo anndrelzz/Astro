@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { withTenant } from "@/lib/tenant-db";
+import { authOptions } from "@/back/auth";
+import { withTenant } from "@/back/tenant-db";
 
 // UC02, RN15 — remocao de veiculo do cliente.
 //

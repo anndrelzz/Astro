@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { prisma } from "@/lib/prisma";
-import { tenantConfigSchema } from "@/lib/validations/tenant";
+import { authOptions } from "@/back/auth";
+import { lerJson } from "@/back/api-helpers";
+import { prisma } from "@/back/prisma";
+import { tenantConfigSchema } from "@/compartilhado/validacoes/tenant";
 
 // UC13, UC14, RF13, RF17, RF18, RN06 — Admin configura a propria estetica:
 // dados de apresentacao, endereco, contatos, chave PIX, janela de cancelamento,

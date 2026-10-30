@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { ConfiguracoesAdmin } from "./configuracoes-admin";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { ConfiguracoesAdmin } from "@/front/admin/configuracoes-admin";
 
 // UC13, UC14, RF13, RF17, RF18, RN06 — configuracoes gerais da estetica.
 // A grade de horarios (UC09/RF02) tem tela propria.

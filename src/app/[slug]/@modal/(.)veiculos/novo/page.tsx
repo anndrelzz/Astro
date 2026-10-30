@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ModalRota } from "@/components/ui/modal-rota";
-import { NovoVeiculoForm } from "../../../veiculos/novo/novo-veiculo-form";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ModalRota } from "@/front/componentes/modal-rota";
+import { NovoVeiculoForm } from "@/front/cliente/novo-veiculo-form";
 
 // UC02, tela 08 — versao em modal do cadastro de veiculo.
 //

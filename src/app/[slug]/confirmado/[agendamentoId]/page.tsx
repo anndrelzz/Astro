@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ConfirmadoCliente } from "./confirmado-cliente";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ConfirmadoCliente } from "@/front/cliente/confirmado-cliente";
 
 // Tela 12 — confirmacao. O servidor le a sessao e os dados do agendamento; a
 // parte visual (com a animacao de sucesso antes) vive no ConfirmadoCliente.

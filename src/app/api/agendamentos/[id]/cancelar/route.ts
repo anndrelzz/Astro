@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 import { after, NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
-import { withTenant } from "@/lib/tenant-db";
+import { authOptions } from "@/back/auth";
+import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
+import { withTenant } from "@/back/tenant-db";
 
 // UC06, RN11 — cliente so cancela fora da janela configurada pelo Admin;
 // Admin cancela qualquer agendamento sem restricao.

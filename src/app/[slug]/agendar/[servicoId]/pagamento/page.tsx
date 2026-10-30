@@ -1,11 +1,11 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { calcularPreco } from "@/lib/precificacao";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ClienteShell } from "../../../cliente-shell";
-import { PagamentoForm } from "./pagamento-form";
+import { authOptions } from "@/back/auth";
+import { calcularPreco } from "@/compartilhado/precificacao";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ClienteShell } from "@/front/cliente/cliente-shell";
+import { PagamentoForm } from "@/front/cliente/pagamento-form";
 
 // Tela 10 — escolha da forma de pagamento. Recebe veiculo/data/hora via
 // query e cria o agendamento ao confirmar (via /api/agendamentos).

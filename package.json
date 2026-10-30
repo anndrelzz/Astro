@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:back": "vitest run --project back",
     "test:cobertura": "vitest run --coverage",
-    "test:rls": "vitest run tests/rls-isolamento.test.ts"
+    "test:rls": "vitest run tests/back/rls-isolamento.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -25,6 +25,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.17.2",
+    "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

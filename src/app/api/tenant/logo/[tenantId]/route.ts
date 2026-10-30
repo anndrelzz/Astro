@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/back/prisma";
 
 // Entrega o logo da estetica gravado pelo POST de /api/tenant/logo. Publico
 // de proposito: a tela de login mostra o logo antes de existir sessao.

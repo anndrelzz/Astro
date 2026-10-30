@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { IdentidadeAdmin } from "./identidade-admin";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { IdentidadeAdmin } from "@/front/admin/identidade-admin";
 
 // UC12, RF13 — tela propria para a identidade visual, como no mockup do admin.
 // Antes esta secao vivia dentro de /configuracoes.

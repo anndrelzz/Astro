@@ -1,13 +1,13 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { CalendarDays, Car, Clock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { authOptions } from "@/lib/auth";
-import { FUSO, chaveDia, fimDoDia, horaMinuto, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { AgendaHoje } from "./agenda-hoje";
-import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "./cartao-faturamento";
-import { EsperandoVoce } from "./esperando-voce";
+import { authOptions } from "@/back/auth";
+import { FUSO, chaveDia, fimDoDia, horaMinuto, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/compartilhado/fuso";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { AgendaHoje } from "@/front/admin/agenda-hoje";
+import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "@/front/admin/cartao-faturamento";
+import { EsperandoVoce } from "@/front/admin/esperando-voce";
 
 // RF11, UC10 — Dashboard do painel (tela inicial do mockup do admin).
 //
@@ -41,7 +41,7 @@ export default async function AdminDashboardPage({
     redirect(`/${slug}`);
   }
 
-  // Dia, mes e hora do relogio da estetica (lib/fuso.ts), nao do servidor.
+  // Dia, mes e hora do relogio da estetica (compartilhado/fuso.ts), nao do servidor.
   const agora = new Date();
   const relogio = partesNoFuso(agora);
 

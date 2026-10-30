@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { withTenant } from "@/lib/tenant-db";
-import { segmentoNovoSchema } from "@/lib/validations/segmento";
+import { authOptions } from "@/back/auth";
+import { lerJson } from "@/back/api-helpers";
+import { withTenant } from "@/back/tenant-db";
+import { segmentoNovoSchema } from "@/compartilhado/validacoes/segmento";
 
 // RN01 revisada — o Admin define os tipos de veiculo que a estetica atende.
 export async function POST(request: Request) {

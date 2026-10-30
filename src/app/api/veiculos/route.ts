@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { withTenant } from "@/lib/tenant-db";
-import { veiculoSchema } from "@/lib/validations/veiculo";
+import { authOptions } from "@/back/auth";
+import { lerJson } from "@/back/api-helpers";
+import { withTenant } from "@/back/tenant-db";
+import { veiculoSchema } from "@/compartilhado/validacoes/veiculo";
 
 // UC02 — cadastro de veiculo, obrigatorio antes do primeiro agendamento (RN04).
 export async function POST(request: Request) {

@@ -2,12 +2,12 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ClienteShell } from "../../cliente-shell";
-import { CopiarPix } from "./copiar-pix";
-import { ThemeColor } from "@/components/ui/theme-color";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ClienteShell } from "@/front/cliente/cliente-shell";
+import { CopiarPix } from "@/front/cliente/copiar-pix";
+import { ThemeColor } from "@/front/componentes/theme-color";
 
 // Tela 11 — PIX Copia e Cola (RN10, UC04, UC13: apenas a chave copia-e-cola,
 // sem QR nem gateway). Confirmacao e MANUAL pelo Admin (RN05) — por isso o
