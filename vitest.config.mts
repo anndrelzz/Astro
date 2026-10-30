@@ -26,8 +26,8 @@ export default defineConfig(({ mode }) => ({
     hookTimeout: 30_000,
     testTimeout: 15_000,
     // Um projeto por lado do sistema, cada um com o seu ambiente:
-    // `npm run test:back` roda so o backend. O front entra como segundo
-    // projeto, com um navegador simulado (jsdom).
+    // `npm run test:back` roda so o backend e `npm run test:front` so o front,
+    // que roda num navegador simulado (jsdom).
     projects: [
       {
         extends: true,
@@ -37,13 +37,28 @@ export default defineConfig(({ mode }) => ({
           environment: "node",
         },
       },
+      {
+        extends: true,
+        test: {
+          name: "front",
+          include: ["tests/front/**/*.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["tests/front/preparar.ts"],
+        },
+      },
     ],
     coverage: {
       provider: "v8",
       // Backend: servidor (src/back), regras puras (src/compartilhado), rotas
-      // da API e o proxy. As telas (src/front) entram junto com os testes do
-      // front.
-      include: ["src/back/**/*.ts", "src/compartilhado/**/*.ts", "src/app/api/**/*.ts", "src/proxy.ts"],
+      // da API e o proxy. Front: os componentes de tela (src/front). As
+      // paginas (page.tsx) ficam de fora: sao cobertas pelo E2E.
+      include: [
+        "src/back/**/*.ts",
+        "src/compartilhado/**/*.ts",
+        "src/app/api/**/*.ts",
+        "src/proxy.ts",
+        "src/front/**/*.tsx",
+      ],
       // text: tabela no terminal; html: relatorio navegavel; lcov: formato
       // lido por ferramentas como o SonarQube Cloud.
       reporter: ["text", "html", "lcov"],
