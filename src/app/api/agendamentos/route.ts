@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { conferirDataAgendamento } from "@/lib/agenda";
 import { lerJson } from "@/lib/api-helpers";
 import { instanteNoFuso } from "@/lib/fuso";
 import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
@@ -34,6 +35,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dados invalidos" }, { status: 400 });
   }
   const { servicoId, veiculoId, data, hora, formaPagamento } = parsed.data;
+
+  // A tela so oferece os proximos dias; o servidor confere o mesmo limite e
+  // recusa data inexistente (31/02), que viraria outro dia sem aviso.
+  const erroData = conferirDataAgendamento(data);
+  if (erroData) {
+    return NextResponse.json({ error: erroData }, { status: 400 });
+  }
 
   const resultado = await withTenant(session.user.tenantId, async (tx) => {
     const tenant = await tx.tenant.findUnique({

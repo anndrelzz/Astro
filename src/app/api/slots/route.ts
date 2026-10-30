@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { conferirDataAgendamento } from "@/lib/agenda";
 import { authOptions } from "@/lib/auth";
 import { instanteNoFuso } from "@/lib/fuso";
 import { calcularSlotsDisponiveis } from "@/lib/slots";
@@ -35,6 +36,11 @@ export async function GET(request: Request) {
       { error: "Data invalida - use o formato AAAA-MM-DD" },
       { status: 400 }
     );
+  }
+
+  const erroData = conferirDataAgendamento(data);
+  if (erroData) {
+    return NextResponse.json({ error: erroData }, { status: 400 });
   }
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
