@@ -109,7 +109,12 @@ export function Modal({
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {/* Barra de rolagem fina e translucida: a padrao do navegador e uma
+            faixa branca que destoa do vidro escuro. Continua visivel para
+            mostrar que ha mais conteudo abaixo. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 [scrollbar-color:rgb(255_255_255/0.18)_transparent] [scrollbar-width:thin]">
+          {children}
+        </div>
 
         {rodape && (
           // Rodape um tom mais escuro que o corpo: assenta os botoes e evita

@@ -2,11 +2,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ClienteSidebar } from "./cliente-sidebar";
+import { FundoOndas } from "./admin/fundo-ondas";
 
 // Casca das telas do cliente logado (mockup de desktop): barra lateral fixa a
 // esquerda e area de conteudo a direita. Abaixo de lg ela desaparece por
 // completo e a tela volta a ser exatamente o que ja era no celular — a
-// navegacao volta a ser a pilula do rodape (BottomNav).
+// navegacao volta a ser a barra do rodape (BarraCliente, no layout).
 //
 // E um componente, e nao um layout.tsx, de proposito: /[slug]/login, /cadastro
 // e /confirmado sao telas cheias, sem menu nenhum, e um layout nesse nivel
@@ -16,6 +17,7 @@ export async function ClienteShell({
   titulo,
   trilha,
   acoes,
+  pontos = false,
   children,
 }: {
   slug: string;
@@ -28,6 +30,10 @@ export async function ClienteShell({
   // por Telegram). Sobrou como encaixe para o que cada tela precisar — a home
   // usa para o atalho do painel do Admin.
   acoes?: React.ReactNode;
+  // Fundo de pontos do painel, na versao clara: pontos que acendem na cor da
+  // estetica. As telas do cliente passam para ele uma a uma; com ele, o
+  // titulo abre direto, sem a trilha em caixa alta.
+  pontos?: boolean;
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
@@ -49,7 +55,8 @@ export async function ClienteShell({
   }
 
   return (
-    <div className="flex min-h-dvh bg-[#f6f8fb]">
+    <div className={`flex min-h-dvh bg-[#f6f8fb] ${pontos ? "relative isolate" : ""}`}>
+      {pontos && <FundoOndas claro paradoNoCelular />}
       <ClienteSidebar
         slug={slug}
         usuarioNome={session.user.name ?? "Você"}
@@ -61,10 +68,18 @@ export async function ClienteShell({
         {titulo && (
           <header className="hidden shrink-0 items-start justify-between gap-4 px-8 pb-1 pt-7 lg:flex">
             <div>
-              {trilha && trilha.length > 0 && (
+              {!pontos && trilha && trilha.length > 0 && (
                 <p className="astro-label">{trilha.join(" / ")}</p>
               )}
-              <h1 className="mt-1 text-2xl font-bold text-zinc-900">{titulo}</h1>
+              <h1
+                className={
+                  pontos
+                    ? "text-3xl font-bold tracking-tight text-zinc-900 lg:text-4xl"
+                    : "mt-1 text-2xl font-bold text-zinc-900"
+                }
+              >
+                {titulo}
+              </h1>
             </div>
             {acoes}
           </header>

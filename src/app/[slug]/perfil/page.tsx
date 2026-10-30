@@ -41,7 +41,7 @@ export default async function PerfilPage({
   if (!usuario) redirect(`/${slug}/login`);
 
   return (
-    <ClienteShell slug={slug} trilha={["Conta", "Perfil"]} titulo="Meu perfil">
+    <ClienteShell slug={slug} pontos titulo="Meu perfil">
       <PerfilCliente
         slug={slug}
         nome={usuario.nome}

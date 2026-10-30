@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LIMITES } from "@/lib/validations/limites";
 
 const anoAtual = new Date().getFullYear();
 
@@ -15,15 +16,24 @@ const placaSchema = z
   });
 
 export const veiculoSchema = z.object({
-  marca: z.string().min(1, "Informe a marca"),
-  modelo: z.string().min(1, "Informe o modelo"),
+  marca: z
+    .string()
+    .min(1, "Informe a marca")
+    .max(LIMITES.marcaVeiculo, `Marca muito longa - use ate ${LIMITES.marcaVeiculo} caracteres`),
+  modelo: z
+    .string()
+    .min(1, "Informe o modelo")
+    .max(LIMITES.modeloVeiculo, `Modelo muito longo - use ate ${LIMITES.modeloVeiculo} caracteres`),
   placa: placaSchema,
   ano: z.coerce
     .number()
     .int()
     .min(1950, "Ano invalido")
     .max(anoAtual + 1, "Ano invalido"),
-  cor: z.string().min(1, "Informe a cor"),
+  cor: z
+    .string()
+    .min(1, "Informe a cor")
+    .max(LIMITES.corVeiculo, `Cor muito longa - use ate ${LIMITES.corVeiculo} caracteres`),
   // Antes era o enum fixo do sistema. Agora e um segmento do proprio tenant —
   // a rota confere que o id pertence a ele e esta ativo (o RLS ja garante o
   // tenant; o ativo nao).

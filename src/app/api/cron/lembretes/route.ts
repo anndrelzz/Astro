@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { reenviarNotificacoes } from "@/lib/notificacoes";
 import { verificarEEnviarLembretes } from "@/lib/notificacoes/lembretes";
 
 // Endpoint pensado para ser chamado por um agendador externo (Azure
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
   }
 
-  const resultado = await verificarEEnviarLembretes();
-  return NextResponse.json(resultado);
+  // O reenvio vem antes dos lembretes novos: assim um lembrete que falhar
+  // nesta rodada so e tentado de novo na proxima, e nao segundos depois.
+  const { reenviadas } = await reenviarNotificacoes();
+  const lembretes = await verificarEEnviarLembretes();
+  return NextResponse.json({ ...lembretes, reenviadas });
 }

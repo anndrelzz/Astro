@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test:rls": "node --env-file=.env --import tsx --test tests/rls-isolamento.test.ts",
-    "test:notificacao": "node --env-file=.env --import tsx --test tests/notificacao-fora-da-transacao.test.ts"
+    "test": "vitest run",
+    "test:back": "vitest run --project back",
+    "test:cobertura": "vitest run --coverage",
+    "test:rls": "vitest run tests/rls-isolamento.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -16,26 +18,28 @@
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.25.0",
-    "next": "16.3.8",
+    "next": "16.4.3",
     "next-auth": "^4.24.15",
     "pg": "^8.22.0",
     "prisma": "^7.8.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.17.2",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.5"
   }
 }

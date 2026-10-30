@@ -4,13 +4,18 @@ import { z } from "zod";
 import { lerJson } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
+import { LIMITES } from "@/lib/validations/limites";
 
 const cadastroSchema = z.object({
   tenantSlug: z.string().min(1),
-  nome: z.string().min(1, "Informe o nome completo"),
+  nome: z
+    .string()
+    .min(1, "Informe o nome completo")
+    .max(LIMITES.nomePessoa, `Nome muito longo - use ate ${LIMITES.nomePessoa} caracteres`),
   email: z
     .string()
     .email("E-mail invalido")
+    .max(LIMITES.email, "E-mail muito longo")
     .transform((v) => v.toLowerCase()),
   telefone: z
     .string()
@@ -24,6 +29,7 @@ const cadastroSchema = z.object({
   senha: z
     .string()
     .min(8, "Senha deve ter ao menos 8 caracteres")
+    .max(LIMITES.senha, `Senha deve ter no maximo ${LIMITES.senha} caracteres`)
     .refine((s) => /\d/.test(s), "Senha deve conter ao menos 1 numero")
     .refine((s) => /[A-Z]/.test(s), "Senha deve conter ao menos 1 letra maiuscula"),
 });

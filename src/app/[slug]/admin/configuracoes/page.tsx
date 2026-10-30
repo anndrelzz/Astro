@@ -42,8 +42,6 @@ export default async function AdminConfiguracoesPage({
         pixChaveCopiaCola: tenant.pixChaveCopiaCola ?? "",
         acrescimoCondicaoPercent: tenant.acrescimoCondicaoPercent,
         cancelamentoHorasLimite: tenant.cancelamentoHorasLimite,
-        capacidadeSimultanea: tenant.capacidadeSimultanea,
-        intervaloMinutos: tenant.intervaloMinutos,
       }}
     />
   );
