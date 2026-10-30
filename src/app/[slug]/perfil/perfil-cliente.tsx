@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -18,10 +18,11 @@ import {
   Phone,
   X,
 } from "lucide-react";
-import { BottomNav } from "@/components/ui/bottom-nav";
 import { ThemeColor } from "@/components/ui/theme-color";
+import { ConfirmarSaida } from "../admin/confirmar-saida";
 import { iniciais } from "@/lib/iniciais";
 import { VincularTelegram } from "./vincular-telegram";
+import { LIMITES } from "@/lib/validations/limites";
 
 type Veiculo = {
   id: string;
@@ -37,6 +38,11 @@ type Veiculo = {
 // arredondado. A partir de lg vira duas colunas: o cartao escuro do cliente
 // a esquerda (com as estatisticas e o "Editar dados") e, a direita, dados,
 // garagem e acoes rapidas.
+// Fundo do topo escuro do perfil: preto com um brilho na cor da estetica
+// (RF13) descendo do alto, mais forte no centro, onde fica a foto.
+const GRADIENTE_ESCURO =
+  "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--color-astro-blue) 45%, transparent), transparent 70%), radial-gradient(60% 50% at 50% 45%, color-mix(in srgb, var(--color-astro-blue) 20%, transparent), transparent 75%), #07080b";
+
 export function PerfilCliente({
   slug,
   nome,
@@ -56,16 +62,21 @@ export function PerfilCliente({
 }) {
   const [editando, setEditando] = useState(false);
   const [removendo, setRemovendo] = useState<Veiculo | null>(null);
+  const [saindo, setSaindo] = useState(false);
   const inicial = iniciais(nome);
 
   return (
-    <div className="min-h-dvh bg-[#f6f8fb] pb-28 lg:min-h-0 lg:bg-transparent lg:pb-10">
+    <div className="min-h-dvh pb-[calc(env(safe-area-inset-bottom)+7.5rem)] lg:min-h-0 lg:pb-10">
       <ThemeColor color="#09090b" />
 
       {/* Cabecalho escuro — celular. No desktop o titulo vem da casca e a
-          identidade do cliente esta no cartao da coluna esquerda. */}
-      <div className="astro-dark rounded-b-[2rem] px-5 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden">
-        <div className="mx-auto flex max-w-md items-center justify-between">
+          identidade do cliente esta no cartao da coluna esquerda. Preto com
+          um brilho na cor da estetica vindo de cima (GRADIENTE_ESCURO). */}
+      <div
+        className="rounded-b-[2rem] px-4 pb-8 pt-[calc(env(safe-area-inset-top)+1.25rem)] lg:hidden"
+        style={{ background: GRADIENTE_ESCURO }}
+      >
+        <div className="relative mx-auto flex max-w-md items-center justify-between">
           <Link
             href={`/${slug}`}
             aria-label="Voltar"
@@ -77,9 +88,9 @@ export function PerfilCliente({
           <span className="h-11 w-11" />
         </div>
 
-        <div className="mx-auto mt-4 flex max-w-md flex-col items-center">
+        <div className="relative mx-auto mt-4 flex max-w-md flex-col items-center">
           <div className="relative">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-white/5 text-3xl font-bold text-white">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/15 bg-white/5 text-3xl font-bold text-white shadow-[0_0_40px_-6px_var(--color-astro-blue)]">
               {inicial}
             </div>
             <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-astro-bg bg-astro-blue">
@@ -90,11 +101,11 @@ export function PerfilCliente({
         </div>
       </div>
 
-      <main className="mx-auto -mt-4 max-w-md space-y-5 px-5 lg:mx-0 lg:mt-0 lg:grid lg:max-w-none lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-8">
+      <main className="relative mx-auto mt-4 max-w-md space-y-5 px-4 lg:mx-0 lg:mt-0 lg:grid lg:max-w-none lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-8">
         {/* Cartao do cliente — so no desktop. Reune o que no celular esta
             espalhado entre o cabecalho escuro e as estatisticas. */}
-        <aside className="astro-dark hidden rounded-2xl p-6 lg:block">
-          <div className="flex items-center gap-4">
+        <aside className="hidden rounded-2xl p-6 lg:block" style={{ background: GRADIENTE_ESCURO }}>
+          <div className="relative flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 text-2xl font-bold text-white">
                 {inicial}
@@ -108,7 +119,7 @@ export function PerfilCliente({
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10">
+          <div className="relative mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10">
             <div className="bg-astro-bg px-4 py-4">
               <p className="text-2xl font-bold text-white">{totalAgendamentos}</p>
               <p className="astro-label mt-0.5">Agendamentos</p>
@@ -122,7 +133,7 @@ export function PerfilCliente({
           <button
             type="button"
             onClick={() => setEditando(true)}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
           >
             <Pencil className="h-4 w-4" />
             Editar dados
@@ -131,13 +142,13 @@ export function PerfilCliente({
 
         {/* Estatisticas — celular. No desktop elas vivem no cartao acima. */}
         <div className="grid grid-cols-2 gap-3 lg:hidden">
-          <div className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]">
             <p className="text-2xl font-bold text-zinc-900">
               {totalAgendamentos}
             </p>
             <p className="astro-label mt-0.5">Agendamentos</p>
           </div>
-          <div className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]">
             <p className="text-2xl font-bold text-zinc-900">
               {veiculos.length}
             </p>
@@ -161,7 +172,7 @@ export function PerfilCliente({
           <p className="mt-1 hidden text-lg font-bold text-zinc-900 lg:block">
             Suas informações
           </p>
-          <div className="mt-2 divide-y divide-zinc-100 rounded-2xl border border-zinc-100 bg-white">
+          <div className="mt-2 divide-y divide-zinc-100 rounded-2xl border border-zinc-200/80 bg-white shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]">
             <div className="flex items-center justify-between px-4 py-3.5">
               <span className="text-sm text-zinc-500">E-mail</span>
               <span className="text-sm font-medium text-zinc-900">{email}</span>
@@ -199,7 +210,7 @@ export function PerfilCliente({
                 className={
                   i === 0
                     ? "flex items-center gap-3 rounded-2xl border border-astro-blue/30 bg-white p-3 shadow-lg shadow-astro-blue/10 ring-1 ring-astro-blue/20"
-                    : "flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white p-3"
+                    : "flex items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]"
                 }
               >
                 <div className="astro-dark flex h-14 w-16 shrink-0 items-center justify-center rounded-xl">
@@ -271,7 +282,7 @@ export function PerfilCliente({
             Sua conta
           </p>
 
-          <div className="mt-2 divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-100 bg-white">
+          <div className="mt-2 divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-[0_8px_24px_-18px_rgb(15_23_42/0.3)]">
             <Link
               href={`/${slug}/historico`}
               className="flex items-center gap-3 px-4 py-4 transition hover:bg-zinc-50"
@@ -294,11 +305,11 @@ export function PerfilCliente({
 
             <VincularTelegram jaVinculado={telegramVinculado} />
 
-            {/* signOut com callbackUrl para o login DESTA estetica: a raiz do
-                dominio nao pertence a nenhuma delas (RN09). */}
+            {/* Pede confirmacao com o mesmo aviso do painel, que leva ao
+                login DESTA estetica (RN09). */}
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: `/${slug}/login` })}
+              onClick={() => setSaindo(true)}
               className="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-red-50/50"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
@@ -313,7 +324,6 @@ export function PerfilCliente({
         </div>
       </main>
 
-      <BottomNav slug={slug} />
 
       {/* Tela 05 — modal Editar perfil */}
       {editando && (
@@ -324,6 +334,15 @@ export function PerfilCliente({
           onFechar={() => setEditando(false)}
         />
       )}
+
+      <ConfirmarSaida
+        aberto={saindo}
+        onFechar={() => setSaindo(false)}
+        slug={slug}
+        usuarioNome={nome}
+        titulo="Sair da conta?"
+        ficar="Continuar na conta"
+      />
 
       {/* RN15 — confirmacao de remocao do veiculo */}
       {removendo && (
@@ -372,15 +391,16 @@ function ModalRemoverVeiculo({
     router.refresh();
   }
 
-  return (
+  // No <body>, para a barra do cliente nao passar por cima (ver PerfilCliente).
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
       <button
         aria-label="Fechar"
         onClick={onFechar}
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 animate-[escurecer_250ms_ease-out] bg-black/40 backdrop-blur-sm motion-reduce:animate-none"
       />
 
-      <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+      <div className="relative w-full max-w-sm animate-[subir_400ms_cubic-bezier(0.22,1,0.36,1)] rounded-3xl bg-white p-6 text-center shadow-2xl motion-reduce:animate-none">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
           <Trash2 className="h-6 w-6 text-red-500" />
         </div>
@@ -440,7 +460,8 @@ function ModalRemoverVeiculo({
           <X className="h-4 w-4" />
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -498,7 +519,8 @@ function ModalEditar({
   const inputCls =
     "w-full bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none";
 
-  return (
+  // No <body>, para a barra do cliente nao passar por cima (ver PerfilCliente).
+  return createPortal(
     // Gaveta pelo rodape no celular; cartao centralizado no desktop (tela 05).
     // A gaveta e convencao de polegar — com mouse ela apareceria colada na
     // borda de baixo de um monitor largo, longe de onde o olho esta.
@@ -548,6 +570,7 @@ function ModalEditar({
               <input
                 className={inputCls}
                 value={form.nome}
+                maxLength={LIMITES.nomePessoa}
                 onChange={(e) =>
                   setForm((a) => ({ ...a, nome: e.target.value }))
                 }
@@ -607,6 +630,7 @@ function ModalEditar({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

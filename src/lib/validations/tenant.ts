@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LIMITES } from "@/lib/validations/limites";
 
 const corHexRegex = /^#([0-9a-fA-F]{6})$/;
 
@@ -18,7 +19,7 @@ const telefoneOpcional = z
   .optional()
   .transform((v) => (v ? v.replace(/\D/g, "") : ""))
   .refine((v) => v === "" || v.length === 10 || v.length === 11, {
-    message: "Telefone invalido - informe DDD + numero (10 ou 11 digitos)",
+    message: "Telefone inválido: informe o DDD e o número completo",
   })
   .transform((v) => (v.length ? v : null));
 
@@ -31,7 +32,7 @@ const telefoneOpcional = z
 // cadastro. Alterar quebraria todos os links que a estetica ja divulgou.
 export const tenantConfigSchema = z
   .object({
-    nome: z.string().trim().min(1, "Informe o nome da estetica").max(120),
+    nome: z.string().trim().min(1, "Informe o nome da estética").max(120),
     descricao: textoOpcional(280),
 
     telefone: telefoneOpcional,
@@ -39,10 +40,11 @@ export const tenantConfigSchema = z
     emailContato: z
       .string()
       .trim()
+      .max(LIMITES.email, "E-mail muito longo")
       .optional()
       .transform((v) => (v?.length ? v : null))
       .refine((v) => v === null || z.string().email().safeParse(v).success, {
-        message: "E-mail invalido",
+        message: "E-mail inválido",
       }),
 
     cep: z
@@ -51,7 +53,7 @@ export const tenantConfigSchema = z
       .optional()
       .transform((v) => (v ? v.replace(/\D/g, "") : ""))
       .refine((v) => v === "" || v.length === 8, {
-        message: "CEP invalido - informe 8 digitos",
+        message: "CEP inválido: o CEP tem 8 números",
       })
       .transform((v) => (v.length ? v : null)),
     rua: textoOpcional(160),
@@ -65,23 +67,27 @@ export const tenantConfigSchema = z
       .optional()
       .transform((v) => (v?.length ? v : null))
       .refine((v) => v === null || /^[A-Z]{2}$/.test(v), {
-        message: "Estado invalido - use a sigla de 2 letras",
+        message: "Estado inválido: use a sigla de 2 letras",
       }),
 
-    pixChaveCopiaCola: z.string().trim().nullable(),
+    pixChaveCopiaCola: z
+      .string()
+      .trim()
+      .max(LIMITES.pixCopiaCola, "Chave PIX muito longa: confira se colou o código certo")
+      .nullable(),
     // Nulo (ou vazio) = a estetica nao tem politica de acrescimo e o cliente
     // nao ve aviso nenhum. Teto de 100% porque acima disso o "acrescimo" seria
     // outro servico, e um dedo escorregado em tela nao pode dobrar o aviso.
     acrescimoCondicaoPercent: z.coerce
       .number()
       .int()
-      .min(1, "Use ao menos 1% — deixe vazio para nao avisar nada")
-      .max(100, "Maximo de 100%")
+      .min(1, "Use ao menos 1%, ou desligue o acréscimo")
+      .max(100, "Máximo de 100%")
       .nullable(),
-    cancelamentoHorasLimite: z.coerce.number().int().min(0, "Valor invalido"),
-    capacidadeSimultanea: z.coerce.number().int().min(1, "Minimo de 1"),
-    intervaloMinutos: z.coerce.number().int().min(5, "Minimo de 5 minutos"),
-    corPrimaria: z.string().regex(corHexRegex, "Cor invalida - use o formato #RRGGBB"),
+    cancelamentoHorasLimite: z.coerce.number().int().min(0, "Valor inválido"),
+    capacidadeSimultanea: z.coerce.number().int().min(1, "Mínimo de 1"),
+    intervaloMinutos: z.coerce.number().int().min(5, "Mínimo de 5 minutos"),
+    corPrimaria: z.string().regex(corHexRegex, "Cor inválida: use o formato #RRGGBB"),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, {
