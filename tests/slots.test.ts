@@ -37,18 +37,21 @@ const servico = (duracaoMin: number) => ({ id: "servico-1", duracaoMin }) as Ser
 
 // Quinta-feira, 29/10/2026, ao meio-dia de Brasilia.
 const DIA = new Date("2026-10-29T15:00:00Z");
+// Relogio fixo na vespera: nenhum horario de DIA ja passou. Os horarios do
+// proprio dia que ja passaram tem teste proprio (horarios-passados.test.ts).
+const VESPERA = new Date("2026-10-28T12:00:00Z");
 // "HH:MM" de Brasilia nesse dia, escrito como instante UTC (+3h).
 const as = (hora: string) => new Date(`2026-10-29T${hora}:00-03:00`);
 
 describe("calcularSlotsDisponiveis", () => {
   test("dia sem grade de funcionamento nao tem horario", async () => {
     const { tx } = bancoFalso(null);
-    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA)).toEqual([]);
+    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual([]);
   });
 
   test("sem agendamentos, oferece de hora em hora ate caber o servico", async () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 12 * 60 });
-    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA)).toEqual([
+    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual([
       "08:00",
       "09:00",
       "10:00",
@@ -58,7 +61,7 @@ describe("calcularSlotsDisponiveis", () => {
 
   test("servico que nao cabe antes do fechamento fica de fora", async () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 12 * 60 });
-    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(150), DIA)).toEqual([
+    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(150), DIA, VESPERA)).toEqual([
       "08:00",
       "09:00",
     ]);
@@ -66,7 +69,7 @@ describe("calcularSlotsDisponiveis", () => {
 
   test("respeita o intervalo configurado pela estetica", async () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 10 * 60 });
-    expect(await calcularSlotsDisponiveis(tx, tenant(1, 30), servico(30), DIA)).toEqual([
+    expect(await calcularSlotsDisponiveis(tx, tenant(1, 30), servico(30), DIA, VESPERA)).toEqual([
       "08:00",
       "08:30",
       "09:00",
@@ -78,7 +81,7 @@ describe("calcularSlotsDisponiveis", () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 12 * 60 }, [
       { dataHora: as("09:00"), servico: { duracaoMin: 60 } },
     ]);
-    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA)).toEqual([
+    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual([
       "08:00",
       "10:00",
       "11:00",
@@ -90,20 +93,20 @@ describe("calcularSlotsDisponiveis", () => {
       { dataHora: as("08:30"), servico: { duracaoMin: 120 } },
     ]);
     // 08:30 a 10:30 encosta em 08:00-09:00, 09:00-10:00 e 10:00-11:00.
-    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA)).toEqual(["11:00"]);
+    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual(["11:00"]);
   });
 
   test("servico que termina quando o outro comeca nao conta como conflito", async () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 10 * 60 }, [
       { dataHora: as("09:00"), servico: { duracaoMin: 60 } },
     ]);
-    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA)).toEqual(["08:00"]);
+    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual(["08:00"]);
   });
 
   test("com capacidade 2, o horario so fecha no segundo agendamento", async () => {
     const grade = { horaInicioMin: 8 * 60, horaFimMin: 10 * 60 };
     const umCarro = bancoFalso(grade, [{ dataHora: as("08:00"), servico: { duracaoMin: 60 } }]);
-    expect(await calcularSlotsDisponiveis(umCarro.tx, tenant(2), servico(60), DIA)).toEqual([
+    expect(await calcularSlotsDisponiveis(umCarro.tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
       "08:00",
       "09:00",
     ]);
@@ -112,7 +115,7 @@ describe("calcularSlotsDisponiveis", () => {
       { dataHora: as("08:00"), servico: { duracaoMin: 60 } },
       { dataHora: as("08:00"), servico: { duracaoMin: 60 } },
     ]);
-    expect(await calcularSlotsDisponiveis(doisCarros.tx, tenant(2), servico(60), DIA)).toEqual([
+    expect(await calcularSlotsDisponiveis(doisCarros.tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
       "09:00",
     ]);
   });
@@ -120,7 +123,7 @@ describe("calcularSlotsDisponiveis", () => {
   test("consulta a grade do dia da semana de Brasilia e ignora cancelados", async () => {
     // 01:00 UTC de sexta ainda e quinta (22:00) em Brasilia.
     const { tx, consultas } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 9 * 60 });
-    await calcularSlotsDisponiveis(tx, tenant(), servico(60), new Date("2026-10-30T01:00:00Z"));
+    await calcularSlotsDisponiveis(tx, tenant(), servico(60), new Date("2026-10-30T01:00:00Z"), VESPERA);
 
     expect(consultas[0]).toEqual({
       where: { tenantId_diaSemana: { tenantId: "tenant-1", diaSemana: 4 } },

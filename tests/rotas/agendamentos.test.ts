@@ -127,6 +127,13 @@ describe("POST /api/agendamentos", () => {
     expect(resposta.status).toBe(409);
   });
 
+  test("horario que ja passou responde 409", async () => {
+    entrarComo(e.cliente);
+    const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(-1)));
+    expect(resposta.status).toBe(409);
+    expect(await resposta.json()).toEqual({ error: "Horario nao esta mais disponivel" });
+  });
+
   test("carro de outro cliente responde 404", async () => {
     entrarComo(e.outroCliente);
     expect((await agendar(pedido("POST", "/api/agendamentos", corpo(7)))).status).toBe(404);
