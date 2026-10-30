@@ -127,11 +127,22 @@ describe("POST /api/agendamentos", () => {
     expect(resposta.status).toBe(409);
   });
 
-  test("horario que ja passou responde 409", async () => {
+  test("data que ja passou ou alem dos 14 dias responde 400", async () => {
     entrarComo(e.cliente);
-    const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(-1)));
-    expect(resposta.status).toBe(409);
-    expect(await resposta.json()).toEqual({ error: "Horario nao esta mais disponivel" });
+    for (const dias of [-1, 14, 365]) {
+      const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(dias)));
+      expect(resposta.status).toBe(400);
+      expect(await resposta.json()).toEqual({
+        error: "Escolha uma data entre hoje e os proximos 14 dias",
+      });
+    }
+  });
+
+  test("data que nao existe (31/02) responde 400, sem virar outro dia", async () => {
+    entrarComo(e.cliente);
+    const resposta = await agendar(pedido("POST", "/api/agendamentos", { ...corpo(3), data: "2027-02-31" }));
+    expect(resposta.status).toBe(400);
+    expect(await resposta.json()).toEqual({ error: "Data invalida" });
   });
 
   test("carro de outro cliente responde 404", async () => {
@@ -363,7 +374,7 @@ describe("GET /api/slots", () => {
 
   test("consultar outra estetica responde 403", async () => {
     entrarComo(e.cliente);
-    const resposta = await chamar({ tenantId: randomUUID(), servicoId: e.servico.id, data: diaDaqui(20) });
+    const resposta = await chamar({ tenantId: randomUUID(), servicoId: e.servico.id, data: diaDaqui(12) });
     expect(resposta.status).toBe(403);
   });
 
@@ -373,15 +384,21 @@ describe("GET /api/slots", () => {
     expect(resposta.status).toBe(400);
   });
 
+  test("data fora da janela de 14 dias responde 400", async () => {
+    entrarComo(e.cliente);
+    const resposta = await chamar({ tenantId: e.tenant.id, servicoId: e.servico.id, data: diaDaqui(30) });
+    expect(resposta.status).toBe(400);
+  });
+
   test("servico que nao existe responde 404", async () => {
     entrarComo(e.cliente);
-    const resposta = await chamar({ tenantId: e.tenant.id, servicoId: randomUUID(), data: diaDaqui(20) });
+    const resposta = await chamar({ tenantId: e.tenant.id, servicoId: randomUUID(), data: diaDaqui(12) });
     expect(resposta.status).toBe(404);
   });
 
   test("lista os horarios livres e tira o que ja foi agendado", async () => {
     entrarComo(e.cliente);
-    const parametros = { tenantId: e.tenant.id, servicoId: e.servico.id, data: diaDaqui(20) };
+    const parametros = { tenantId: e.tenant.id, servicoId: e.servico.id, data: diaDaqui(12) };
 
     const antes = await (await chamar(parametros)).json();
     expect(antes.slots).toEqual([
@@ -393,7 +410,7 @@ describe("GET /api/slots", () => {
       pedido("POST", "/api/agendamentos", {
         servicoId: e.servico.id,
         veiculoId: e.veiculo.id,
-        data: diaDaqui(20),
+        data: diaDaqui(12),
         hora: "10:00",
         formaPagamento: "LOCAL",
       })

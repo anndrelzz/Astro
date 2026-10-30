@@ -1,7 +1,6 @@
 import { z } from "zod";
+import { partesNoFuso } from "@/lib/fuso";
 import { LIMITES } from "@/lib/validations/limites";
-
-const anoAtual = new Date().getFullYear();
 
 // Padrao antigo (cinza): LLL-NNNN, ex. ABC-1234 (hifen opcional)
 // Padrao Mercosul: LLLNLNN, ex. ABC1D23
@@ -25,11 +24,14 @@ export const veiculoSchema = z.object({
     .min(1, "Informe o modelo")
     .max(LIMITES.modeloVeiculo, `Modelo muito longo - use ate ${LIMITES.modeloVeiculo} caracteres`),
   placa: placaSchema,
+  // Ate o ano que vem: em outubro ja se vende o "modelo do ano seguinte". O ano
+  // atual e lido a cada validacao — calculado uma vez ao carregar o arquivo, ele
+  // ficava parado no ano em que o servidor subiu.
   ano: z.coerce
     .number()
     .int()
     .min(1950, "Ano invalido")
-    .max(anoAtual + 1, "Ano invalido"),
+    .refine((ano) => ano <= partesNoFuso(new Date()).ano + 1, "Ano invalido"),
   cor: z
     .string()
     .min(1, "Informe a cor")
