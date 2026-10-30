@@ -16,6 +16,11 @@ export const JANELA_AGENDAMENTO_DIAS = 14;
  * 03/03 em silencio, e o cliente ficaria agendado num dia que nao escolheu.
  */
 export function conferirDataAgendamento(data: string, agora: Date = new Date()): string | null {
+  // Fora do formato, o split gera NaN e o Date invalido faz o chaveDia lancar.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    return "Data invalida";
+  }
+
   const [ano, mes, dia] = data.split("-").map(Number);
   if (chaveDia(instanteNoFuso(ano, mes, dia)) !== data) {
     return "Data invalida";
