@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/lib/financeiro";
-import { FUSO, chaveDia } from "@/lib/fuso";
-import { withTenant } from "@/lib/tenant-db";
+import { authOptions } from "@/back/auth";
+import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/compartilhado/financeiro";
+import { FUSO, chaveDia } from "@/compartilhado/fuso";
+import { withTenant } from "@/back/tenant-db";
 
 // RF12, objetivo 5 do RFC — relatorio financeiro exportavel. Um CSV com os
 // agendamentos do periodo (sem os cancelados), o mesmo recorte da tela.

@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { withTenant } from "@/lib/tenant-db";
-import { validarPrecosCompletos } from "@/lib/catalogo";
-import { servicoSchema } from "@/lib/validations/servico";
+import { authOptions } from "@/back/auth";
+import { lerJson } from "@/back/api-helpers";
+import { withTenant } from "@/back/tenant-db";
+import { validarPrecosCompletos } from "@/back/catalogo";
+import { servicoSchema } from "@/compartilhado/validacoes/servico";
 
 // UC08 — edicao e remocao de servico, restrito ao Admin da propria estetica.
 export async function PATCH(

@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { withTenant } from "@/lib/tenant-db";
-import { LIMITES } from "@/lib/validations/limites";
+import { authOptions } from "@/back/auth";
+import { lerJson } from "@/back/api-helpers";
+import { withTenant } from "@/back/tenant-db";
+import { LIMITES } from "@/compartilhado/validacoes/limites";
 
 // Tela 05 (Editar perfil) — o cliente atualiza os proprios dados de contato.
 // E-mail nao e alterado aqui: e a credencial de login (unique por tenant) e

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { reenviarNotificacoes } from "@/lib/notificacoes";
-import { verificarEEnviarLembretes } from "@/lib/notificacoes/lembretes";
+import { reenviarNotificacoes } from "@/back/notificacoes";
+import { verificarEEnviarLembretes } from "@/back/notificacoes/lembretes";
 
 // Endpoint pensado para ser chamado por um agendador externo (Azure
 // Scheduler, cron job, etc.) periodicamente. Protegido por segredo simples

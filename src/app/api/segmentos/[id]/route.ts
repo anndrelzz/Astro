@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { withTenant } from "@/lib/tenant-db";
-import { segmentoSchema } from "@/lib/validations/segmento";
+import { authOptions } from "@/back/auth";
+import { lerJson } from "@/back/api-helpers";
+import { withTenant } from "@/back/tenant-db";
+import { segmentoSchema } from "@/compartilhado/validacoes/segmento";
 
 export async function PATCH(
   request: Request,

@@ -1,11 +1,11 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { conferirDataAgendamento } from "@/lib/agenda";
-import { authOptions } from "@/lib/auth";
-import { instanteNoFuso } from "@/lib/fuso";
-import { calcularSlotsDisponiveis } from "@/lib/slots";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
+import { conferirDataAgendamento } from "@/compartilhado/agenda";
+import { authOptions } from "@/back/auth";
+import { instanteNoFuso } from "@/compartilhado/fuso";
+import { calcularSlotsDisponiveis } from "@/back/slots";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
 
 const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
