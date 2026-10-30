@@ -15,6 +15,19 @@ import { comId, criarEstetica, daqui, diaDaqui, entrarComo, pedido, removerEstet
 // Telegram sao substituidos.
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
+// O after() do Next so funciona dentro de uma requisicao de verdade. Aqui ele
+// guarda o que a rota mandaria fazer depois da resposta, e o teste roda essas
+// tarefas quando quiser, com depoisDaResposta().
+const { tarefasDepois } = vi.hoisted(() => ({ tarefasDepois: [] as (() => unknown)[] }));
+vi.mock("next/server", async (original) => ({
+  ...(await original<typeof import("next/server")>()),
+  after: (tarefa: () => unknown) => {
+    tarefasDepois.push(tarefa);
+  },
+}));
+async function depoisDaResposta() {
+  for (const tarefa of tarefasDepois.splice(0)) await tarefa();
+}
 vi.mock("@/lib/notificacoes/email", () => ({
   enviarEmail: vi.fn(async () => ({ enviado: true, modo: "log" })),
 }));
@@ -97,8 +110,11 @@ describe("POST /api/agendamentos", () => {
     const gravado = await buscar(id);
     expect(Number(gravado!.valor)).toBe(80);
     expect(gravado!.usuarioId).toBe(e.cliente.id);
-    // RF08: a confirmacao sai na hora, por e-mail.
-    expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["CONFIRMACAO_AGENDAMENTO"]);
+    // RF08: a confirmacao fica registrada junto com o agendamento e sai por
+    // e-mail logo depois da resposta, ja fora da transacao.
+    expect(gravado!.notificacoes.map((n) => [n.tipo, n.canal])).toEqual([["CONFIRMACAO_AGENDAMENTO", "EMAIL"]]);
+    expect(enviarEmail).not.toHaveBeenCalled();
+    await depoisDaResposta();
     expect(enviarEmail).toHaveBeenCalledWith(e.cliente.email, "Agendamento confirmado", expect.any(String));
   });
 

@@ -5,6 +5,7 @@ import { PATCH as editarPerfil } from "@/app/api/perfil/route";
 import { POST as vincularTelegram } from "@/app/api/telegram/vincular/route";
 import { POST as webhookTelegram } from "@/app/api/telegram/webhook/route";
 import { authOptions } from "@/lib/auth";
+import { reenviarNotificacoes } from "@/lib/notificacoes";
 import { verificarEEnviarLembretes } from "@/lib/notificacoes/lembretes";
 import { enviarTelegram } from "@/lib/notificacoes/telegram";
 import { prisma } from "@/lib/prisma";
@@ -19,10 +20,15 @@ vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/lib/notificacoes/telegram", () => ({
   enviarTelegram: vi.fn(async () => ({ enviado: true, modo: "log" })),
 }));
-// A rota do cron varre todas as esteticas do banco; aqui so interessa a
-// protecao dela, entao a varredura e substituida.
+// A rota do cron varre todas as esteticas do banco (lembretes e reenvio);
+// aqui so interessa a protecao dela, entao as duas varreduras sao
+// substituidas. Sem isso, o teste mexeria nas notificacoes reais do banco de
+// desenvolvimento.
 vi.mock("@/lib/notificacoes/lembretes", () => ({
   verificarEEnviarLembretes: vi.fn(async () => ({ lembretes24h: 1, lembretes2h: 0, verificados: 3 })),
+}));
+vi.mock("@/lib/notificacoes", () => ({
+  reenviarNotificacoes: vi.fn(async () => ({ reenviadas: 2 })),
 }));
 
 let e: Estetica;
@@ -237,6 +243,7 @@ describe("POST /api/cron/lembretes", () => {
     const erro = vi.spyOn(console, "error").mockImplementation(() => {});
     expect((await chamar("qualquer")).status).toBe(503);
     expect(verificarEEnviarLembretes).not.toHaveBeenCalled();
+    expect(reenviarNotificacoes).not.toHaveBeenCalled();
     erro.mockRestore();
   });
 
@@ -247,9 +254,9 @@ describe("POST /api/cron/lembretes", () => {
     expect(verificarEEnviarLembretes).not.toHaveBeenCalled();
   });
 
-  test("com o segredo certo, roda os lembretes e devolve o resumo", async () => {
+  test("com o segredo certo, reenvia o que falhou, roda os lembretes e devolve o resumo", async () => {
     vi.stubEnv("CRON_SECRET", "segredo-certo");
     const resposta = await chamar("segredo-certo");
-    expect(await resposta.json()).toEqual({ lembretes24h: 1, lembretes2h: 0, verificados: 3 });
+    expect(await resposta.json()).toEqual({ lembretes24h: 1, lembretes2h: 0, verificados: 3, reenviadas: 2 });
   });
 });
