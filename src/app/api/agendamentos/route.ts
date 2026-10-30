@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { conferirDataAgendamento } from "@/lib/agenda";
 import { lerJson } from "@/lib/api-helpers";
 import { instanteNoFuso } from "@/lib/fuso";
-import { dispararNotificacao } from "@/lib/notificacoes";
+import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { withTenant } from "@/lib/tenant-db";
 import { calcularSlotsDisponiveis, travarDiaParaAgendamento } from "@/lib/slots";
@@ -35,6 +36,13 @@ export async function POST(request: Request) {
   }
   const { servicoId, veiculoId, data, hora, formaPagamento } = parsed.data;
 
+  // A tela so oferece os proximos dias; o servidor confere o mesmo limite e
+  // recusa data inexistente (31/02), que viraria outro dia sem aviso.
+  const erroData = conferirDataAgendamento(data);
+  if (erroData) {
+    return NextResponse.json({ error: erroData }, { status: 400 });
+  }
+
   const resultado = await withTenant(session.user.tenantId, async (tx) => {
     const tenant = await tx.tenant.findUnique({
       where: { id: session.user.tenantId },
@@ -50,9 +58,20 @@ export async function POST(request: Request) {
     // esse carro; aceitar o agendamento marcaria um horario para ele.
     const veiculo = await tx.veiculo.findFirst({
       where: { id: veiculoId, usuarioId: session.user.id, ativo: true },
+      include: { segmento: true },
     });
     if (!tenant || !servico || !veiculo) {
       return { error: "Nao encontrado", httpStatus: 404 } as const;
+    }
+
+    // Tipo de veiculo removido do catalogo: a estetica nao atende mais. O preco
+    // antigo continua guardado para o historico, entao a conferencia de preco
+    // abaixo nao barraria sozinha.
+    if (!veiculo.segmento.ativo) {
+      return {
+        error: `A estetica nao atende mais veiculos do tipo ${veiculo.segmento.nome}. Para combinar um atendimento, fale com a estetica pelo WhatsApp.`,
+        httpStatus: 409,
+      } as const;
     }
 
     // RN10 — PIX so pode ser escolhido se o Admin configurou a chave.
@@ -97,13 +116,15 @@ export async function POST(request: Request) {
       },
     });
 
-    // RF08, Gatilho 1 (secao 3.4) — disparada imediatamente apos confirmacao.
-    await dispararNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
+    // RF08, Gatilho 1 (secao 3.4) — registrada aqui, enviada so depois do
+    // commit (ver lib/notificacoes).
+    const notificacoes = await registrarNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
 
     return {
       id: agendamento.id,
       status: agendamento.status,
       pixChaveCopiaCola: tenant.pixChaveCopiaCola,
+      notificacoes,
     } as const;
   });
 
@@ -111,5 +132,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: resultado.error }, { status: resultado.httpStatus });
   }
 
-  return NextResponse.json(resultado, { status: 201 });
+  const { notificacoes, ...corpo } = resultado;
+  after(() => enviarNotificacoes(notificacoes));
+
+  return NextResponse.json(corpo, { status: 201 });
 }

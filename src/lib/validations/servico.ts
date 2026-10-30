@@ -1,8 +1,12 @@
 import { z } from "zod";
+import { LIMITES } from "@/lib/validations/limites";
 
 // UC08, RF01 — servico com preco diferenciado por segmento de veiculo.
 export const servicoSchema = z.object({
-  nome: z.string().min(1, "Informe o nome do servico"),
+  nome: z
+    .string()
+    .min(1, "Informe o nome do servico")
+    .max(LIMITES.nomeServico, `Nome muito longo - use ate ${LIMITES.nomeServico} caracteres`),
   // Exibida ao cliente no card do servico. Opcional: servico sem descricao
   // continua valido, so aparece com menos contexto na vitrine.
   descricao: z

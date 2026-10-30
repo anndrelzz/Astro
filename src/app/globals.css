@@ -80,9 +80,10 @@ body {
 /* iOS Safari da um zoom automatico ao focar campos com fonte < 16px. No
    mobile, fixamos 16px nos controles de formulario para evitar esse zoom —
    sem recorrer a maximum-scale/user-scalable=no, que quebrariam o pinch-zoom
-   e a acessibilidade. O !important vence as utilitarias text-sm dos inputs. */
+   e a acessibilidade. O !important vence as utilitarias text-sm dos inputs.
+   A placa (InputPlaca, data-placa) fica de fora: a letra dela ja e maior. */
 @media (max-width: 640px) {
-  input:not([type="checkbox"]):not([type="radio"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([data-placa]),
   select,
   textarea {
     font-size: 16px !important;
@@ -96,4 +97,158 @@ body {
   letter-spacing: 0.12em;
   font-size: 0.7rem;
   color: var(--color-astro-muted);
+}
+
+/* Luz azul que corre devagar pela borda de um bloco (Admin): um gradiente
+   conico girando, recortado por mascara para sobrar so a borda. A cor e a da
+   estetica (--color-astro-blue), entao acompanha a Identidade visual.
+   Usada com moderacao: cartao de faturamento, bloco da estetica na lateral e
+   agendamento em andamento. Quem pede menos movimento ve a luz parada. */
+@property --angulo-borda {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+/* Entrada dos avisos do painel (ConfirmarSaida): sobe e cresce de leve. */
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+
+/* Aviso "sem veiculo" do cliente (HomeServicos): sobe ate o centro da tela
+   enquanto o fundo escurece. */
+@keyframes subir {
+  from { opacity: 0; transform: translateY(48px) scale(0.96); }
+}
+@keyframes escurecer { from { opacity: 0; } }
+
+/* Botao "Copiar" do PIX (CopiarPix): o botao da um pulo e o check entra
+   girando de leve. */
+@keyframes copiado-pulo { 40% { transform: scale(1.12); } }
+@keyframes copiado-check { from { opacity: 0; transform: scale(0.4) rotate(-30deg); } }
+
+/* Barra do cliente (BarraCliente): o icone some enquanto a bolha passa e
+   volta ja no lugar novo. A versao curta e a do icone que sai da bolha. */
+@keyframes nav-pisca { 0%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
+@keyframes nav-pisca-curto { 0%, 100% { opacity: 1; } 15%, 75% { opacity: 0; } }
+
+@keyframes girar-borda {
+  to { --angulo-borda: 360deg; }
+}
+@layer components {
+  .borda-viva { position: relative; isolation: isolate; }
+  .borda-viva::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    border-radius: inherit;
+    padding: 2px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--angulo-borda),
+      transparent 0deg 250deg,
+      var(--color-astro-blue-bright) 290deg,
+      color-mix(in srgb, var(--color-astro-blue-bright) 35%, white) 318deg,
+      var(--color-astro-blue) 330deg,
+      transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: girar-borda 7s linear infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .borda-viva::before { animation: none; --angulo-borda: 300deg; }
+}
+
+/* Vidro fosco para cards sobre o FundoOndas. Escuro o bastante para o texto
+   ler bem quando passa por cima de uma onda clara; o fio claro no topo
+   (inset) e o que desenha a quina do vidro. No celular o desfoque e menor,
+   porque backdrop-filter pesa em aparelho mais fraco. */
+@layer components {
+  .vidro {
+    background-color: rgb(0 0 0 / 0.35);
+    background-image: linear-gradient(160deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.015) 60%);
+    border: 1px solid rgb(255 255 255 / 0.1);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
+  }
+  @media (min-width: 1024px) {
+    .vidro {
+      -webkit-backdrop-filter: blur(22px) saturate(150%);
+      backdrop-filter: blur(22px) saturate(150%);
+    }
+  }
+}
+
+/* Grade de pontos do FundoOndas. .pontos-base desenha os pontos apagados;
+   .pontos-luz usa a mesma grade como mascara, para a luz das ondas so
+   aparecer dentro dos pontos. */
+@keyframes ondas-esquerda { to { transform: translateX(-50%); } }
+@keyframes ondas-direita { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@layer components {
+  .pontos-base {
+    background-image: radial-gradient(circle, rgb(255 255 255 / 0.09) 1.2px, transparent 1.6px);
+    background-size: 14px 14px;
+  }
+  /* Mesma grade sobre fundo claro (telas do cliente): pontos escuros. */
+  .pontos-base-claro {
+    background-image: radial-gradient(circle, rgb(15 23 42 / 0.1) 1.2px, transparent 1.6px);
+    background-size: 14px 14px;
+  }
+  .pontos-luz {
+    -webkit-mask-image: radial-gradient(circle, #000 1.6px, transparent 2px);
+    mask-image: radial-gradient(circle, #000 1.6px, transparent 2px);
+    -webkit-mask-size: 14px 14px;
+    mask-size: 14px 14px;
+  }
+}
+
+/* Painel de marca do login e do cadastro: a borda que encosta no formulario
+   e uma curva organica, feita por mascara (corta o degrade e os aneis
+   juntos). No celular a curva fica embaixo; no computador, a direita. */
+.painel-auth {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V82C84 94 70 74 52 86S18 100 0 90Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V82C84 94 70 74 52 86S18 100 0 90Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+@media (min-width: 1024px) {
+  .painel-auth {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H74C92 14 66 34 82 52S94 84 80 100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H74C92 14 66 34 82 52S94 84 80 100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  }
+}
+
+/* Recorte inverso do .painel-auth (o lado escuro dentro da caixa do painel),
+   usado so para projetar a sombra preta sobre o azul ao longo da curva. */
+.painel-auth-inverso {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 90C18 100 34 98 52 86S84 94 100 82V100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 90C18 100 34 98 52 86S84 94 100 82V100H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+.painel-auth-sombra {
+  filter: drop-shadow(0 -8px 12px rgb(0 0 0 / 0.6));
+}
+@media (min-width: 1024px) {
+  .painel-auth-inverso {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M74 0C92 14 66 34 82 52S94 84 80 100H100V0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M74 0C92 14 66 34 82 52S94 84 80 100H100V0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  }
+  .painel-auth-sombra {
+    filter: drop-shadow(-10px 0 14px rgb(0 0 0 / 0.6));
+  }
+}
+
+/* Preenchimento automatico do navegador (senha e e-mail salvos). O Chrome
+   pinta o campo de azul-claro com texto preto por conta propria, o que fura o
+   tema escuro. A transicao gigante adia esse fundo para nunca chegar, e o
+   campo continua com o fundo do proprio componente; o texto volta a branco. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  transition: background-color 9999s ease-out 0s;
 }

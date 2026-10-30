@@ -44,6 +44,11 @@ export default async function PagamentoPage({
   });
   if (!servico || !veiculo) notFound();
 
+  // Tipo removido do catalogo: volta para a escolha, que explica o motivo.
+  if (!veiculo.segmento.ativo) {
+    redirect(`/${slug}/agendar/${servicoId}`);
+  }
+
   // Sem preco para este tipo de veiculo nao ha o que cobrar — volta para a
   // escolha em vez de mostrar uma tela de pagamento com valor inventado.
   const precoDecimal = calcularPreco(servico.precos, veiculo.segmentoId);

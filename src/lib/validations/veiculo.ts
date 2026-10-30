@@ -1,6 +1,6 @@
 import { z } from "zod";
-
-const anoAtual = new Date().getFullYear();
+import { partesNoFuso } from "@/lib/fuso";
+import { LIMITES } from "@/lib/validations/limites";
 
 // Padrao antigo (cinza): LLL-NNNN, ex. ABC-1234 (hifen opcional)
 // Padrao Mercosul: LLLNLNN, ex. ABC1D23
@@ -15,15 +15,27 @@ const placaSchema = z
   });
 
 export const veiculoSchema = z.object({
-  marca: z.string().min(1, "Informe a marca"),
-  modelo: z.string().min(1, "Informe o modelo"),
+  marca: z
+    .string()
+    .min(1, "Informe a marca")
+    .max(LIMITES.marcaVeiculo, `Marca muito longa - use ate ${LIMITES.marcaVeiculo} caracteres`),
+  modelo: z
+    .string()
+    .min(1, "Informe o modelo")
+    .max(LIMITES.modeloVeiculo, `Modelo muito longo - use ate ${LIMITES.modeloVeiculo} caracteres`),
   placa: placaSchema,
+  // Ate o ano que vem: em outubro ja se vende o "modelo do ano seguinte". O ano
+  // atual e lido a cada validacao — calculado uma vez ao carregar o arquivo, ele
+  // ficava parado no ano em que o servidor subiu.
   ano: z.coerce
     .number()
     .int()
     .min(1950, "Ano invalido")
-    .max(anoAtual + 1, "Ano invalido"),
-  cor: z.string().min(1, "Informe a cor"),
+    .refine((ano) => ano <= partesNoFuso(new Date()).ano + 1, "Ano invalido"),
+  cor: z
+    .string()
+    .min(1, "Informe a cor")
+    .max(LIMITES.corVeiculo, `Cor muito longa - use ate ${LIMITES.corVeiculo} caracteres`),
   // Antes era o enum fixo do sistema. Agora e um segmento do proprio tenant —
   // a rota confere que o id pertence a ele e esta ativo (o RLS ja garante o
   // tenant; o ativo nao).
