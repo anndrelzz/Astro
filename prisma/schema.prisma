@@ -53,6 +53,12 @@ enum StatusNotificacao {
   FALHA
 }
 
+/// Cada aviso vira uma linha por canal, com status e tentativas proprios.
+enum CanalNotificacao {
+  EMAIL
+  TELEGRAM
+}
+
 /// Cada estetica cadastrada e um tenant isolado (RN07).
 /// slug e unico e imutavel apos o cadastro (RN09).
 model Tenant {
@@ -309,9 +315,11 @@ model Notificacao {
   tenantId      String
   agendamentoId String
   tipo          TipoNotificacao
+  canal         CanalNotificacao  @default(EMAIL)
   status        StatusNotificacao @default(PENDENTE)
   enviadoEm     DateTime?
   tentativas    Int               @default(0)
+  criadoEm      DateTime          @default(now())
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id])
   agendamento Agendamento @relation(fields: [agendamentoId], references: [id])

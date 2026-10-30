@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { dispararNotificacao } from "@/lib/notificacoes";
+import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
 import { verificarEEnviarLembretes } from "@/lib/notificacoes/lembretes";
 
 // RF09, RN08 — lembretes de 24 h e de 2 h antes do horario. Cada um sai uma
@@ -38,9 +38,15 @@ vi.mock("@/lib/tenant-db", () => ({
     }),
 }));
 
-vi.mock("@/lib/notificacoes", () => ({ dispararNotificacao: vi.fn() }));
+vi.mock("@/lib/notificacoes", () => ({
+  registrarNotificacao: vi.fn(async (_tx: unknown, agendamentoId: string, tipo: string) => [
+    { tenantId: "tenant", notificacaoId: `${agendamentoId}-${tipo}` },
+  ]),
+  enviarNotificacoes: vi.fn(),
+}));
 
-const disparar = vi.mocked(dispararNotificacao);
+const disparar = vi.mocked(registrarNotificacao);
+const enviar = vi.mocked(enviarNotificacoes);
 
 const AGORA = new Date("2026-10-29T13:00:00Z");
 const HORA = 60 * 60 * 1000;
@@ -62,7 +68,8 @@ beforeEach(() => {
   vi.setSystemTime(AGORA);
   agendamentosPorTenant.clear();
   consultas.length = 0;
-  disparar.mockReset();
+  disparar.mockClear();
+  enviar.mockClear();
 });
 
 afterEach(() => {
@@ -88,6 +95,12 @@ describe("verificarEEnviarLembretes", () => {
     agendamentosPorTenant.set("tenant-a", [agendamento("ag-1", 20, 72)]);
     expect(await verificarEEnviarLembretes()).toEqual({ lembretes24h: 1, lembretes2h: 0, verificados: 1 });
     expect(disparar).toHaveBeenCalledWith(expect.anything(), "ag-1", "LEMBRETE_24H");
+  });
+
+  test("registra o lembrete e so depois envia o que foi registrado", async () => {
+    agendamentosPorTenant.set("tenant-a", [agendamento("ag-1", 20, 72)]);
+    await verificarEEnviarLembretes();
+    expect(enviar).toHaveBeenCalledWith([{ tenantId: "tenant", notificacaoId: "ag-1-LEMBRETE_24H" }]);
   });
 
   test("faltando 1 h, envia o lembrete de 2 h", async () => {
