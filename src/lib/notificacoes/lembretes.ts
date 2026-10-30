@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/tenant-db";
-import { enviarNotificacao, registrarNotificacao, type NotificacaoPendente } from "./index";
+import { enviarNotificacoes, registrarNotificacao, type NotificacaoPendente } from "./index";
 
 const HORA_EM_MS = 1000 * 60 * 60;
 
@@ -29,9 +29,10 @@ export async function verificarEEnviarLembretes(agora = new Date()) {
 
 // Primeiro registra, numa transacao curta e so de banco, todos os lembretes
 // devidos; depois envia um por um, fora dela. O registro e o que impede o
-// reenvio: como ele ja esta salvo antes do envio, um e-mail lento ou um erro
-// do Telegram nao o desfaz, e a proxima rodada nao manda o lembrete de novo.
-// Um envio que falha fica como FALHA — o lembrete se perde, mas nao se repete.
+// lembrete repetido: como ele ja esta salvo antes do envio, um e-mail lento ou
+// um erro do Telegram nao o desfaz, e a proxima rodada nao cria outro. Um
+// envio que falha fica como FALHA e e tentado de novo pelo reenvio do cron
+// (reenviarNotificacoes), ate MAX_TENTATIVAS.
 export async function verificarLembretesDoTenant(tenantId: string, agora = new Date()) {
   let lembretes24h = 0;
   let lembretes2h = 0;
@@ -46,7 +47,7 @@ export async function verificarLembretesDoTenant(tenantId: string, agora = new D
       include: { notificacoes: true },
     });
 
-    const pendentes: (NotificacaoPendente | null)[] = [];
+    const pendentes: NotificacaoPendente[] = [];
 
     for (const agendamento of agendamentosAtivos) {
       const horasAte = (agendamento.dataHora.getTime() - agora.getTime()) / HORA_EM_MS;
@@ -62,7 +63,7 @@ export async function verificarLembretesDoTenant(tenantId: string, agora = new D
         horasDeAntecedenciaNaCriacao >= 24 &&
         !jaTem24h
       ) {
-        pendentes.push(await registrarNotificacao(tx, agendamento.id, "LEMBRETE_24H"));
+        pendentes.push(...(await registrarNotificacao(tx, agendamento.id, "LEMBRETE_24H")));
         lembretes24h++;
       }
 
@@ -72,7 +73,7 @@ export async function verificarLembretesDoTenant(tenantId: string, agora = new D
         horasDeAntecedenciaNaCriacao >= 2 &&
         !jaTem2h
       ) {
-        pendentes.push(await registrarNotificacao(tx, agendamento.id, "LEMBRETE_2H"));
+        pendentes.push(...(await registrarNotificacao(tx, agendamento.id, "LEMBRETE_2H")));
         lembretes2h++;
       }
     }
@@ -80,7 +81,7 @@ export async function verificarLembretesDoTenant(tenantId: string, agora = new D
     return { pendentes, verificados: agendamentosAtivos.length };
   });
 
-  for (const pendente of pendentes) await enviarNotificacao(pendente);
+  await enviarNotificacoes(pendentes);
 
   return { lembretes24h, lembretes2h, verificados };
 }

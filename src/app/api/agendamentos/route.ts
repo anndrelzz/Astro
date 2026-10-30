@@ -4,7 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { lerJson } from "@/lib/api-helpers";
 import { instanteNoFuso } from "@/lib/fuso";
-import { enviarNotificacao, registrarNotificacao } from "@/lib/notificacoes";
+import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { withTenant } from "@/lib/tenant-db";
 import { calcularSlotsDisponiveis } from "@/lib/slots";
@@ -50,9 +50,20 @@ export async function POST(request: Request) {
     // esse carro; aceitar o agendamento marcaria um horario para ele.
     const veiculo = await tx.veiculo.findFirst({
       where: { id: veiculoId, usuarioId: session.user.id, ativo: true },
+      include: { segmento: true },
     });
     if (!tenant || !servico || !veiculo) {
       return { error: "Nao encontrado", httpStatus: 404 } as const;
+    }
+
+    // Tipo de veiculo removido do catalogo: a estetica nao atende mais. O preco
+    // antigo continua guardado para o historico, entao a conferencia de preco
+    // abaixo nao barraria sozinha.
+    if (!veiculo.segmento.ativo) {
+      return {
+        error: `A estetica nao atende mais veiculos do tipo ${veiculo.segmento.nome}. Para combinar um atendimento, fale com a estetica pelo WhatsApp.`,
+        httpStatus: 409,
+      } as const;
     }
 
     // RN10 — PIX so pode ser escolhido se o Admin configurou a chave.
@@ -97,13 +108,13 @@ export async function POST(request: Request) {
 
     // RF08, Gatilho 1 (secao 3.4) — registrada aqui, enviada so depois do
     // commit (ver lib/notificacoes).
-    const notificacao = await registrarNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
+    const notificacoes = await registrarNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
 
     return {
       id: agendamento.id,
       status: agendamento.status,
       pixChaveCopiaCola: tenant.pixChaveCopiaCola,
-      notificacao,
+      notificacoes,
     } as const;
   });
 
@@ -111,8 +122,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: resultado.error }, { status: resultado.httpStatus });
   }
 
-  const { notificacao, ...corpo } = resultado;
-  after(() => enviarNotificacao(notificacao));
+  const { notificacoes, ...corpo } = resultado;
+  after(() => enviarNotificacoes(notificacoes));
 
   return NextResponse.json(corpo, { status: 201 });
 }

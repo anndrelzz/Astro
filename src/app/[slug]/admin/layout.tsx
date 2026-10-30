@@ -1,12 +1,14 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { partesNoFuso } from "@/lib/fuso";
 import { getTenantPorSlug } from "@/lib/tenant";
 import { withTenant } from "@/lib/tenant-db";
 import { AdminMobileNav, AdminSidebar } from "./admin-sidebar";
+import { FundoOndas } from "./fundo-ondas";
 
-// Casca do painel administrativo (mockup do admin em desktop): barra lateral
-// fixa, tema escuro e area de conteudo. Envolve todas as telas de /admin.
+// Casca do painel administrativo: barra lateral fixa na cor da estetica, tema
+// escuro e area de conteudo. Envolve todas as telas de /admin.
 //
 // A checagem de sessao e role acontece aqui E em cada pagina. Nao e redundancia
 // desnecessaria: o layout evita renderizar a casca para quem nao e admin, e a
@@ -33,19 +35,39 @@ export default async function AdminLayout({
   }
 
   // Contador do menu: agendamentos aguardando confirmacao manual do PIX (UC16).
-  const pixPendentes = await withTenant(tenant.id, (tx) =>
-    tx.agendamento.count({
-      where: { tenantId: tenant.id, status: "PIX_PENDENTE" },
-    })
+  // "Aberto agora" sai da grade de funcionamento de hoje (RF02), no relogio da
+  // estetica (lib/fuso.ts), nao do servidor.
+  const relogio = partesNoFuso(new Date());
+  const [pixPendentes, horarioHoje] = await withTenant(tenant.id, (tx) =>
+    Promise.all([
+      tx.agendamento.count({
+        where: { tenantId: tenant.id, status: "PIX_PENDENTE" },
+      }),
+      tx.horarioFuncionamento.findUnique({
+        where: {
+          tenantId_diaSemana: { tenantId: tenant.id, diaSemana: relogio.diaSemana },
+        },
+      }),
+    ])
   );
+  const minutosAgora = relogio.hora * 60 + relogio.minuto;
+  const aberto =
+    !!horarioHoje &&
+    minutosAgora >= horarioHoje.horaInicioMin &&
+    minutosAgora < horarioHoje.horaFimMin;
 
   const usuarioNome = session.user.name ?? "Admin";
 
   return (
-    <div className="flex min-h-dvh bg-admin-bg text-slate-100">
+    // isolate: o FundoOndas fica em -z-10, acima do preto desta casca e
+    // abaixo da sidebar e do conteudo.
+    <div className="isolate flex min-h-dvh bg-admin-bg text-slate-100">
+      <FundoOndas />
       <AdminSidebar
         slug={slug}
         tenantNome={tenant.nome}
+        tenantLogo={tenant.logoUrl}
+        aberto={aberto}
         usuarioNome={usuarioNome}
         pixPendentes={pixPendentes}
       />
@@ -54,6 +76,7 @@ export default async function AdminLayout({
         <AdminMobileNav
           slug={slug}
           tenantNome={tenant.nome}
+          usuarioNome={usuarioNome}
           pixPendentes={pixPendentes}
         />
         <main className="min-w-0 flex-1 px-5 py-6 lg:px-8 lg:py-7">{children}</main>
