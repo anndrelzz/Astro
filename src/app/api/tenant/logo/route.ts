@@ -1,9 +1,9 @@
 import { randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { tipoDaImagem } from "@/lib/imagem";
-import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/back/auth";
+import { tipoDaImagem } from "@/back/imagem";
+import { prisma } from "@/back/prisma";
 
 // SVG deliberadamente fora dos formatos aceitos: e um formato XML que pode
 // conter <script> e handlers (onload, etc.) executados pelo navegador quando o

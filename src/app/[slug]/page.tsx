@@ -2,14 +2,14 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { LayoutDashboard } from "lucide-react";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { Logo } from "@/components/ui/astro";
-import { ThemeColor } from "@/components/ui/theme-color";
-import { ClienteShell } from "./cliente-shell";
-import { HomeServicos } from "./home-servicos";
-import { ProximoHorario, type Marcado } from "./proximo-horario";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { Logo } from "@/front/componentes/astro";
+import { ThemeColor } from "@/front/componentes/theme-color";
+import { ClienteShell } from "@/front/cliente/cliente-shell";
+import { HomeServicos } from "@/front/cliente/home-servicos";
+import { ProximoHorario, type Marcado } from "@/front/cliente/proximo-horario";
 
 // RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
 // Home do cliente (tela 06): saudacao, cartao da estetica com o WhatsApp, o

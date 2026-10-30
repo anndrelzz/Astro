@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ClienteShell } from "../cliente-shell";
-import { PerfilCliente } from "./perfil-cliente";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ClienteShell } from "@/front/cliente/cliente-shell";
+import { PerfilCliente } from "@/front/cliente/perfil-cliente";
 
 // UC15, tela 04 do mockup — perfil do cliente: dados de contato, estatisticas
 // e lista de veiculos. A edicao (tela 05) e um modal em PerfilCliente.

@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { partesNoFuso } from "@/lib/fuso";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { HorariosAdmin } from "./horarios-admin";
+import { authOptions } from "@/back/auth";
+import { partesNoFuso } from "@/compartilhado/fuso";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { HorariosAdmin } from "@/front/admin/horarios-admin";
 
 // Indexado por Date.getDay(): 0 = domingo ... 6 = sabado, que e como o banco
 // guarda em horario_funcionamento.diaSemana.

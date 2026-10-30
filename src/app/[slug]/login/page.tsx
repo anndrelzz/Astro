@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { AuthForm } from "./auth-form";
+import { prisma } from "@/back/prisma";
+import { AuthForm } from "@/front/login/auth-form";
 
 // Tela 02 — Login. E a porta de entrada da estetica: /[slug] manda para ca
 // quem ainda nao esta autenticado (RF03), entao o nome e o logo precisam

@@ -1,11 +1,11 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/lib/financeiro";
-import { FUSO, chaveDia, inicioDoDia } from "@/lib/fuso";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { FinanceiroDashboard, type ItemAcrescimo, type ItemPagamento } from "./financeiro-dashboard";
+import { authOptions } from "@/back/auth";
+import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/compartilhado/financeiro";
+import { FUSO, chaveDia, inicioDoDia } from "@/compartilhado/fuso";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { FinanceiroDashboard, type ItemAcrescimo, type ItemPagamento } from "@/front/admin/financeiro-dashboard";
 
 // RF12, UC11 — dashboard financeiro: receita total, receita por dia, por
 // servico, os 5 clientes que mais gastaram e o que ainda falta receber.

@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { lerJson } from "@/lib/api-helpers";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { LIMITES } from "@/lib/validations/limites";
+import { lerJson } from "@/back/api-helpers";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { LIMITES } from "@/compartilhado/validacoes/limites";
 
 const cadastroSchema = z.object({
   tenantSlug: z.string().min(1),

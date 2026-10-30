@@ -1,6 +1,6 @@
-import { BarraCliente } from "@/components/ui/bottom-nav";
-import { ModalSlot } from "@/components/ui/modal-slot";
-import { getTenantPorSlug } from "@/lib/tenant";
+import { BarraCliente } from "@/front/componentes/bottom-nav";
+import { ModalSlot } from "@/front/componentes/modal-slot";
+import { getTenantPorSlug } from "@/back/tenant";
 
 // Layout de /[slug] que existe por tres motivos: abrir o slot paralelo
 // @modal, usado pelas rotas interceptadas (o cadastro de veiculo), e aplicar

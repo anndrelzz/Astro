@@ -1,11 +1,11 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { partesNoFuso } from "@/lib/fuso";
-import { getTenantPorSlug } from "@/lib/tenant";
-import { withTenant } from "@/lib/tenant-db";
-import { AdminMobileNav, AdminSidebar } from "./admin-sidebar";
-import { FundoOndas } from "./fundo-ondas";
+import { authOptions } from "@/back/auth";
+import { partesNoFuso } from "@/compartilhado/fuso";
+import { getTenantPorSlug } from "@/back/tenant";
+import { withTenant } from "@/back/tenant-db";
+import { AdminMobileNav, AdminSidebar } from "@/front/admin/admin-sidebar";
+import { FundoOndas } from "@/front/componentes/fundo-ondas";
 
 // Casca do painel administrativo: barra lateral fixa na cor da estetica, tema
 // escuro e area de conteudo. Envolve todas as telas de /admin.
@@ -36,7 +36,7 @@ export default async function AdminLayout({
 
   // Contador do menu: agendamentos aguardando confirmacao manual do PIX (UC16).
   // "Aberto agora" sai da grade de funcionamento de hoje (RF02), no relogio da
-  // estetica (lib/fuso.ts), nao do servidor.
+  // estetica (compartilhado/fuso.ts), nao do servidor.
   const relogio = partesNoFuso(new Date());
   const [pixPendentes, horarioHoje] = await withTenant(tenant.id, (tx) =>
     Promise.all([
