@@ -8,7 +8,7 @@ import { instanteNoFuso } from "@/lib/fuso";
 import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { withTenant } from "@/lib/tenant-db";
-import { calcularSlotsDisponiveis, travarDiaParaAgendamento } from "@/lib/slots";
+import { calcularSlotsDisponiveis, FilaDeAgendamentoOcupada, travarDiaParaAgendamento } from "@/lib/slots";
 
 const agendamentoSchema = z.object({
   servicoId: z.string().uuid(),
@@ -126,9 +126,25 @@ export async function POST(request: Request) {
       pixChaveCopiaCola: tenant.pixChaveCopiaCola,
       notificacoes,
     } as const;
+  }).catch((erro) => {
+    // A fila de confirmacoes do dia nao andou a tempo (ver lib/slots). Nada
+    // foi gravado; o cliente pode tentar de novo em seguida.
+    if (erro instanceof FilaDeAgendamentoOcupada) {
+      return {
+        error: "Muitas confirmacoes para esse dia agora. Tente de novo em instantes.",
+        httpStatus: 503,
+      } as const;
+    }
+    throw erro;
   });
 
   if ("error" in resultado) {
+    if (resultado.httpStatus === 503) {
+      return NextResponse.json(
+        { error: resultado.error },
+        { status: 503, headers: { "Retry-After": "2" } }
+      );
+    }
     return NextResponse.json({ error: resultado.error }, { status: resultado.httpStatus });
   }
 
