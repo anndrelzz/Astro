@@ -1,26 +1,23 @@
-import test, { after, before, beforeEach, describe } from "node:test";
-import assert from "node:assert/strict";
 import { setTimeout as esperar } from "node:timers/promises";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { instanteNoFuso } from "@/lib/fuso";
 import { prisma } from "@/lib/prisma";
-import { calcularSlotsDisponiveis, travarDiaParaAgendamento } from "@/lib/slots";
+import { calcularSlotsDisponiveis, FilaDeAgendamentoOcupada, travarDiaParaAgendamento } from "@/lib/slots";
 import { withTenant } from "@/lib/tenant-db";
 
 // Confirmacoes simultaneas para o mesmo horario (RN06 — capacidade simultanea).
 //
 // Reproduz os passos de POST /api/agendamentos que importam para a disputa:
-// trava do dia, reconferencia da vaga, gravacao e, antes do commit, a espera
-// pelo envio do e-mail — simulada aqui por uma pausa, para que as duas
-// transacoes sempre se sobreponham.
+// trava do dia, reconferencia da vaga e gravacao. Uma pausa antes do commit
+// garante que as transacoes sempre se sobreponham.
 //
 // Requer um PostgreSQL real com as migrations aplicadas (o mesmo DATABASE_URL
-// da aplicacao). Rodar com:
-//   npm run test:concorrencia
+// da aplicacao).
 
 const PREFIXO = "__test__concorrencia";
 const HORA = "17:00";
 const DATA_HORA = instanteNoFuso(2027, 3, 10, 17, 0);
-const PAUSA_DO_EMAIL_MS = 300;
+const PAUSA_ANTES_DO_COMMIT_MS = 300;
 
 type Cliente = { usuarioId: string; veiculoId: string };
 type Fixture = { tenantId: string; servicoId: string; clientes: Cliente[] };
@@ -96,8 +93,24 @@ async function removerFixture(tenantId: string) {
   await prisma.tenant.delete({ where: { id: tenantId } });
 }
 
-// Os mesmos passos da rota, na mesma ordem.
-async function confirmar(cliente: Cliente, { comTrava }: { comTrava: boolean }) {
+// Promessa que so resolve quando `total` participantes chegaram nela.
+function barreira(total: number) {
+  let chegaram = 0;
+  let liberar!: () => void;
+  const todos = new Promise<void>((resolve) => (liberar = resolve));
+  return () => {
+    if (++chegaram === total) liberar();
+    return todos;
+  };
+}
+
+// Os mesmos passos da rota, na mesma ordem. `depoisDeLer` segura a gravacao
+// ate as outras confirmacoes tambem lerem a vaga: com o computador ocupado,
+// uma pode terminar antes da outra comecar, e entao nao haveria disputa.
+async function confirmar(
+  cliente: Cliente,
+  { comTrava, depoisDeLer }: { comTrava: boolean; depoisDeLer?: () => Promise<void> }
+) {
   return withTenant(f.tenantId, async (tx) => {
     const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: f.tenantId } });
     const servico = await tx.servico.findUniqueOrThrow({ where: { id: f.servicoId } });
@@ -105,6 +118,7 @@ async function confirmar(cliente: Cliente, { comTrava }: { comTrava: boolean }) 
     if (comTrava) await travarDiaParaAgendamento(tx, tenant.id, DATA_HORA);
 
     const slots = await calcularSlotsDisponiveis(tx, tenant, servico, DATA_HORA);
+    await depoisDeLer?.();
     if (!slots.includes(HORA)) return "recusado" as const;
 
     await tx.agendamento.create({
@@ -118,7 +132,7 @@ async function confirmar(cliente: Cliente, { comTrava }: { comTrava: boolean }) 
         valor: 60,
       },
     });
-    await esperar(PAUSA_DO_EMAIL_MS);
+    await esperar(PAUSA_ANTES_DO_COMMIT_MS);
     return "gravado" as const;
   });
 }
@@ -129,7 +143,7 @@ async function agendamentosNoHorario() {
   );
 }
 
-before(async () => {
+beforeAll(async () => {
   // Remove sobras de uma execucao anterior interrompida.
   const orfaos = await prisma.tenant.findMany({
     where: { slug: { startsWith: PREFIXO } },
@@ -146,7 +160,7 @@ beforeEach(async () => {
   );
 });
 
-after(async () => {
+afterAll(async () => {
   if (f) await removerFixture(f.tenantId);
   await prisma.$disconnect();
 });
@@ -158,13 +172,14 @@ describe("confirmacoes simultaneas no mesmo horario", () => {
     await prisma.tenant.update({ where: { id: f.tenantId }, data: { capacidadeSimultanea: 1 } });
 
     const [c1, c2] = f.clientes;
+    const depoisDeLer = barreira(2);
     const resultados = await Promise.all([
-      confirmar(c1, { comTrava: false }),
-      confirmar(c2, { comTrava: false }),
+      confirmar(c1, { comTrava: false, depoisDeLer }),
+      confirmar(c2, { comTrava: false, depoisDeLer }),
     ]);
 
-    assert.deepEqual(resultados, ["gravado", "gravado"]);
-    assert.equal(await agendamentosNoHorario(), 2);
+    expect(resultados).toEqual(["gravado", "gravado"]);
+    expect(await agendamentosNoHorario()).toBe(2);
   });
 
   test("com a trava, capacidade 1: um grava, o outro e recusado", async () => {
@@ -176,8 +191,8 @@ describe("confirmacoes simultaneas no mesmo horario", () => {
       confirmar(c2, { comTrava: true }),
     ]);
 
-    assert.deepEqual([...resultados].sort(), ["gravado", "recusado"]);
-    assert.equal(await agendamentosNoHorario(), 1);
+    expect([...resultados].sort()).toEqual(["gravado", "recusado"]);
+    expect(await agendamentosNoHorario()).toBe(1);
   });
 
   test("com a trava, capacidade 2: tres disputam, dois gravam", async () => {
@@ -187,7 +202,38 @@ describe("confirmacoes simultaneas no mesmo horario", () => {
       f.clientes.map((c) => confirmar(c, { comTrava: true }))
     );
 
-    assert.deepEqual([...resultados].sort(), ["gravado", "gravado", "recusado"]);
-    assert.equal(await agendamentosNoHorario(), 2);
+    expect([...resultados].sort()).toEqual(["gravado", "gravado", "recusado"]);
+    expect(await agendamentosNoHorario()).toBe(2);
+  });
+});
+
+describe("espera maxima na fila", () => {
+  test("fila parada alem do limite: desiste com FilaDeAgendamentoOcupada", async () => {
+    // Uma confirmacao segura a trava do dia por 800 ms; a outra so aceita
+    // esperar 200 ms.
+    const segurando = withTenant(f.tenantId, async (tx) => {
+      await travarDiaParaAgendamento(tx, f.tenantId, DATA_HORA);
+      await esperar(800);
+    });
+    await esperar(100);
+
+    const inicio = Date.now();
+    await expect(
+      withTenant(f.tenantId, (tx) => travarDiaParaAgendamento(tx, f.tenantId, DATA_HORA, 200))
+    ).rejects.toBeInstanceOf(FilaDeAgendamentoOcupada);
+    // Desistiu perto do limite, sem esperar a outra terminar.
+    expect(Date.now() - inicio).toBeLessThan(700);
+
+    await segurando;
+  });
+
+  test("depois de pegar a trava, o limite de espera nao vale para o resto da transacao", async () => {
+    const limite = await withTenant(f.tenantId, async (tx) => {
+      await travarDiaParaAgendamento(tx, f.tenantId, DATA_HORA, 200);
+      const [linha] = await tx.$queryRaw<{ lock_timeout: string }[]>`SHOW lock_timeout`;
+      return linha.lock_timeout;
+    });
+
+    expect(limite).toBe("0");
   });
 });
