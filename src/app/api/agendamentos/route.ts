@@ -8,7 +8,7 @@ import { instanteNoFuso } from "@/lib/fuso";
 import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
 import { calcularPreco } from "@/lib/precificacao";
 import { withTenant } from "@/lib/tenant-db";
-import { calcularSlotsDisponiveis } from "@/lib/slots";
+import { calcularSlotsDisponiveis, FilaDeAgendamentoOcupada, travarDiaParaAgendamento } from "@/lib/slots";
 
 const agendamentoSchema = z.object({
   servicoId: z.string().uuid(),
@@ -95,7 +95,9 @@ export async function POST(request: Request) {
     // O horario escolhido e o do relogio da estetica, nao o do servidor.
     const dataHora = instanteNoFuso(ano, mes, dia, h, m);
 
-    // Reconfere disponibilidade no momento da confirmacao (RN06).
+    // Reconfere disponibilidade no momento da confirmacao (RN06). A trava vem
+    // antes: sem ela, duas confirmacoes simultaneas veriam a mesma vaga livre.
+    await travarDiaParaAgendamento(tx, tenant.id, dataHora);
     const slotsDisponiveis = await calcularSlotsDisponiveis(tx, tenant, servico, dataHora);
     if (!slotsDisponiveis.includes(hora)) {
       return { error: "Horario nao esta mais disponivel", httpStatus: 409 } as const;
@@ -124,9 +126,25 @@ export async function POST(request: Request) {
       pixChaveCopiaCola: tenant.pixChaveCopiaCola,
       notificacoes,
     } as const;
+  }).catch((erro) => {
+    // A fila de confirmacoes do dia nao andou a tempo (ver lib/slots). Nada
+    // foi gravado; o cliente pode tentar de novo em seguida.
+    if (erro instanceof FilaDeAgendamentoOcupada) {
+      return {
+        error: "Muitas confirmacoes para esse dia agora. Tente de novo em instantes.",
+        httpStatus: 503,
+      } as const;
+    }
+    throw erro;
   });
 
   if ("error" in resultado) {
+    if (resultado.httpStatus === 503) {
+      return NextResponse.json(
+        { error: resultado.error },
+        { status: 503, headers: { "Retry-After": "2" } }
+      );
+    }
     return NextResponse.json({ error: resultado.error }, { status: resultado.httpStatus });
   }
 

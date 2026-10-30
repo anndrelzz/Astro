@@ -5,8 +5,10 @@ import { POST as cancelar } from "@/app/api/agendamentos/[id]/cancelar/route";
 import { POST as confirmarPagamento } from "@/app/api/agendamentos/[id]/confirmar-pagamento/route";
 import { GET as consultarSlots } from "@/app/api/slots/route";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
+import { instanteNoFuso } from "@/lib/fuso";
 import { enviarEmail } from "@/lib/notificacoes/email";
 import { prisma } from "@/lib/prisma";
+import { travarDiaParaAgendamento } from "@/lib/slots";
 import { withTenant } from "@/lib/tenant-db";
 import { comId, criarEstetica, daqui, diaDaqui, entrarComo, pedido, removerEstetica, type Estetica } from "./ajudantes";
 
@@ -135,6 +137,36 @@ describe("POST /api/agendamentos", () => {
     const segunda = await agendar(pedido("POST", "/api/agendamentos", corpo(5)));
     expect(segunda.status).toBe(409);
     expect(await segunda.json()).toEqual({ error: "Horario nao esta mais disponivel" });
+  });
+
+  test("fila do dia presa alem do limite responde 503, sem gravar", async () => {
+    entrarComo(e.cliente);
+    const [ano, mes, dia] = diaDaqui(7).split("-").map(Number);
+
+    // Outra confirmacao segura a trava do dia ate a resposta chegar.
+    let soltar!: () => void;
+    const solta = new Promise<void>((resolve) => (soltar = resolve));
+    const segurando = withTenant(e.tenant.id, async (tx) => {
+      await travarDiaParaAgendamento(tx, e.tenant.id, instanteNoFuso(ano, mes, dia, 10, 0));
+      await solta;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(7)));
+    soltar();
+    await segurando;
+
+    expect(resposta.status).toBe(503);
+    expect(resposta.headers.get("Retry-After")).toBe("2");
+    expect(await resposta.json()).toEqual({
+      error: "Muitas confirmacoes para esse dia agora. Tente de novo em instantes.",
+    });
+    const gravados = await withTenant(e.tenant.id, (tx) =>
+      tx.agendamento.count({
+        where: { tenantId: e.tenant.id, dataHora: instanteNoFuso(ano, mes, dia, 10, 0) },
+      })
+    );
+    expect(gravados).toBe(0);
   });
 
   test("horario fora do funcionamento responde 409", async () => {

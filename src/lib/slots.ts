@@ -1,5 +1,5 @@
-import type { Prisma, Servico, Tenant } from "@/generated/prisma/client";
-import { fimDoDia, inicioDoDia, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
+import { Prisma, type Servico, type Tenant } from "@/generated/prisma/client";
+import { chaveDia, fimDoDia, inicioDoDia, minutosNoFuso, partesNoFuso } from "@/lib/fuso";
 
 // Quanto tempo antes do inicio um horario ainda pode ser reservado: da tempo
 // de o cliente chegar e de a estetica se preparar.
@@ -75,4 +75,53 @@ export async function calcularSlotsDisponiveis(
   }
 
   return slots;
+}
+
+// RN06 — sem esta trava, duas confirmacoes para o mesmo dia podem ler a mesma
+// vaga livre e gravar as duas: o agendamento de uma so fica visivel para a
+// outra no commit.
+//
+// A trava coloca em fila as confirmacoes da mesma estetica no mesmo dia (o
+// mesmo recorte que calcularSlotsDisponiveis consulta); dias diferentes nao
+// esperam um pelo outro. E de transacao: o Postgres a solta sozinho no commit
+// ou no rollback. Chamar ANTES de calcularSlotsDisponiveis, dentro do mesmo
+// withTenant. Uma colisao do hashtext so faz duas filas virarem uma — nunca
+// libera um horario lotado.
+//
+// A espera na fila tem limite (lock_timeout): se a confirmacao da frente
+// travar, as de tras desistem com FilaDeAgendamentoOcupada em vez de ficarem
+// penduradas ate o timeout de 5 s da transacao do Prisma. O limite vale so
+// para pegar a trava; depois volta ao padrao do banco.
+export const ESPERA_MAXIMA_FILA_MS = 3000;
+
+export class FilaDeAgendamentoOcupada extends Error {
+  constructor() {
+    super("Fila de confirmacoes do dia ocupada alem do limite");
+    this.name = "FilaDeAgendamentoOcupada";
+  }
+}
+
+export async function travarDiaParaAgendamento(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  data: Date,
+  esperaMaximaMs: number = ESPERA_MAXIMA_FILA_MS
+) {
+  const chave = `agendamento:${tenantId}:${chaveDia(data)}`;
+  await tx.$executeRaw`SELECT set_config('lock_timeout', ${`${esperaMaximaMs}ms`}, true)`;
+  try {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${chave}::text))`;
+  } catch (erro) {
+    if (estourouEsperaDaTrava(erro)) throw new FilaDeAgendamentoOcupada();
+    throw erro;
+  }
+  await tx.$executeRaw`SET LOCAL lock_timeout TO DEFAULT`;
+}
+
+// 55P03 (lock_not_available) e o codigo do Postgres para o lock_timeout. Com o
+// adapter pg, o Prisma devolve o codigo original dentro de meta.
+function estourouEsperaDaTrava(erro: unknown): boolean {
+  if (!(erro instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  const causa = (erro.meta?.driverAdapterError as { cause?: { originalCode?: string } } | undefined)?.cause;
+  return causa?.originalCode === "55P03";
 }
