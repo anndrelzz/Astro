@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { withTelegramTokenLookup, withTenant } from "@/lib/tenant-db";
-import { enviarTelegram } from "@/lib/notificacoes/telegram";
+import { withTelegramTokenLookup, withTenant } from "@/back/tenant-db";
+import { enviarTelegram } from "@/back/notificacoes/telegram";
 
 // UC15, RN12 — recebe o update do Telegram quando o cliente toca em
 // "START" apos abrir t.me/<bot>?start=TOKEN. Associa o chat_id a conta

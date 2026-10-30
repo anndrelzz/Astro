@@ -1,14 +1,14 @@
 import { getServerSession } from "next-auth";
 import { after, NextResponse } from "next/server";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { conferirDataAgendamento } from "@/lib/agenda";
-import { lerJson } from "@/lib/api-helpers";
-import { instanteNoFuso } from "@/lib/fuso";
-import { enviarNotificacoes, registrarNotificacao } from "@/lib/notificacoes";
-import { calcularPreco } from "@/lib/precificacao";
-import { withTenant } from "@/lib/tenant-db";
-import { calcularSlotsDisponiveis, FilaDeAgendamentoOcupada, travarDiaParaAgendamento } from "@/lib/slots";
+import { authOptions } from "@/back/auth";
+import { conferirDataAgendamento } from "@/compartilhado/agenda";
+import { lerJson } from "@/back/api-helpers";
+import { instanteNoFuso } from "@/compartilhado/fuso";
+import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
+import { calcularPreco } from "@/compartilhado/precificacao";
+import { withTenant } from "@/back/tenant-db";
+import { calcularSlotsDisponiveis, FilaDeAgendamentoOcupada, travarDiaParaAgendamento } from "@/back/slots";
 
 const agendamentoSchema = z.object({
   servicoId: z.string().uuid(),
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     });
 
     // RF08, Gatilho 1 (secao 3.4) — registrada aqui, enviada so depois do
-    // commit (ver lib/notificacoes).
+    // commit (ver back/notificacoes).
     const notificacoes = await registrarNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
 
     return {
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       notificacoes,
     } as const;
   }).catch((erro) => {
-    // A fila de confirmacoes do dia nao andou a tempo (ver lib/slots). Nada
+    // A fila de confirmacoes do dia nao andou a tempo (ver back/slots). Nada
     // foi gravado; o cliente pode tentar de novo em seguida.
     if (erro instanceof FilaDeAgendamentoOcupada) {
       return {
