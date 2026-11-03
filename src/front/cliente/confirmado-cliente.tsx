@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
+import { FundoOndas } from "@/front/componentes/fundo-ondas";
 import { SuccessScreen } from "@/front/componentes/success-screen";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { horaMinuto, partesNoFuso } from "@/compartilhado/fuso";
@@ -55,6 +56,7 @@ export function ConfirmadoCliente({
   formaPagamento,
   valor,
   acrescimoCondicaoPercent,
+  emailEnviado,
 }: {
   slug: string;
   agendamentoId: string;
@@ -70,6 +72,9 @@ export function ConfirmadoCliente({
   // o atendimento pode ser dias depois. Ver o teto de novo na tela que ele
   // guarda evita a surpresa chegar na estetica.
   acrescimoCondicaoPercent: number | null;
+  // O e-mail de confirmacao sai de verdade (Resend configurado). Sem isso a
+  // tela nao promete um e-mail que nao chega.
+  emailEnviado: boolean;
 }) {
   const copy = COPY[status] ?? COPY.PENDENTE_PAGAMENTO;
 
@@ -121,20 +126,15 @@ export function ConfirmadoCliente({
   ];
 
   return (
-    <div className="astro-dark relative min-h-dvh overflow-hidden">
+    // Fundo preto liso, como no login: o .astro-dark tem listras diagonais
+    // proprias, que apareciam por baixo dos pontos.
+    <div className="relative isolate min-h-dvh overflow-hidden bg-black">
       <ThemeColor color="#09090b" />
 
-      {/* Fundo em duas camadas sobre o navy: listras diagonais muito sutis e um
-          brilho radial azul no topo — mesmo tratamento do painel de marca do
-          login, o que da profundidade sem disputar com o card. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(115deg, rgba(255,255,255,0.028) 0px, rgba(255,255,255,0.028) 2px, transparent 2px, transparent 20px)",
-        }}
-      />
+      {/* Fundo padrao do projeto (pontos com ondas de luz na cor da estetica),
+          o mesmo do login e do Admin, e um brilho radial no topo, atras do
+          check. */}
+      <FundoOndas />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -143,16 +143,6 @@ export function ConfirmadoCliente({
             "radial-gradient(55% 40% at 50% 20%, color-mix(in srgb, var(--color-astro-blue) 35%, transparent) 0%, transparent 70%)",
         }}
       />
-
-      {/* Estrelas decorativas, no mesmo espirito da animacao de sucesso. */}
-      <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
-        <span className="absolute left-[16%] top-[20%] text-white/40">✦</span>
-        <span className="absolute right-[20%] top-[16%] text-white/30">✦</span>
-        <span className="absolute left-[12%] top-[52%] text-white/20">✦</span>
-        <span className="absolute right-[14%] top-[58%] text-white/30">✦</span>
-        <span className="absolute left-[24%] top-[78%] text-white/20">✦</span>
-        <span className="absolute right-[26%] top-[80%] text-white/25">✦</span>
-      </div>
 
       <AnimatePresence>
         {animando && (
@@ -187,7 +177,9 @@ export function ConfirmadoCliente({
             <span className="italic text-astro-blue-bright">{copy.realce}</span>
           </h1>
           <p className="mt-3 text-sm text-astro-muted lg:text-base">
-            Enviamos os detalhes do agendamento para o seu e-mail.
+            {emailEnviado
+              ? "Enviamos os detalhes do agendamento para o seu e-mail."
+              : "Os detalhes ficam salvos em Meus agendamentos."}
           </p>
 
           {/* Card de detalhes. No celular empilha; no desktop vira faixa
