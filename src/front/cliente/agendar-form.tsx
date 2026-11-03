@@ -228,7 +228,9 @@ export function AgendarForm({
   }
 
   return (
-    <div className="min-h-dvh bg-white lg:min-h-0 lg:bg-transparent">
+    // Entra subindo de leve: quem chega do cadastro do veiculo ve a troca de
+    // tela como continuacao, e nao como um pulo.
+    <div className="min-h-dvh animate-[surgir_350ms_cubic-bezier(0.22,1,0.36,1)] bg-white motion-reduce:animate-none lg:min-h-0 lg:bg-transparent">
       <ThemeColor color="#09090b" />
       {/* Cabecalho escuro — so no celular. No desktop quem situa o cliente e a
           trilha do cabecalho da casca, e o "voltar" e a propria barra lateral. */}
