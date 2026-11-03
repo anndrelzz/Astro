@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
+import { FundoOndas } from "@/front/componentes/fundo-ondas";
 import { SuccessScreen } from "@/front/componentes/success-screen";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { horaMinuto, partesNoFuso } from "@/compartilhado/fuso";
@@ -21,11 +22,11 @@ const MESES_LONGO = [
 // Cada status tem seu proprio rotulo. PIX cai aqui como pendente ate o Admin
 // confirmar o recebimento (RN05), entao a tela nao pode cravar "confirmado"
 // para todo mundo — o titulo acompanha o estado real do agendamento.
-const COPY: Record<string, { badge: string; titulo: string; realce: string }> = {
-  CONFIRMADO: { badge: "Pagamento aprovado", titulo: "Agendamento", realce: "confirmado" },
-  CONCLUIDO: { badge: "Serviço concluído", titulo: "Serviço", realce: "concluído" },
-  PIX_PENDENTE: { badge: "PIX pendente", titulo: "Agendamento", realce: "reservado" },
-  PENDENTE_PAGAMENTO: { badge: "Agendamento reservado", titulo: "Agendamento", realce: "reservado" },
+const COPY: Record<string, { titulo: string; realce: string }> = {
+  CONFIRMADO: { titulo: "Agendamento", realce: "confirmado" },
+  CONCLUIDO: { titulo: "Serviço", realce: "concluído" },
+  PIX_PENDENTE: { titulo: "Agendamento", realce: "reservado" },
+  PENDENTE_PAGAMENTO: { titulo: "Agendamento", realce: "reservado" },
 };
 
 function pagamentoRotulo(forma: string, status: string) {
@@ -55,6 +56,7 @@ export function ConfirmadoCliente({
   formaPagamento,
   valor,
   acrescimoCondicaoPercent,
+  emailEnviado,
 }: {
   slug: string;
   agendamentoId: string;
@@ -70,6 +72,9 @@ export function ConfirmadoCliente({
   // o atendimento pode ser dias depois. Ver o teto de novo na tela que ele
   // guarda evita a surpresa chegar na estetica.
   acrescimoCondicaoPercent: number | null;
+  // O e-mail de confirmacao sai de verdade (Resend configurado). Sem isso a
+  // tela nao promete um e-mail que nao chega.
+  emailEnviado: boolean;
 }) {
   const copy = COPY[status] ?? COPY.PENDENTE_PAGAMENTO;
 
@@ -121,20 +126,15 @@ export function ConfirmadoCliente({
   ];
 
   return (
-    <div className="astro-dark relative min-h-dvh overflow-hidden">
+    // Fundo preto liso, como no login: o .astro-dark tem listras diagonais
+    // proprias, que apareciam por baixo dos pontos.
+    <div className="relative isolate min-h-dvh overflow-hidden bg-black">
       <ThemeColor color="#09090b" />
 
-      {/* Fundo em duas camadas sobre o navy: listras diagonais muito sutis e um
-          brilho radial azul no topo — mesmo tratamento do painel de marca do
-          login, o que da profundidade sem disputar com o card. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(115deg, rgba(255,255,255,0.028) 0px, rgba(255,255,255,0.028) 2px, transparent 2px, transparent 20px)",
-        }}
-      />
+      {/* Fundo padrao do projeto (pontos com ondas de luz na cor da estetica),
+          o mesmo do login e do Admin, e um brilho radial no topo, atras do
+          check. */}
+      <FundoOndas />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -143,16 +143,6 @@ export function ConfirmadoCliente({
             "radial-gradient(55% 40% at 50% 20%, color-mix(in srgb, var(--color-astro-blue) 35%, transparent) 0%, transparent 70%)",
         }}
       />
-
-      {/* Estrelas decorativas, no mesmo espirito da animacao de sucesso. */}
-      <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
-        <span className="absolute left-[16%] top-[20%] text-white/40">✦</span>
-        <span className="absolute right-[20%] top-[16%] text-white/30">✦</span>
-        <span className="absolute left-[12%] top-[52%] text-white/20">✦</span>
-        <span className="absolute right-[14%] top-[58%] text-white/30">✦</span>
-        <span className="absolute left-[24%] top-[78%] text-white/20">✦</span>
-        <span className="absolute right-[26%] top-[80%] text-white/25">✦</span>
-      </div>
 
       <AnimatePresence>
         {animando && (
@@ -173,12 +163,9 @@ export function ConfirmadoCliente({
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="relative mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-5 py-12 text-center lg:max-w-3xl"
         >
-          <span className="flex items-center gap-2 rounded-full border border-astro-blue/30 bg-astro-blue/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-astro-blue-bright">
-            <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
-            {copy.badge}
-          </span>
-
-          <div className="mt-8 flex h-24 w-24 items-center justify-center rounded-full bg-astro-blue shadow-[0_0_60px] shadow-astro-blue/50 lg:mt-10 lg:h-28 lg:w-28">
+          {/* Sem selo em cima: ele repetia o titulo, e a situacao do
+              pagamento ja aparece no cartao, em "Forma de pagamento". */}
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-astro-blue shadow-[0_0_60px] shadow-astro-blue/50 lg:h-28 lg:w-28">
             <Check className="h-10 w-10 text-white lg:h-12 lg:w-12" strokeWidth={3} />
           </div>
 
@@ -187,7 +174,9 @@ export function ConfirmadoCliente({
             <span className="italic text-astro-blue-bright">{copy.realce}</span>
           </h1>
           <p className="mt-3 text-sm text-astro-muted lg:text-base">
-            Enviamos os detalhes do agendamento para o seu e-mail.
+            {emailEnviado
+              ? "Enviamos os detalhes do agendamento para o seu e-mail."
+              : "Os detalhes ficam salvos em Meus agendamentos."}
           </p>
 
           {/* Card de detalhes. No celular empilha; no desktop vira faixa
