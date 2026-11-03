@@ -1,0 +1,124 @@
+# CD: publica o Astro no App Service da Azure (Chile Central).
+#
+# Roda depois que o CI termina com sucesso num push na main, ou seja, depois
+# de um merge com lint, tipos, build e testes aprovados. Tambem pode ser
+# disparado na mao pela aba Actions (workflow_dispatch).
+#
+# Passos: build do pacote standalone, migrations no banco da Azure e envio do
+# pacote ao App Service. O login na Azure e por OIDC: a identidade
+# astro-deploy so aceita este repositorio no ambiente "producao" e so tem
+# permissao no grupo astro-rg. Nao existe senha da Azure guardada no GitHub.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# Um deploy de cada vez, e nunca cancelado no meio (uma migration pela
+# metade e pior que um deploy atrasado).
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GRUPO: astro-rg
+  SITE: useastro
+  BANCO: useastro-db
+
+jobs:
+  deploy:
+    name: Deploy na Azure
+    # Pelo workflow_run, so segue se o CI passou e foi um push (merge), nao um PR.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment:
+      name: producao
+      url: https://useastro.azurewebsites.net
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # O commit que o CI aprovou, e nao o que estiver na main agora.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # O standalone nao copia sozinho os arquivos estaticos nem a pasta
+      # public: sem isso o site sobe sem CSS, sem JavaScript do navegador e
+      # sem imagens. Ele copia, porem, qualquer .env da raiz; aqui nao ha
+      # nenhum (fica fora do Git), mas o pacote nunca leva um: as variaveis de
+      # producao vem das configuracoes do App Service.
+      - name: Montar o pacote
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          rm -f .next/standalone/.env*
+
+      - name: Entrar na Azure
+        uses: azure/login@v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # O banco so aceita conexoes da propria Azure e de IPs liberados um a um.
+      # A maquina do GitHub muda de IP a cada execucao: libera so este IP, roda
+      # as migrations e fecha de novo, mesmo se algo falhar no meio.
+      - name: Liberar o banco para esta maquina
+        id: firewall
+        run: |
+          IP=$(curl -fsS https://api.ipify.org)
+          REGRA="github-deploy-${{ github.run_id }}"
+          az postgres flexible-server firewall-rule create \
+            --resource-group "$GRUPO" --server-name "$BANCO" --name "$REGRA" \
+            --start-ip-address "$IP" --end-ip-address "$IP" --only-show-errors -o none
+          echo "regra=$REGRA" >> "$GITHUB_OUTPUT"
+
+      - name: Aplicar as migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Fechar o banco de novo
+        if: always() && steps.firewall.outputs.regra != ''
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group "$GRUPO" --server-name "$BANCO" \
+            --name "${{ steps.firewall.outputs.regra }}" --yes --only-show-errors
+
+      - name: Enviar ao App Service
+        uses: azure/webapps-deploy@v3.0.8
+        with:
+          app-name: ${{ env.SITE }}
+          package: .next/standalone
+
+      # Confere que o site respondeu depois do deploy. A raiz redireciona (3xx)
+      # ou mostra a landing (200); qualquer outro codigo derruba o job.
+      - name: Conferir o site no ar
+        run: |
+          for tentativa in $(seq 1 20); do
+            CODIGO=$(curl -s -o /dev/null -w "%{http_code}" https://useastro.azurewebsites.net/ || true)
+            echo "tentativa $tentativa: HTTP $CODIGO"
+            case "$CODIGO" in 2*|3*) exit 0 ;; esac
+            sleep 15
+          done
+          echo "O site nao respondeu depois do deploy"
+          exit 1
