@@ -104,11 +104,18 @@ jobs:
             --resource-group "$GRUPO" --server-name "$BANCO" \
             --name "${{ steps.firewall.outputs.regra }}" --yes --only-show-errors
 
+      # clean: apaga o que sobrou do deploy anterior antes de copiar o pacote.
+      # Sem isso, arquivos criados pelo Next com o site rodando (o route-cache
+      # e o cache de imagens, em .next/) ficavam de um deploy para o outro, e o
+      # favicon novo continuava saindo do cache do primeiro deploy. Nada aqui
+      # mora so no disco do site: os logos ficam no banco.
       - name: Enviar ao App Service
         uses: azure/webapps-deploy@v3.0.8
         with:
           app-name: ${{ env.SITE }}
           package: .next/standalone
+          type: zip
+          clean: true
 
       # Confere que o site respondeu depois do deploy. A raiz redireciona (3xx)
       # ou mostra a landing (200); qualquer outro codigo derruba o job.
