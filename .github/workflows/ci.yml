@@ -2,10 +2,10 @@
 #
 # Dois jobs, que rodam ao mesmo tempo e aparecem no PR como checks separados:
 # - conferir: lint, checagem de tipos e build;
-# - back: todos os testes do backend (regras, rotas da API e isolamento entre
-#   esteticas) com cobertura, contra um PostgreSQL temporario com as
-#   migrations aplicadas. No fim, envia a analise e a cobertura para o
-#   SonarQube Cloud.
+# - back: todos os testes com cobertura: os do backend (regras, rotas da API e
+#   isolamento entre esteticas), contra um PostgreSQL temporario com as
+#   migrations aplicadas, e os do front, num navegador simulado. No fim,
+#   envia a analise e a cobertura para o SonarQube Cloud.
 name: CI
 
 on:
@@ -57,7 +57,7 @@ jobs:
         run: npx next build
 
   back:
-    name: Testes do backend
+    name: Testes (back e front)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Banco que existe so durante o job e some no fim.
@@ -113,8 +113,8 @@ jobs:
       - name: Aplicar as migrations
         run: npx prisma migrate deploy
 
-      - name: Testes do backend com cobertura
-        run: npx vitest run --project back --coverage
+      - name: Testes do back e do front com cobertura
+        run: npx vitest run --coverage
 
       - name: Guardar o relatorio de cobertura
         if: always()

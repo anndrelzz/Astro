@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:back": "vitest run --project back",
+    "test:front": "vitest run --project front",
     "test:cobertura": "vitest run --coverage",
     "test:rls": "vitest run tests/back/rls-isolamento.test.ts"
   },
@@ -30,6 +31,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24",
     "@types/pg": "^8.20.0",
@@ -38,6 +43,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "^5",
