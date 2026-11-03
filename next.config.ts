@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // O build gera .next/standalone: um server.js com so as dependencias que o
+  // app usa de fato. E esse pacote que o deploy envia ao App Service da Azure
+  // (ver .github/workflows/deploy.yml), em vez do node_modules inteiro.
+  output: "standalone",
+
   // Por padrao o Next.js so serve os recursos de desenvolvimento (HMR, mapas
   // de fonte) para a origem com que o servidor subiu - localhost. Isso protege
   // o codigo-fonte da maquina do dev de ser lido por um site malicioso aberto
