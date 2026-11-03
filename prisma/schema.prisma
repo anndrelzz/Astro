@@ -296,6 +296,12 @@ model Agendamento {
   /// historico mostra "R$ 120,00 + R$ 36,00" para os dois lados e o financeiro
   /// consegue dizer quanto da receita veio de acrescimo.
   acrescimoAplicado Decimal? @db.Decimal(10, 2)
+  /// Quando o Admin confirmou o pagamento (RF12). O financeiro conta a receita
+  /// por esta data, e nao pelo dia do servico: um PIX pago hoje para a semana
+  /// que vem e dinheiro que ja entrou na conta da estetica (regime de caixa).
+  /// NULO = ainda nao pago. Os pagos antes desta coluna existir receberam o
+  /// dia do servico (migration 20261103_agendamento_pago_em).
+  pagoEm         DateTime?
   criadoEm       DateTime          @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
