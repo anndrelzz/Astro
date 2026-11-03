@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { enderecoDaEstetica } from "@/compartilhado/dominio";
 import { ConfirmarSaida } from "@/front/componentes/confirmar-saida";
 import {
   ArrowUpRight,
@@ -137,7 +138,7 @@ export function AdminSidebar({
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-sm font-semibold">{tenantNome}</p>
             <p className="truncate font-mono text-[0.65rem] text-white/70">
-              astro.app/{slug}
+              {enderecoDaEstetica(slug)}
             </p>
           </div>
         </div>
