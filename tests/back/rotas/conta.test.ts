@@ -198,20 +198,53 @@ describe("vinculo com o Telegram", () => {
     expect((await (await vincularTelegram()).json()).link).toMatch(/^https:\/\/t\.me\/AstroBot\?start=/);
   });
 
-  test("o /start com o token vincula o chat e invalida o token", async () => {
+  // O Telegram manda o segredo combinado no setWebhook neste cabecalho.
+  const SEGREDO_WEBHOOK = "segredo-do-webhook";
+  const doTelegram = (corpo: unknown, segredo: string | null = SEGREDO_WEBHOOK) => {
+    const requisicao = pedido("POST", "/api/telegram/webhook", corpo);
+    if (segredo !== null) requisicao.headers.set("x-telegram-bot-api-secret-token", segredo);
+    return webhookTelegram(requisicao);
+  };
+
+  test("webhook sem TELEGRAM_WEBHOOK_SECRET no servidor recusa tudo com 503", async () => {
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", "");
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
     entrarComo(e.cliente);
     await vincularTelegram();
     const token = (await usuario(e.cliente.id))!.telegramLinkToken;
 
-    const resposta = await webhookTelegram(
-      pedido("POST", "/api/telegram/webhook", { message: { text: `/start ${token}`, chat: { id: 987654 } } })
-    );
+    const resposta = await doTelegram({ message: { text: `/start ${token}`, chat: { id: 111 } } });
+    expect(resposta.status).toBe(503);
+    expect(await usuario(e.cliente.id)).toMatchObject({ telegramLinkToken: token });
+    erro.mockRestore();
+  });
+
+  test("webhook com segredo errado ou ausente responde 401 e nao vincula", async () => {
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", SEGREDO_WEBHOOK);
+    entrarComo(e.cliente);
+    await vincularTelegram();
+    const token = (await usuario(e.cliente.id))!.telegramLinkToken;
+    const corpo = { message: { text: `/start ${token}`, chat: { id: 222 } } };
+
+    expect((await doTelegram(corpo, "segredo-errado")).status).toBe(401);
+    expect((await doTelegram(corpo, null)).status).toBe(401);
+    expect(await usuario(e.cliente.id)).toMatchObject({ telegramLinkToken: token });
+  });
+
+  test("o /start com o token vincula o chat e invalida o token", async () => {
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", SEGREDO_WEBHOOK);
+    entrarComo(e.cliente);
+    await vincularTelegram();
+    const token = (await usuario(e.cliente.id))!.telegramLinkToken;
+
+    const resposta = await doTelegram({ message: { text: `/start ${token}`, chat: { id: 987654 } } });
     expect(await resposta.json()).toEqual({ ok: true });
     expect(await usuario(e.cliente.id)).toMatchObject({ telegramChatId: "987654", telegramLinkToken: null });
     expect(enviarTelegram).toHaveBeenCalledWith("987654", "Conta vinculada com sucesso!");
   });
 
   test("mensagens que nao sao um /start valido sao ignoradas sem erro", async () => {
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", SEGREDO_WEBHOOK);
     vi.mocked(enviarTelegram).mockClear();
     const corpos = [
       "nao e json",
@@ -222,7 +255,7 @@ describe("vinculo com o Telegram", () => {
       { message: { text: "/start abc" } },
     ];
     for (const corpo of corpos) {
-      const resposta = await webhookTelegram(pedido("POST", "/api/telegram/webhook", corpo));
+      const resposta = await doTelegram(corpo);
       expect(await resposta.json()).toEqual({ ok: true });
     }
     expect(enviarTelegram).not.toHaveBeenCalled();
