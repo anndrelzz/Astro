@@ -1,8 +1,9 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft, Check } from "lucide-react";
 import Link from "next/link";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { InputPlaca } from "@/front/componentes/input-placa";
@@ -13,6 +14,11 @@ import { LIMITES } from "@/compartilhado/validacoes/limites";
 // servidor em vez de estarem escritos aqui. Cada uma define os seus: uma pode
 // separar picape pequena de grande, outra pode nem atender picape.
 export type SegmentoOpcao = { id: string; nome: string };
+
+// Quanto tempo a confirmacao "Carro cadastrado!" fica na tela antes de seguir.
+// Curto o bastante para nao atrasar quem agenda toda semana, longo o bastante
+// para o cliente ler que deu certo.
+export const TEMPO_CONFIRMACAO_MS = 900;
 
 // UC02, tela 08 — cadastro de veiculo. RN04: apos salvar, retorna ao fluxo
 // de agendamento (callbackUrl) quando acessado a partir do "Agendar".
@@ -47,9 +53,58 @@ export function NovoVeiculoForm({
   });
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  // Depois de salvar: o nome do carro, para a confirmacao.
+  const [salvo, setSalvo] = useState<string | null>(null);
+  const movimentoReduzido = useReducedMotion();
+  // Veio do "Agendar" de um servico: depois de salvar, segue para ele.
+  const vaiAgendar = callbackUrl.startsWith(`/${slug}/agendar/`);
+
+  // Timers e escuta do "voltar" que ainda estiverem pendentes quando o
+  // componente sair da tela.
+  const limpezas = useRef<(() => void)[]>([]);
+  useEffect(() => () => limpezas.current.forEach((limpar) => limpar()), []);
 
   function set(campo: string, valor: string) {
     setForm((a) => ({ ...a, [campo]: valor }));
+  }
+
+  function depois(ms: number, fn: () => void) {
+    const id = setTimeout(fn, ms);
+    limpezas.current.push(() => clearTimeout(id));
+  }
+
+  // Sai do cadastro para o destino. No modal, fechar e SEMPRE ir com
+  // router.back() (mesmo metodo do X, do Cancelar e do Esc em ModalRota) - e
+  // o unico jeito que fecha de verdade o slot da rota interceptada.
+  // router.replace(callbackUrl) so trocava a URL de fundo sem desmontar o
+  // pop-up, porque replace nao desfaz a navegacao soft que abriu a rota
+  // interceptada.
+  //
+  // Vindo do "Agendar" de um servico, a tela de tras e a home, nao o
+  // agendamento: entao primeiro volta (o pop-up fecha) e, so quando o
+  // navegador terminou de voltar, segue para o agendamento. Navegar antes do
+  // "voltar" terminar faria as duas navegacoes brigarem pelo historico.
+  function sair() {
+    if (!emModal) {
+      router.push(callbackUrl);
+      router.refresh();
+      return;
+    }
+    if (!vaiAgendar) {
+      router.back();
+      router.refresh();
+      return;
+    }
+    // O Next ouve o popstate antes daqui e, no mesmo instante, fecha o pop-up:
+    // este componente sai da tela antes de o evento chegar a este ouvinte. Por
+    // isso nem o ouvinte nem a ida ao agendamento entram nas limpezas, senao a
+    // propria saida do pop-up os cancelaria. O ouvinte se remove ao rodar.
+    const seguir = () => {
+      window.removeEventListener("popstate", seguir);
+      setTimeout(() => router.push(callbackUrl), 0);
+    };
+    window.addEventListener("popstate", seguir);
+    router.back();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -70,16 +125,11 @@ export function NovoVeiculoForm({
       return;
     }
 
-    // No modal, fechar e SEMPRE ir com router.back() (mesmo metodo do X, do
-    // Cancelar e do Esc em ModalRota) - e o unico jeito que fecha de verdade
-    // o slot da rota interceptada. router.replace(callbackUrl) so trocava a
-    // URL de fundo sem desmontar o pop-up, porque replace nao desfaz a
-    // navegacao soft que abriu a rota interceptada. Como todo ponto de
-    // entrada do modal passa callbackUrl igual a propria pagina que o abriu,
-    // back() sempre cai no lugar certo.
-    if (emModal) router.back();
-    else router.push(callbackUrl);
-    router.refresh();
+    // Confirma antes de trocar de tela: uma troca instantanea deixava a duvida
+    // de se tinha dado certo.
+    const segmento = segmentos.find((s) => s.id === form.segmentoId)?.nome;
+    setSalvo(`${form.marca.trim()} ${form.modelo.trim()}${segmento ? ` · ${segmento}` : ""}`);
+    depois(TEMPO_CONFIRMACAO_MS, sair);
   }
 
   const inputCls =
@@ -246,9 +296,36 @@ export function NovoVeiculoForm({
     </form>
   );
 
+  // Confirmacao no lugar do formulario, enquanto a troca de tela nao acontece.
+  // O aviso vai tambem para leitor de tela (role="status").
+  const confirmacao = salvo && (
+    <motion.div
+      role="status"
+      className={`flex flex-col items-center py-10 text-center ${emModal ? "mt-2" : "mt-6"}`}
+      initial={movimentoReduzido ? false : { opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+    >
+      <motion.span
+        className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_0_0_10px_rgb(16_185_129/0.15)]"
+        initial={movimentoReduzido ? false : { scale: 0.4 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.05 }}
+      >
+        <Check className="h-8 w-8" strokeWidth={3} />
+      </motion.span>
+      <p className="mt-5 text-lg font-bold text-zinc-900">Carro cadastrado!</p>
+      <p className="mt-1 text-sm text-zinc-500">{salvo}</p>
+      {vaiAgendar && (
+        <p className="mt-4 text-xs font-medium text-zinc-400">Levando você para o agendamento…</p>
+      )}
+    </motion.div>
+  );
+  const conteudo = confirmacao || formulario;
+
   // Dentro do pop-up o casulo (ModalRota) ja desenhou o fundo, o titulo e o
   // botao de fechar. Aqui sobra o formulario.
-  if (emModal) return formulario;
+  if (emModal) return conteudo;
 
   return (
     <div className="min-h-dvh bg-white lg:min-h-0 lg:bg-transparent">
@@ -276,7 +353,7 @@ export function NovoVeiculoForm({
           <h2 className="text-2xl font-bold text-zinc-900 lg:text-xl">
             Sobre o veículo
           </h2>
-          {formulario}
+          {conteudo}
         </div>
       </div>
     </div>
