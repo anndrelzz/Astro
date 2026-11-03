@@ -190,12 +190,39 @@ describe("GET /api/financeiro/exportar", () => {
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const linhas = new TextDecoder().decode(bytes).split("\r\n");
     expect(linhas[0]).toBe(
-      "Data;Hora;Cliente;Serviço;Forma de pagamento;Situação;Valor;Acréscimo;Total;Recebido"
+      "Data;Hora;Cliente;Serviço;Forma de pagamento;Situação;Valor;Acréscimo;Total;Recebido;Pago em"
     );
     expect(linhas).toHaveLength(3);
     // Mais antigo primeiro: o PIX pendente, depois o pago com acrescimo.
     expect(linhas[1]).toContain(";PIX;PIX pendente;80,00;0,00;80,00;Não");
     expect(linhas[2]).toContain(";No local;Pago;80,00;20,00;100,00;Sim");
+  });
+
+  test("PIX pago hoje para um servico futuro entra no periodo, com a data do pagamento", async () => {
+    // Servico daqui a 5 dias (fora dos ultimos 7 dias), pago agora.
+    const pagoEm = new Date();
+    await withTenant(e.tenant.id, (tx) =>
+      tx.agendamento.create({
+        data: {
+          tenantId: e.tenant.id,
+          usuarioId: e.cliente.id,
+          veiculoId: e.veiculo.id,
+          servicoId: e.servico.id,
+          dataHora: daqui(5 * 24),
+          formaPagamento: "PIX",
+          status: "CONFIRMADO",
+          valor: 350,
+          pagoEm,
+        },
+      })
+    );
+
+    entrarComo(e.admin);
+    const csv = await (await exportarFinanceiro(pedido("GET", "/api/financeiro/exportar?periodo=7dias"))).text();
+    const pix = csv.split("\r\n").find((l) => l.includes(";350,00;"));
+    const diaDoPagamento = pagoEm.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    expect(pix).toBeDefined();
+    expect(pix!.endsWith(`;Sim;${diaDoPagamento}`)).toBe(true);
   });
 
   test("texto que comeca com = vira texto na planilha, nao formula", async () => {

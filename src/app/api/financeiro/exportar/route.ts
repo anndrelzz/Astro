@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/back/auth";
-import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/compartilhado/financeiro";
+import { filtroDoPeriodo, foiRecebido, janela, lerPeriodo, totalCobrado } from "@/compartilhado/financeiro";
 import { FUSO, chaveDia } from "@/compartilhado/fuso";
 import { withTenant } from "@/back/tenant-db";
 
@@ -39,14 +39,16 @@ export async function GET(request: Request) {
 
   const agendamentos = await withTenant(tenantId, (tx) =>
     tx.agendamento.findMany({
-      where: { tenantId, status: { not: "CANCELADO" }, dataHora: { gte: inicio, lte: fim } },
+      // Atendido OU pago no periodo: um PIX pago hoje para um servico futuro
+      // entrou no caixa hoje, e tem de estar no relatorio de hoje.
+      where: filtroDoPeriodo(tenantId, inicio, fim),
       include: { usuario: true, servico: true },
       orderBy: { dataHora: "asc" },
     })
   );
 
   const linhas = [
-    ["Data", "Hora", "Cliente", "Serviço", "Forma de pagamento", "Situação", "Valor", "Acréscimo", "Total", "Recebido"],
+    ["Data", "Hora", "Cliente", "Serviço", "Forma de pagamento", "Situação", "Valor", "Acréscimo", "Total", "Recebido", "Pago em"],
     ...agendamentos.map((a) => [
       a.dataHora.toLocaleDateString("pt-BR", { timeZone: FUSO }),
       a.dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO }),
@@ -58,6 +60,7 @@ export async function GET(request: Request) {
       reais(Number(a.acrescimoAplicado ?? 0)),
       reais(totalCobrado(a)),
       foiRecebido(a.status) ? "Sim" : "Não",
+      a.pagoEm ? a.pagoEm.toLocaleDateString("pt-BR", { timeZone: FUSO }) : "",
     ]),
   ];
 

@@ -1,6 +1,15 @@
 import { describe, expect, test } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { foiRecebido, janela, lerPeriodo, PERIODOS, totalCobrado } from "@/compartilhado/financeiro";
+import {
+  dataDoRecebimento,
+  filtroDoPeriodo,
+  foiRecebido,
+  janela,
+  lerPeriodo,
+  PERIODOS,
+  resumoDoPeriodo,
+  totalCobrado,
+} from "@/compartilhado/financeiro";
 
 // RF12, UC11 — regras do financeiro do Admin, as mesmas da tela e do CSV.
 
@@ -76,5 +85,87 @@ describe("totalCobrado", () => {
         acrescimoAplicado: new Prisma.Decimal("36.00"),
       })
     ).toBe(156);
+  });
+});
+
+// Regime de caixa: o que entrou conta no dia em que foi pago (pagoEm), e nao
+// no dia do servico. Um PIX pago hoje para um servico da semana que vem e
+// dinheiro de hoje, como no extrato do banco da estetica.
+describe("dataDoRecebimento", () => {
+  test("e o dia em que o pagamento foi confirmado", () => {
+    const pagoEm = new Date("2026-11-03T15:00:00Z");
+    expect(dataDoRecebimento({ dataHora: new Date("2026-11-13T12:00:00Z"), pagoEm })).toBe(pagoEm);
+  });
+
+  test("sem pagoEm (pago antes desta regra), vale o dia do servico", () => {
+    const dataHora = new Date("2026-10-20T12:00:00Z");
+    expect(dataDoRecebimento({ dataHora, pagoEm: null })).toBe(dataHora);
+  });
+});
+
+describe("resumoDoPeriodo", () => {
+  // Terca, 03/11/2026, 12:30 em Brasilia.
+  const agora = new Date("2026-11-03T15:30:00Z");
+  const hoje = janela("hoje", agora);
+  const fimDoMes = new Date("2026-12-01T02:59:59.999Z");
+  const ag = (
+    status: string,
+    dataHora: string,
+    valor: number,
+    extra: { pagoEm?: string; acrescimo?: number } = {}
+  ) => ({
+    status,
+    dataHora: new Date(dataHora),
+    pagoEm: extra.pagoEm ? new Date(extra.pagoEm) : null,
+    valor: new Prisma.Decimal(valor),
+    acrescimoAplicado: extra.acrescimo ? new Prisma.Decimal(extra.acrescimo) : null,
+  });
+
+  const agendamentos = [
+    // Lavacao de hoje, paga no local hoje, com acrescimo.
+    ag("CONFIRMADO", "2026-11-03T19:00:00Z", 70, { pagoEm: "2026-11-03T15:00:00Z", acrescimo: 21 }),
+    // Polimento do dia 13, PIX pago hoje.
+    ag("CONFIRMADO", "2026-11-13T12:00:00Z", 350, { pagoEm: "2026-11-03T15:20:00Z" }),
+    // Servico de hoje, ainda sem pagamento.
+    ag("PENDENTE_PAGAMENTO", "2026-11-03T17:00:00Z", 60),
+    // PIX do dia 20, ainda nao confirmado.
+    ag("PIX_PENDENTE", "2026-11-20T12:00:00Z", 120),
+    // Servico de ontem, pago ontem.
+    ag("CONCLUIDO", "2026-11-02T13:00:00Z", 80, { pagoEm: "2026-11-02T14:00:00Z" }),
+    // Cancelado: nao conta em nada.
+    ag("CANCELADO", "2026-11-03T18:00:00Z", 500),
+  ];
+
+  test("hoje: recebido pelo dia do pagamento, inclusive o PIX de um servico futuro", () => {
+    const r = resumoDoPeriodo(agendamentos, { inicio: hoje.inicio, fimRecebido: hoje.fim, fimAReceber: hoje.fim });
+    expect(r.recebido).toBe(70 + 21 + 350);
+    expect(r.pagos).toBe(2);
+  });
+
+  test("a receber e atendimentos seguem o dia do servico", () => {
+    const r = resumoDoPeriodo(agendamentos, { inicio: hoje.inicio, fimRecebido: hoje.fim, fimAReceber: hoje.fim });
+    expect(r.aReceber).toBe(60);
+    // A lavacao paga e o servico pendente de hoje; o cancelado nao conta.
+    expect(r.atendimentos).toBe(2);
+  });
+
+  test("mes: recebido ate hoje, a receber e atendimentos do mes inteiro", () => {
+    const inicioMes = new Date("2026-11-01T03:00:00Z");
+    const r = resumoDoPeriodo(agendamentos, { inicio: inicioMes, fimRecebido: hoje.fim, fimAReceber: fimDoMes });
+    expect(r.recebido).toBe(70 + 21 + 350 + 80);
+    expect(r.aReceber).toBe(60 + 120);
+    expect(r.atendimentos).toBe(5);
+  });
+});
+
+describe("filtroDoPeriodo", () => {
+  test("pega o que foi atendido OU pago no periodo, sem os cancelados", () => {
+    const inicio = new Date("2026-11-01T03:00:00Z");
+    const fim = new Date("2026-11-04T02:59:59.999Z");
+    expect(filtroDoPeriodo("t1", inicio, fim)).toEqual({
+      tenantId: "t1",
+      status: { not: "CANCELADO" },
+      OR: [{ dataHora: { gte: inicio, lte: fim } }, { pagoEm: { gte: inicio, lte: fim } }],
+    });
   });
 });
