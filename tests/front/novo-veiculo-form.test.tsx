@@ -144,4 +144,32 @@ describe("NovoVeiculoForm", () => {
     expect(roteador.push).not.toHaveBeenCalled();
     expect(roteador.back).not.toHaveBeenCalled();
   });
+
+  test("erro de um campo aparece embaixo dele, e o campo fica marcado", async () => {
+    const mensagem = "Placa invalida - use o formato ABC-1234 ou ABC1D23 (Mercosul)";
+    vi.stubGlobal("fetch", respostaDaApi(400, { error: mensagem, campo: "placa" }));
+    render(<NovoVeiculoForm segmentos={SEGMENTOS} />);
+
+    preencher();
+    await salvar();
+
+    const placa = screen.getByLabelText("Placa do veículo");
+    expect(placa).toHaveAttribute("aria-invalid", "true");
+    // O leitor de tela le a mensagem junto com o campo.
+    expect(placa).toHaveAccessibleDescription(mensagem);
+    // So embaixo do campo: nao repete no aviso do topo.
+    expect(screen.getAllByText(mensagem)).toHaveLength(1);
+  });
+
+  test("ao corrigir o campo, o erro dele some", async () => {
+    vi.stubGlobal("fetch", respostaDaApi(400, { error: "Placa invalida", campo: "placa" }));
+    render(<NovoVeiculoForm segmentos={SEGMENTOS} />);
+
+    preencher();
+    await salvar();
+    fireEvent.change(screen.getByLabelText("Placa do veículo"), { target: { value: "FDN8638" } });
+
+    expect(screen.queryByText("Placa invalida")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Placa do veículo")).not.toHaveAttribute("aria-invalid", "true");
+  });
 });
