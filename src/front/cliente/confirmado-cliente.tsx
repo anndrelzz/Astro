@@ -22,11 +22,11 @@ const MESES_LONGO = [
 // Cada status tem seu proprio rotulo. PIX cai aqui como pendente ate o Admin
 // confirmar o recebimento (RN05), entao a tela nao pode cravar "confirmado"
 // para todo mundo — o titulo acompanha o estado real do agendamento.
-const COPY: Record<string, { badge: string; titulo: string; realce: string }> = {
-  CONFIRMADO: { badge: "Pagamento aprovado", titulo: "Agendamento", realce: "confirmado" },
-  CONCLUIDO: { badge: "Serviço concluído", titulo: "Serviço", realce: "concluído" },
-  PIX_PENDENTE: { badge: "PIX pendente", titulo: "Agendamento", realce: "reservado" },
-  PENDENTE_PAGAMENTO: { badge: "Agendamento reservado", titulo: "Agendamento", realce: "reservado" },
+const COPY: Record<string, { titulo: string; realce: string }> = {
+  CONFIRMADO: { titulo: "Agendamento", realce: "confirmado" },
+  CONCLUIDO: { titulo: "Serviço", realce: "concluído" },
+  PIX_PENDENTE: { titulo: "Agendamento", realce: "reservado" },
+  PENDENTE_PAGAMENTO: { titulo: "Agendamento", realce: "reservado" },
 };
 
 function pagamentoRotulo(forma: string, status: string) {
@@ -163,12 +163,9 @@ export function ConfirmadoCliente({
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="relative mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-5 py-12 text-center lg:max-w-3xl"
         >
-          <span className="flex items-center gap-2 rounded-full border border-astro-blue/30 bg-astro-blue/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-astro-blue-bright">
-            <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
-            {copy.badge}
-          </span>
-
-          <div className="mt-8 flex h-24 w-24 items-center justify-center rounded-full bg-astro-blue shadow-[0_0_60px] shadow-astro-blue/50 lg:mt-10 lg:h-28 lg:w-28">
+          {/* Sem selo em cima: ele repetia o titulo, e a situacao do
+              pagamento ja aparece no cartao, em "Forma de pagamento". */}
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-astro-blue shadow-[0_0_60px] shadow-astro-blue/50 lg:h-28 lg:w-28">
             <Check className="h-10 w-10 text-white lg:h-12 lg:w-12" strokeWidth={3} />
           </div>
 
