@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { lerJson } from "@/back/api-helpers";
 import { callbackUrlSeguro } from "@/compartilhado/callback-url";
+import { DOMINIO, enderecoDaEstetica } from "@/compartilhado/dominio";
 import { iniciais } from "@/compartilhado/iniciais";
 
 describe("callbackUrlSeguro", () => {
@@ -64,5 +65,13 @@ describe("lerJson", () => {
   test("corpo invalido ou vazio devolve null em vez de derrubar a rota", async () => {
     expect(await lerJson(pedido("nao e json"))).toBeNull();
     expect(await lerJson(pedido(""))).toBeNull();
+  });
+});
+
+describe("enderecoDaEstetica", () => {
+  // RN09 — o endereco que a estetica divulga para os clientes.
+  test("e o dominio do Astro seguido do slug", () => {
+    expect(DOMINIO).toBe("useastro.app.br");
+    expect(enderecoDaEstetica("estimacar")).toBe("useastro.app.br/estimacar");
   });
 });
