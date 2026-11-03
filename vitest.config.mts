@@ -62,6 +62,13 @@ export default defineConfig(({ mode }) => ({
         "src/front/**/*.tsx",
       ],
       exclude: ["src/front/cliente/cliente-shell.tsx"],
+      // Metas do Playbook (requisito de aprovacao): 75% das linhas do backend e
+      // 25% do front. Abaixo disso, `npm run test:cobertura` e o CI falham, e o
+      // PR fica vermelho.
+      thresholds: {
+        "src/{back,compartilhado,app/api}/**": { lines: 75 },
+        "src/front/**": { lines: 25 },
+      },
       // text: tabela no terminal; html: relatorio navegavel; lcov: formato
       // lido por ferramentas como o SonarQube Cloud.
       reporter: ["text", "html", "lcov"],
