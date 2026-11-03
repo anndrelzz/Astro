@@ -89,6 +89,8 @@ export async function POST(
         status: "CONFIRMADO",
         // `valor` nao e tocado: continua sendo o combinado no agendamento (RN01).
         acrescimoAplicado: acrescimo,
+        // RF12 — o financeiro conta a receita pelo dia do pagamento.
+        pagoEm: new Date(),
       },
     });
 
