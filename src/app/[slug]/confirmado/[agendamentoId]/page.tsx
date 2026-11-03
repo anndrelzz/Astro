@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/back/auth";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
+import { emailConfigurado } from "@/back/notificacoes/email";
 import { ConfirmadoCliente } from "@/front/cliente/confirmado-cliente";
 
 // Tela 12 — confirmacao. O servidor le a sessao e os dados do agendamento; a
@@ -43,6 +44,7 @@ export default async function ConfirmadoPage({
       formaPagamento={agendamento.formaPagamento}
       valor={Number(agendamento.valor)}
       acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}
+      emailEnviado={emailConfigurado()}
     />
   );
 }
