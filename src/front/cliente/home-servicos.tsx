@@ -79,7 +79,10 @@ export function HomeServicos({
   temVeiculo: boolean;
 }) {
   // RN04 — logado sem veiculo cai no aviso "sem veiculo" (tela 07) ao agendar.
-  const [semVeiculo, setSemVeiculo] = useState(false);
+  // Guarda qual servico foi tocado: depois de cadastrar o carro, o cliente vai
+  // direto para o agendamento dele, sem precisar tocar no servico de novo.
+  const [servicoSemVeiculo, setServicoSemVeiculo] = useState<string | null>(null);
+  const semVeiculo = servicoSemVeiculo !== null;
 
   // So entra o que tem preco para o carro do cliente (ou, sem carro, para
   // algum tipo). Os outros tipos de carro seguem vendo o servico normalmente.
@@ -174,7 +177,7 @@ export function HomeServicos({
               {logado && !temVeiculo ? (
                 <button
                   type="button"
-                  onClick={() => setSemVeiculo(true)}
+                  onClick={() => setServicoSemVeiculo(servico.id)}
                   aria-label={`Agendar ${servico.nome}`}
                   className={classe}
                 >
@@ -216,7 +219,7 @@ export function HomeServicos({
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
             <button
               aria-label="Fechar"
-              onClick={() => setSemVeiculo(false)}
+              onClick={() => setServicoSemVeiculo(null)}
               className="absolute inset-0 animate-[escurecer_250ms_ease-out] bg-black/40 backdrop-blur-sm motion-reduce:animate-none"
             />
             <div
@@ -252,15 +255,17 @@ export function HomeServicos({
                 esta pagina — e sem fechar aqui, os dois ficariam empilhados,
                 cada um com seu proprio fundo escurecido. Um de cada vez. */}
               <Link
-                onClick={() => setSemVeiculo(false)}
-                href={`/${slug}/veiculos/novo?callbackUrl=/${slug}`}
+                onClick={() => setServicoSemVeiculo(null)}
+                href={`/${slug}/veiculos/novo?callbackUrl=${encodeURIComponent(
+                  `/${slug}/agendar/${servicoSemVeiculo}`
+                )}`}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-[0_12px_28px_-12px_var(--color-astro-blue)] transition hover:brightness-110"
               >
                 Cadastrar veículo
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <button
-                onClick={() => setSemVeiculo(false)}
+                onClick={() => setServicoSemVeiculo(null)}
                 className="mt-2 w-full rounded-full py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900"
               >
                 Agora não
