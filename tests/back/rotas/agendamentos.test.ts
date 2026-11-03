@@ -372,6 +372,20 @@ describe("POST /api/agendamentos/[id]/confirmar-pagamento", () => {
     expect(Number(gravado!.valor)).toBe(80);
   });
 
+  test("grava quando o pagamento foi confirmado, mesmo para um servico de outro dia", async () => {
+    // Servico daqui a 10 dias, PIX confirmado agora: o dinheiro entrou hoje.
+    const ag = await agendamentoNoBanco(daqui(240), "PIX_PENDENTE");
+    entrarComo(e.admin);
+
+    const antes = Date.now();
+    await chamar(ag.id);
+    const pagoEm = (await buscar(ag.id))!.pagoEm;
+
+    expect(pagoEm).not.toBeNull();
+    expect(pagoEm!.getTime()).toBeGreaterThanOrEqual(antes - 1000);
+    expect(pagoEm!.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+  });
+
   test("PIX pendente tambem pode ser confirmado, com acrescimo em reais", async () => {
     const ag = await agendamentoNoBanco(daqui(48), "PIX_PENDENTE");
     entrarComo(e.admin);
