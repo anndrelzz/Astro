@@ -86,4 +86,11 @@ O domínio `useastro.app.br` foi registrado no Registro.br e usa o DNS do própr
 | A | *(vazio)* | IP de entrada do site (`inboundIpAddress` do App Service) |
 | TXT | `asuid` | `customDomainVerificationId` do App Service: prova para a Azure que o domínio é nosso |
 
-Depois que os dois aparecem no DNS, o domínio é ligado ao site, o certificado gerenciado (grátis) é emitido e o `NEXTAUTH_URL` passa a ser `https://useastro.app.br`.
+Depois que os dois aparecem no DNS público, o [`ligar-dominio.sh`](ligar-dominio.sh):
+1. liga o domínio ao site;
+2. emite o certificado gerenciado (grátis, renovado pela Azure; o atual é da GeoTrust/DigiCert e vale até 03/05/2027);
+3. troca o `NEXTAUTH_URL` para `https://useastro.app.br` e reinicia o site.
+
+O HTTP responde 301 para o HTTPS (`--https-only`).
+
+**No Registro.br**, ligar o modo avançado do DNS leva cerca de 2 horas na primeira vez. A zona passa para `a.sec.dns.br` e `b.sec.dns.br`, e só depois o `.br` aponta para eles. Os registros já podem ser criados antes, e respondem nesses dois servidores enquanto a troca não termina.

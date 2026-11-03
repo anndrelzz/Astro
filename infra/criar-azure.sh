@@ -144,4 +144,6 @@ gh secret set DATABASE_URL --env producao --repo "$REPO" --body "$URL_APP"
 echo
 echo "Pronto. Proximos passos:"
 echo "  - merge na main (ou Actions > Deploy > Run workflow) para o primeiro deploy;"
-echo "  - dominio proprio: ver infra/README.md."
+echo "  - dominio proprio: na zona DNS, A (vazio) -> $(az rest --method get --url "https://management.azure.com$(az webapp show -g "$GRUPO" -n "$SITE" --query id -o tsv)?api-version=2023-12-01" --query properties.inboundIpAddress -o tsv)"
+echo "    e TXT asuid -> $(az webapp show -g "$GRUPO" -n "$SITE" --query customDomainVerificationId -o tsv);"
+echo "    quando o DNS publico mostrar os dois, rodar infra/ligar-dominio.sh."
