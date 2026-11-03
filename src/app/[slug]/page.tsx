@@ -11,7 +11,7 @@ import { ClienteShell } from "@/front/cliente/cliente-shell";
 import { HomeServicos } from "@/front/cliente/home-servicos";
 import { ProximoHorario, type Marcado } from "@/front/cliente/proximo-horario";
 
-// RN09 — URL publica de cada estetica: astro.app/[slug-da-estetica].
+// RN09 — URL publica de cada estetica: useastro.app.br/[slug-da-estetica].
 // Home do cliente (tela 06): saudacao, cartao da estetica com o WhatsApp, o
 // proximo horario (ou o ultimo servico) e a lista de servicos
 // com o preco do carro do cliente (RF01, RF04). Fundo claro de pontos, pensada

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Loader2, Lock } from "lucide-react";
+import { DOMINIO } from "@/compartilhado/dominio";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
 
 // UC13, UC14, RF17, RF18 — configuracoes gerais da estetica.
@@ -361,7 +362,7 @@ export function ConfiguracoesAdmin({ slug, configInicial }: { slug: string; conf
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex min-w-0 flex-[1_1_16rem] items-center gap-2 rounded-xl border border-admin-border bg-admin-bg px-3 py-2.5">
                   <Lock className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
-                  <span className="font-mono text-sm text-astro-muted">astro.app/</span>
+                  <span className="font-mono text-sm text-astro-muted">{DOMINIO}/</span>
                   <span className="min-w-0 flex-1 truncate font-mono text-sm text-slate-100">{slug}</span>
                 </div>
                 <a
