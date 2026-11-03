@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => ({
         extends: true,
         test: {
           name: "front",
-          include: ["tests/front/**/*.test.tsx"],
+          include: ["tests/front/**/*.test.{ts,tsx}"],
           environment: "jsdom",
           setupFiles: ["tests/front/preparar.ts"],
         },
@@ -50,8 +50,10 @@ export default defineConfig(({ mode }) => ({
     coverage: {
       provider: "v8",
       // Backend: servidor (src/back), regras puras (src/compartilhado), rotas
-      // da API e o proxy. Front: os componentes de tela (src/front). As
-      // paginas (page.tsx) ficam de fora: sao cobertas pelo E2E.
+      // da API e o proxy. Front: os componentes de tela (src/front). Ficam de
+      // fora os componentes de servidor assincronos, que buscam dados no banco
+      // antes de desenhar: as paginas (page.tsx, em src/app) e o
+      // cliente-shell. A Testing Library nao renderiza componente assincrono.
       include: [
         "src/back/**/*.ts",
         "src/compartilhado/**/*.ts",
@@ -59,6 +61,7 @@ export default defineConfig(({ mode }) => ({
         "src/proxy.ts",
         "src/front/**/*.tsx",
       ],
+      exclude: ["src/front/cliente/cliente-shell.tsx"],
       // text: tabela no terminal; html: relatorio navegavel; lcov: formato
       // lido por ferramentas como o SonarQube Cloud.
       reporter: ["text", "html", "lcov"],
