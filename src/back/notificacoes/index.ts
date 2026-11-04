@@ -5,7 +5,8 @@ import { FUSO } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { enviarEmail } from "@/back/notificacoes/email";
-import { montarEmailHtml } from "@/back/notificacoes/modelo-email";
+import { montarEmailHtml, type DadosDoEmail } from "@/back/notificacoes/modelo-email";
+import { montarTelegram } from "@/back/notificacoes/modelo-telegram";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
 
 const ASSUNTOS: Record<TipoNotificacao, string> = {
@@ -114,25 +115,28 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
     const { usuario, servico, veiculo, tenant, dataHora } = notificacao.agendamento;
     const texto = montarMensagem(notificacao.tipo, servico.nome, dataHora);
 
+    // Os mesmos dados montam o e-mail e a mensagem do bot.
+    const dados: DadosDoEmail = {
+      tipo: notificacao.tipo,
+      clienteNome: usuario.nome,
+      estetica: tenant,
+      servicoNome: servico.nome,
+      veiculo,
+      dataHora,
+      valor: Number(notificacao.agendamento.valor),
+      formaPagamento: notificacao.agendamento.formaPagamento,
+      agora: new Date(),
+    };
+
     let enviado = false;
     try {
       if (notificacao.canal === "EMAIL") {
-        const html = montarEmailHtml({
-          tipo: notificacao.tipo,
-          clienteNome: usuario.nome,
-          estetica: tenant,
-          servicoNome: servico.nome,
-          veiculo,
-          dataHora,
-          valor: Number(notificacao.agendamento.valor),
-          formaPagamento: notificacao.agendamento.formaPagamento,
-          agora: new Date(),
-        });
-        enviado = (await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto, html)).enviado;
+        enviado = (await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto, montarEmailHtml(dados))).enviado;
       } else if (usuario.telegramChatId) {
         // Se o cliente desvinculou o Telegram depois do registro, nao ha para
         // onde mandar: fica FALHA, e o reenvio tambem nao acha o chat.
-        enviado = (await enviarTelegram(usuario.telegramChatId, texto)).enviado;
+        const { texto: mensagem, botoes } = montarTelegram(dados);
+        enviado = (await enviarTelegram(usuario.telegramChatId, mensagem, { botoes })).enviado;
       }
     } catch (erro) {
       console.error(`[${notificacao.canal.toLowerCase()}:ERRO]`, erro);
