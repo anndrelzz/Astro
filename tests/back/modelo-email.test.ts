@@ -5,7 +5,7 @@ import { montarEmailHtml, type DadosDoEmail } from "@/back/notificacoes/modelo-e
 // dados do agendamento, os botoes e o Astro no rodape. Funcao pura: recebe os
 // dados e devolve o HTML, sem banco nem envio.
 
-// 13/11/2026 (quinta) as 10:00 de Brasilia.
+// 13/11/2026 (sexta) as 10:00 de Brasilia.
 const DATA_HORA = new Date("2026-11-13T13:00:00Z");
 // Tres dias antes: longe de qualquer prazo de cancelamento.
 const AGORA = new Date("2026-11-10T13:00:00Z");
@@ -51,7 +51,7 @@ describe("montarEmailHtml — conteudo", () => {
   });
 
   test("a data sai no horario de Brasilia, com o dia da semana", () => {
-    expect(montarEmailHtml(dados())).toContain("quinta, 13/11 às 10:00");
+    expect(montarEmailHtml(dados())).toContain("sexta, 13/11 às 10:00");
   });
 
   test("o botao principal leva aos agendamentos do cliente, no dominio do Astro", () => {
@@ -91,7 +91,7 @@ describe("montarEmailHtml — WhatsApp da estetica", () => {
 
     expect(url?.origin + url!.pathname).toBe("https://wa.me/5547999990000");
     expect(url?.searchParams.get("text")).toBe(
-      "Olá! Tenho um agendamento de Polimento tecnico na quinta, 13/11 às 10:00."
+      "Olá! Tenho um agendamento de Polimento tecnico para sexta, 13/11 às 10:00."
     );
     expect(montarEmailHtml(dados())).toContain("Falar no WhatsApp");
   });

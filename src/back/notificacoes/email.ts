@@ -16,7 +16,10 @@ export function emailConfigurado() {
 
 // RF08, RF09, RN13 — e-mail e disparado em todos os casos. Sem
 // RESEND_API_KEY configurada, registra em log (modo dev/sem conta ainda).
-export async function enviarEmail(destinatario: string, assunto: string, corpo: string) {
+//
+// `html` e a versao bonita (modelo-email.ts); o `corpo` em texto puro vai
+// junto, para quem le em programa sem HTML ou bloqueia imagens.
+export async function enviarEmail(destinatario: string, assunto: string, corpo: string, html?: string) {
   if (!resend) {
     console.log(`[email:LOG] Para: ${destinatario} | Assunto: ${assunto}\n${corpo}`);
     return { enviado: true, modo: "log" as const };
@@ -27,6 +30,7 @@ export async function enviarEmail(destinatario: string, assunto: string, corpo: 
     to: destinatario,
     subject: assunto,
     text: corpo,
+    ...(html ? { html } : {}),
   });
 
   if (error) {
