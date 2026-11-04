@@ -106,6 +106,7 @@ model Tenant {
   horarios     HorarioFuncionamento[]
   notificacoes Notificacao[]
   logo         LogoTenant?
+  tokensEmail  TokenEmail[]
 
   @@map("tenant")
 }
@@ -217,11 +218,15 @@ model Usuario {
   /// sem e-mail real e com senha aleatoria: ninguem entra com ele, e os
   /// agendamentos dele nao geram notificacao.
   coringa           Boolean  @default(false)
+  /// Quando o cliente provou que abre a caixa desse e-mail (link de
+  /// confirmacao ou de redefinir a senha). NULO = ainda nao confirmado.
+  emailConfirmadoEm DateTime?
   criadoEm          DateTime @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   veiculos     Veiculo[]
   agendamentos Agendamento[]
+  tokensEmail  TokenEmail[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -342,4 +347,33 @@ model Notificacao {
   @@index([agendamentoId])
   @@index([tenantId])
   @@map("notificacao")
+}
+
+enum TipoTokenEmail {
+  REDEFINIR_SENHA
+  CONFIRMAR_EMAIL
+}
+
+/// Link enviado por e-mail (RFC 6.2: redefinir a senha; e a confirmacao do
+/// e-mail). O token do link so existe no e-mail: aqui fica o sha256 dele,
+/// para quem ler o banco nao conseguir usar os links abertos.
+model TokenEmail {
+  id        String         @id @default(uuid())
+  tenantId  String
+  usuarioId String
+  tipo      TipoTokenEmail
+  tokenHash String         @unique
+  expiraEm  DateTime
+  /// Preenchido no uso: o link vale uma vez so.
+  usadoEm   DateTime?
+  criadoEm  DateTime       @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  // Cascade: link de uma conta apagada nao serve para nada, e sem isso a
+  // conta com link aberto nao podia ser apagada (review do #103).
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([usuarioId, tipo])
+  @@map("token_email")
 }
