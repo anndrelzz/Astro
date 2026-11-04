@@ -162,9 +162,14 @@ describe("enviarNotificacoes", () => {
     expect(email.mock.calls[0][2]).toContain(trecho);
   });
 
-  test("a linha do Telegram vai para o chat do cliente, com o mesmo texto", async () => {
-    await enviarNotificacoes([noBanco("n1", "EMAIL"), noBanco("n2", "TELEGRAM")]);
-    expect(telegram).toHaveBeenCalledWith("chat-42", email.mock.calls[0][2]);
+  test("a linha do Telegram vai para o chat do cliente, formatada e com os botoes", async () => {
+    await enviarNotificacoes([noBanco("n2", "TELEGRAM")]);
+
+    const [chat, texto, opcoes] = telegram.mock.calls[0];
+    expect(chat).toBe("chat-42");
+    expect(texto).toContain("<b>Agendamento confirmado</b>");
+    expect(texto).toContain("Honda Civic · HND1234");
+    expect(opcoes?.botoes?.[0].url).toBe("https://useastro.app.br/demo/historico");
   });
 
   test("envio que deu certo grava ENVIADA, com a data, e conta a tentativa", async () => {

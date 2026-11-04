@@ -116,7 +116,24 @@ describe("enviarTelegram", () => {
     expect(await enviarTelegram("123", "Texto")).toEqual({ enviado: true, modo: "bot" });
     const [url, opcoes] = chamada.mock.calls[0];
     expect(url).toBe("https://api.telegram.org/bottoken-teste/sendMessage");
-    expect(JSON.parse(opcoes.body)).toEqual({ chat_id: "123", text: "Texto" });
+    expect(JSON.parse(opcoes.body)).toMatchObject({ chat_id: "123", text: "Texto" });
+  });
+
+  test("com formatacao, manda em HTML, sem previa de link e com os botoes", async () => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "token-teste");
+    const chamada = vi.fn().mockResolvedValue({ json: async () => ({ ok: true }) });
+    vi.stubGlobal("fetch", chamada);
+    const { enviarTelegram } = await import("@/back/notificacoes/telegram");
+
+    await enviarTelegram("123", "<b>Oi</b>", { botoes: [{ texto: "Abrir", url: "https://useastro.app.br/demo" }] });
+
+    expect(JSON.parse(chamada.mock.calls[0][1].body)).toEqual({
+      chat_id: "123",
+      text: "<b>Oi</b>",
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
+      reply_markup: { inline_keyboard: [[{ text: "Abrir", url: "https://useastro.app.br/demo" }]] },
+    });
   });
 
   test("recusa da API volta como envio que falhou", async () => {
