@@ -48,7 +48,8 @@ function montarMensagem(
 }
 
 // Fluxo de Notificacoes (secao 3.4 do RFC) — fila com registro de tentativas e
-// reenvio. E-mail sempre (RN13); Telegram apenas se vinculado.
+// reenvio. E-mail para quem confirmou o endereco (RN13 revisada em 04/11; antes,
+// e-mail sempre); Telegram apenas se vinculado.
 //
 // Em dois passos, porque o envio NAO pode acontecer dentro da transacao que
 // grava o agendamento. La dentro, um Telegram fora do ar desfazia o
@@ -75,16 +76,22 @@ export async function registrarNotificacao(
 ): Promise<NotificacaoPendente[]> {
   const agendamento = await tx.agendamento.findUnique({
     where: { id: agendamentoId },
-    select: { tenantId: true, usuario: { select: { telegramChatId: true, coringa: true } } },
+    select: {
+      tenantId: true,
+      usuario: { select: { telegramChatId: true, coringa: true, emailConfirmadoEm: true } },
+    },
   });
   // Agendamento feito pelo Admin pelo coringa: nao ha e-mail nem Telegram de
   // verdade para avisar, e quem chamou no WhatsApp combina direto com a
   // estetica. Vale para a confirmacao, os lembretes e o cancelamento.
   if (!agendamento || agendamento.usuario.coringa) return [];
 
-  const canais: CanalNotificacao[] = agendamento.usuario.telegramChatId
-    ? ["EMAIL", "TELEGRAM"]
-    : ["EMAIL"];
+  // E-mail so para quem confirmou que abre a caixa (decisao de 04/11): um
+  // e-mail digitado errado mandaria os dados do agendamento para um estranho.
+  // O Telegram ja e vinculado pelo proprio cliente, entao continua valendo.
+  const canais: CanalNotificacao[] = [];
+  if (agendamento.usuario.emailConfirmadoEm) canais.push("EMAIL");
+  if (agendamento.usuario.telegramChatId) canais.push("TELEGRAM");
 
   const pendentes: NotificacaoPendente[] = [];
   for (const canal of canais) {

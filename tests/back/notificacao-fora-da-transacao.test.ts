@@ -61,7 +61,8 @@ async function criarFixture(): Promise<Fixture> {
     const servico = await tx.servico.create({
       data: { tenantId: tenant.id, nome: "Lavagem", duracaoMin: 60 },
     });
-    // Com Telegram vinculado, para o envio passar pelos dois canais.
+    // Com Telegram vinculado e o e-mail confirmado, para o envio passar pelos
+    // dois canais (sem confirmar, o e-mail nao sai: decisao de 04/11).
     const usuario = await tx.usuario.create({
       data: {
         tenantId: tenant.id,
@@ -69,6 +70,7 @@ async function criarFixture(): Promise<Fixture> {
         email: "cliente@notificacao.local",
         senhaHash: "$2b$10$hashfalsoparateste0000000000000000000000000000000000",
         telegramChatId: "123456",
+        emailConfirmadoEm: new Date(),
       },
     });
     const veiculo = await tx.veiculo.create({

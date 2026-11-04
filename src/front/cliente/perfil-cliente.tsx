@@ -51,6 +51,8 @@ export function PerfilCliente({
   totalAgendamentos,
   veiculos,
   telegramVinculado,
+  emailConfirmado = true,
+  statusEmail,
 }: {
   slug: string;
   nome: string;
@@ -59,6 +61,10 @@ export function PerfilCliente({
   totalAgendamentos: number;
   veiculos: Veiculo[];
   telegramVinculado: boolean;
+  /** Sem confirmar, os avisos dos agendamentos nao saem por e-mail. */
+  emailConfirmado?: boolean;
+  /** Resultado do link de confirmacao, quando o cliente volta dele. */
+  statusEmail?: "confirmado" | "link-invalido";
 }) {
   const [editando, setEditando] = useState(false);
   const [removendo, setRemovendo] = useState<Veiculo | null>(null);
@@ -157,6 +163,8 @@ export function PerfilCliente({
         </div>
 
         <div className="space-y-5 lg:space-y-6">
+        <AvisoEmail email={email} confirmado={emailConfirmado} status={statusEmail} />
+
         {/* Dados do cliente */}
         <section>
           <div className="flex items-center justify-between px-1">
@@ -662,5 +670,65 @@ function ModalEditar({
       </div>
     </div>,
     document.body,
+  );
+}
+
+
+// Confirmacao do e-mail (decisao de 04/11): enquanto o cliente nao confirma,
+// os avisos dos agendamentos nao saem por e-mail. O aviso fica no topo do
+// Perfil, com o reenvio do link. Voltando do link, mostra o resultado.
+function AvisoEmail({
+  email,
+  confirmado,
+  status,
+}: {
+  email: string;
+  confirmado: boolean;
+  status?: "confirmado" | "link-invalido";
+}) {
+  const [reenvio, setReenvio] = useState<{ ok: boolean; mensagem: string } | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  if (status === "confirmado") {
+    return (
+      <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+        E-mail confirmado! Agora os avisos dos agendamentos chegam por lá.
+      </p>
+    );
+  }
+  if (confirmado) return null;
+
+  async function reenviar() {
+    setEnviando(true);
+    const resposta = await fetch("/api/perfil/reenviar-confirmacao", { method: "POST" });
+    const json = await resposta.json().catch(() => null);
+    setEnviando(false);
+    setReenvio(
+      resposta.ok
+        ? { ok: true, mensagem: `Enviamos um novo link para ${email}. Olhe também a caixa de spam.` }
+        : { ok: false, mensagem: json?.error ?? "Não foi possível reenviar agora." }
+    );
+  }
+
+  return (
+    <section role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+      <p className="text-sm font-bold text-amber-900">Confirme seu e-mail</p>
+      <p className="mt-1 text-sm text-amber-800">
+        {status === "link-invalido"
+          ? "Esse link de confirmação expirou ou já foi usado. Peça um novo abaixo."
+          : `Enviamos um link para ${email}. Enquanto você não confirmar, os avisos dos agendamentos não chegam por e-mail.`}
+      </p>
+      {reenvio && (
+        <p className={`mt-2 text-sm font-medium ${reenvio.ok ? "text-emerald-700" : "text-red-600"}`}>{reenvio.mensagem}</p>
+      )}
+      <button
+        type="button"
+        onClick={reenviar}
+        disabled={enviando}
+        className="mt-3 rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+      >
+        {enviando ? "Enviando..." : "Reenviar e-mail de confirmação"}
+      </button>
+    </section>
   );
 }
