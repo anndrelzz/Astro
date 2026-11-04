@@ -52,6 +52,8 @@ export function NovoVeiculoForm({
     cor: "",
   });
   const [erro, setErro] = useState<string | null>(null);
+  // Erro que a API apontou num campo: aparece embaixo dele, nao no topo.
+  const [erroCampo, setErroCampo] = useState<{ campo: string; mensagem: string } | null>(null);
   const [carregando, setCarregando] = useState(false);
   // Depois de salvar: o nome do carro, para a confirmacao.
   const [salvo, setSalvo] = useState<string | null>(null);
@@ -66,6 +68,25 @@ export function NovoVeiculoForm({
 
   function set(campo: string, valor: string) {
     setForm((a) => ({ ...a, [campo]: valor }));
+    // Mexeu no campo errado: o aviso dele ja nao vale.
+    setErroCampo((atual) => (atual?.campo === campo ? null : atual));
+  }
+
+  // Liga o campo a mensagem de erro dele (o leitor de tela le as duas juntas).
+  function marcacao(campo: string) {
+    return erroCampo?.campo === campo
+      ? { "aria-invalid": true, "aria-describedby": `erro-${campo}` }
+      : {};
+  }
+
+  function erroDo(campo: string) {
+    return (
+      erroCampo?.campo === campo && (
+        <p id={`erro-${campo}`} className="text-xs font-medium text-red-600">
+          {erroCampo.mensagem}
+        </p>
+      )
+    );
   }
 
   function depois(ms: number, fn: () => void) {
@@ -110,6 +131,7 @@ export function NovoVeiculoForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
+    setErroCampo(null);
     setCarregando(true);
 
     const resposta = await fetch("/api/veiculos", {
@@ -121,6 +143,10 @@ export function NovoVeiculoForm({
     setCarregando(false);
     if (!resposta.ok) {
       const json = await resposta.json().catch(() => null);
+      if (json?.campo && json?.error) {
+        setErroCampo({ campo: json.campo, mensagem: json.error });
+        return;
+      }
       setErro(json?.error ?? "Não foi possível cadastrar o veículo. Confira os dados.");
       return;
     }
@@ -133,7 +159,7 @@ export function NovoVeiculoForm({
   }
 
   const inputCls =
-    "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-astro-blue focus:outline-none";
+    "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-astro-blue focus:outline-none aria-[invalid=true]:border-red-500";
 
   const formulario = (
     <form
@@ -162,6 +188,7 @@ export function NovoVeiculoForm({
               value={form.segmentoId}
               onChange={(e) => set("segmentoId", e.target.value)}
               className={`${inputCls} lg:hidden`}
+              {...marcacao("segmentoId")}
             >
               {segmentos.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -199,6 +226,7 @@ export function NovoVeiculoForm({
             <p className="pt-1 text-xs text-zinc-500">
               O segmento define o preço do serviço.
             </p>
+            {erroDo("segmentoId")}
           </div>
 
           <div className="space-y-1.5 lg:order-2">
@@ -210,7 +238,9 @@ export function NovoVeiculoForm({
               maxLength={LIMITES.marcaVeiculo}
               onChange={(e) => set("marca", e.target.value)}
               required
+              {...marcacao("marca")}
             />
+            {erroDo("marca")}
           </div>
 
           <div className="space-y-1.5 lg:order-3">
@@ -222,7 +252,9 @@ export function NovoVeiculoForm({
               maxLength={LIMITES.modeloVeiculo}
               onChange={(e) => set("modelo", e.target.value)}
               required
+              {...marcacao("modelo")}
             />
+            {erroDo("modelo")}
           </div>
 
           <div className="space-y-1.5 lg:order-5">
@@ -230,7 +262,10 @@ export function NovoVeiculoForm({
             <InputPlaca
               valor={form.placa}
               aoMudar={(v) => set("placa", v)}
+              invalido={erroCampo?.campo === "placa"}
+              descritoPor={erroCampo?.campo === "placa" ? "erro-placa" : undefined}
             />
+            {erroDo("placa")}
           </div>
 
           <div className="space-y-1.5 lg:order-4">
@@ -242,7 +277,9 @@ export function NovoVeiculoForm({
               value={form.ano}
               onChange={(e) => set("ano", e.target.value)}
               required
+              {...marcacao("ano")}
             />
+            {erroDo("ano")}
           </div>
 
           <div className="space-y-1.5 lg:order-6">
@@ -254,7 +291,9 @@ export function NovoVeiculoForm({
               maxLength={LIMITES.corVeiculo}
               onChange={(e) => set("cor", e.target.value)}
               required
+              {...marcacao("cor")}
             />
+            {erroDo("cor")}
           </div>
 
       {/* Na tela cheia do celular so o botao de enviar, como estava — quem
