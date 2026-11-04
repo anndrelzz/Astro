@@ -1,5 +1,8 @@
 import { BarraCliente } from "@/front/componentes/bottom-nav";
 import { ModalSlot } from "@/front/componentes/modal-slot";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/back/auth";
+import { temAvisoNoPerfil } from "@/back/aviso-perfil";
 import { getTenantPorSlug } from "@/back/tenant";
 
 // Layout de /[slug] que existe por tres motivos: abrir o slot paralelo
@@ -28,6 +31,8 @@ export default async function SlugLayout({
   const { slug } = await params;
   const tenant = await getTenantPorSlug(slug);
   const cor = tenant?.corPrimaria ?? "#2563eb";
+  // Ponto vermelho no Perfil da barra do celular (ver back/aviso-perfil.ts).
+  const avisoPerfil = await temAvisoNoPerfil(await getServerSession(authOptions), tenant?.id);
 
   return (
     <div
@@ -45,7 +50,7 @@ export default async function SlugLayout({
       }
     >
       {children}
-      <BarraCliente slug={slug} />
+      <BarraCliente slug={slug} avisoPerfil={avisoPerfil} />
       <ModalSlot>{modal}</ModalSlot>
     </div>
   );
