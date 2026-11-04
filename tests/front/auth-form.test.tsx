@@ -116,6 +116,17 @@ describe("AuthForm — login", () => {
   });
 });
 
+describe("AuthForm — esqueci minha senha", () => {
+  test("o login tem o link para recuperar a senha, e o cadastro nao", () => {
+    const { unmount } = render(<AuthForm modo="login" estetica={ESTETICA} />);
+    expect(screen.getByRole("link", { name: "Esqueci minha senha" })).toHaveAttribute("href", "/demo/esqueci-senha");
+    unmount();
+
+    render(<AuthForm modo="cadastro" estetica={ESTETICA} />);
+    expect(screen.queryByRole("link", { name: "Esqueci minha senha" })).not.toBeInTheDocument();
+  });
+});
+
 describe("AuthForm — cadastro", () => {
   const CAMPOS = {
     "Seu nome": "Maria",
