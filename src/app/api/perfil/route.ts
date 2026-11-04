@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/back/auth";
-import { lerJson } from "@/back/api-helpers";
+import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
 import { withTenant } from "@/back/tenant-db";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
 
@@ -35,10 +35,7 @@ export async function PATCH(request: Request) {
   }
   const parsed = perfilSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Dados invalidos" },
-      { status: 400 }
-    );
+    return respostaDadosInvalidos(parsed.error);
   }
 
   await withTenant(session.user.tenantId, (tx) =>

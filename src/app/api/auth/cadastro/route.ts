@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { lerJson } from "@/back/api-helpers";
+import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
@@ -43,10 +43,7 @@ export async function POST(request: Request) {
   }
   const parsed = cadastroSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Dados invalidos" },
-      { status: 400 }
-    );
+    return respostaDadosInvalidos(parsed.error);
   }
   const { tenantSlug, nome, email, telefone, senha } = parsed.data;
 

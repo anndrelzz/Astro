@@ -57,6 +57,8 @@ export function AuthForm({
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Erro que a API apontou num campo do cadastro: aparece embaixo dele.
+  const [erroCampo, setErroCampo] = useState<{ campo: CampoDoCadastro; mensagem: string } | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   // So habilita o submit apos a hidratacao: evita que um toque antes do JS
@@ -84,6 +86,17 @@ export function AuthForm({
     : "";
   const outraRota = eLogin ? `/${slug}/cadastro${qs}` : `/${slug}/login${qs}`;
 
+  // Mexeu no campo errado: o aviso dele ja nao vale.
+  function alterar(campo: CampoDoCadastro, definir: (valor: string) => void) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      definir(e.target.value);
+      setErroCampo((atual) => (atual?.campo === campo ? null : atual));
+    };
+  }
+
+  const erroDo = (campo: CampoDoCadastro) =>
+    erroCampo?.campo === campo ? erroCampo.mensagem : undefined;
+
   async function autenticar() {
     const resultado = await signIn("credentials", {
       email,
@@ -101,6 +114,7 @@ export function AuthForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
+    setErroCampo(null);
     setCarregando(true);
 
     if (!eLogin) {
@@ -117,7 +131,13 @@ export function AuthForm({
       });
       if (!resposta.ok) {
         const json = await resposta.json().catch(() => null);
-        setErro(json?.error ?? "Não foi possível criar a conta.");
+        // Campo que nao esta na tela (o slug da estetica, por exemplo) fica
+        // no aviso do topo.
+        if (json?.error && CAMPOS_DO_CADASTRO.includes(json.campo)) {
+          setErroCampo({ campo: json.campo, mensagem: json.error });
+        } else {
+          setErro(json?.error ?? "Não foi possível criar a conta.");
+        }
         setCarregando(false);
         return;
       }
@@ -218,7 +238,8 @@ export function AuthForm({
                     placeholder="Seu nome"
                     maxLength={LIMITES.nomePessoa}
                     value={nome}
-                    onChange={(e) => setNome(e.target.value)}
+                    onChange={alterar("nome", setNome)}
+                    erro={erroDo("nome")}
                     required
                   />
                 )}
@@ -241,7 +262,8 @@ export function AuthForm({
                     placeholder="voce@email.com"
                     maxLength={LIMITES.email}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={alterar("email", setEmail)}
+                    erro={erroDo("email")}
                     required
                   />
 
@@ -254,7 +276,8 @@ export function AuthForm({
                       type="tel"
                       placeholder="(00) 00000-0000"
                       value={telefone}
-                      onChange={(e) => setTelefone(e.target.value)}
+                      onChange={alterar("telefone", setTelefone)}
+                      erro={erroDo("telefone")}
                       required
                     />
                   )}
@@ -274,7 +297,8 @@ export function AuthForm({
                     maxLength={eLogin ? undefined : LIMITES.senha}
                     minLength={eLogin ? undefined : 8}
                     value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
+                    onChange={alterar("senha", setSenha)}
+                    erro={erroDo("senha")}
                     required
                     direita={
                       <button
@@ -380,34 +404,52 @@ export function AuthForm({
   );
 }
 
+// Campos do cadastro que a API pode apontar (o `campo` da resposta 400).
+const CAMPOS_DO_CADASTRO = ["nome", "email", "telefone", "senha"] as const;
+type CampoDoCadastro = (typeof CAMPOS_DO_CADASTRO)[number];
+
 // Campo do login e do cadastro: rotulo visivel, icone a esquerda e formato
-// de pilula, sobre o lado escuro do cartao.
+// de pilula, sobre o lado escuro do cartao. Com `erro`, a borda fica vermelha
+// e a mensagem aparece embaixo, ligada ao input (o leitor de tela le junto).
 function CampoAuth({
   id,
   rotulo,
   icone,
   direita,
+  erro,
   ...props
 }: ComponentProps<"input"> & {
   id: string;
   rotulo: string;
   icone: ReactNode;
   direita?: ReactNode;
+  erro?: string;
 }) {
   return (
     <div>
       <label htmlFor={id} className="mb-0.5 block text-sm text-slate-300 lg:mb-1.5">
         {rotulo}
       </label>
-      <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] py-1 pr-1.5 pl-4 transition focus-within:border-astro-blue-bright/70 focus-within:bg-white/[0.08]">
+      <div
+        className={`flex items-center gap-3 rounded-full border bg-white/[0.05] py-1 pr-1.5 pl-4 transition focus-within:bg-white/[0.08] ${
+          erro ? "border-red-400/70" : "border-white/10 focus-within:border-astro-blue-bright/70"
+        }`}
+      >
         <span className="text-astro-muted">{icone}</span>
         <input
           id={id}
           {...props}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erro ? `${id}-erro` : undefined}
           className="min-w-0 flex-1 bg-transparent py-2 text-sm lg:py-2.5 text-white placeholder:text-white/30 focus:outline-none"
         />
         {direita}
       </div>
+      {erro && (
+        <p id={`${id}-erro`} className="mt-1 px-4 text-xs font-medium text-red-300">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }
