@@ -72,6 +72,18 @@ describe("enviarEmail", () => {
     );
   });
 
+  test("com HTML, envia as duas versoes: a bonita e a de texto puro", async () => {
+    // O texto puro fica para quem le em programa sem HTML ou bloqueia imagens.
+    enviarResend.mockResolvedValue({ error: null });
+    const { enviarEmail } = await carregarEmail("re_teste");
+
+    await enviarEmail("cliente@teste.com", "Assunto", "Texto", "<p>Bonito</p>");
+
+    expect(enviarResend).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Texto", html: "<p>Bonito</p>" })
+    );
+  });
+
   test("erro do Resend volta como envio que falhou, sem derrubar o fluxo", async () => {
     enviarResend.mockResolvedValue({ error: { message: "dominio nao verificado" } });
     const { enviarEmail } = await carregarEmail("re_teste");
