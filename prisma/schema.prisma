@@ -369,7 +369,9 @@ model TokenEmail {
   criadoEm  DateTime       @default(now())
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  // Cascade: link de uma conta apagada nao serve para nada, e sem isso a
+  // conta com link aberto nao podia ser apagada (review do #103).
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([usuarioId, tipo])
