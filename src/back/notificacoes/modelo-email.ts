@@ -44,7 +44,7 @@ const COR = {
   azul: "#2563eb",
 };
 
-const TITULOS: Record<TipoNotificacao, { titulo: string; selo: string; corDoSelo: string }> = {
+export const TITULOS: Record<TipoNotificacao, { titulo: string; selo: string; corDoSelo: string }> = {
   CONFIRMACAO_AGENDAMENTO: { titulo: "Agendamento confirmado", selo: "&#10003;", corDoSelo: "#10b981" },
   LEMBRETE_24H: { titulo: "Seu agendamento é amanhã", selo: "24h", corDoSelo: COR.azul },
   LEMBRETE_2H: { titulo: "Seu agendamento é daqui a 2 horas", selo: "2h", corDoSelo: COR.azul },
@@ -76,20 +76,20 @@ export function dataDoEmail(d: Date): string {
   return `${semana}, ${dia} às ${hora}`;
 }
 
-function reais(valor: number): string {
+export function reais(valor: number): string {
   // O Intl separa "R$" do numero com espaco inquebravel; aqui um espaco comum
   // basta e nao confunde quem copia o valor.
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
 }
 
-function linkDoWhatsApp(whatsapp: string, mensagem: string): string {
+export function linkDoWhatsApp(whatsapp: string, mensagem: string): string {
   return `https://wa.me/55${whatsapp}?text=${encodeURIComponent(mensagem)}`;
 }
 
 // RF18 — a mesma regra da rota de cancelamento: pode cancelar enquanto faltar
 // pelo menos o prazo da estetica. Dentro do prazo, prometer o cancelamento
 // pelo site seria prometer algo que a rota recusa.
-function linhaDoPrazo(d: DadosDoEmail): string | null {
+export function linhaDoPrazo(d: DadosDoEmail): string | null {
   if (d.tipo === "CONFIRMACAO_CANCELAMENTO") return null;
 
   const limite = d.estetica.cancelamentoHorasLimite;

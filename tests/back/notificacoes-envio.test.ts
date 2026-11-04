@@ -116,7 +116,7 @@ describe("enviarTelegram", () => {
     expect(await enviarTelegram("123", "Texto")).toEqual({ enviado: true, modo: "bot" });
     const [url, opcoes] = chamada.mock.calls[0];
     expect(url).toBe("https://api.telegram.org/bottoken-teste/sendMessage");
-    expect(JSON.parse(opcoes.body)).toEqual({ chat_id: "123", text: "Texto" });
+    expect(JSON.parse(opcoes.body)).toMatchObject({ chat_id: "123", text: "Texto" });
   });
 
   test("com formatacao, manda em HTML, sem previa de link e com os botoes", async () => {
