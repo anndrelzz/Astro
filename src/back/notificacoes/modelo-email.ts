@@ -125,11 +125,6 @@ export function montarEmailHtml(d: DadosDoEmail): string {
   const cancelado = d.tipo === "CONFIRMACAO_CANCELAMENTO";
   const quando = dataDoEmail(d.dataHora);
   const primeiroNome = d.clienteNome.trim().split(/\s+/)[0] ?? "";
-  const nomeDaEstetica = escapar(d.estetica.nome);
-
-  const marca = d.estetica.logoUrl
-    ? `<img src="${escapar(SITE + d.estetica.logoUrl)}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border-radius:10px;object-fit:cover;">`
-    : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="40" height="40" align="center" style="width:40px;height:40px;border-radius:10px;background:${COR.azul};color:#ffffff;font-size:18px;font-weight:bold;">${escapar(d.estetica.nome.trim()[0]?.toUpperCase() ?? "A")}</td></tr></table>`;
 
   const pagamento = d.formaPagamento === "PIX" ? "PIX" : "no local";
   const detalhes = [
@@ -165,6 +160,49 @@ export function montarEmailHtml(d: DadosDoEmail): string {
   // Texto escondido que o Gmail mostra ao lado do assunto, na lista de e-mails.
   const previa = escapar(`${titulo}: ${d.servicoNome}, ${quando}.`);
 
+  return casca({
+    estetica: d.estetica,
+    titulo,
+    previa,
+    corpo: `<tr><td style="padding:24px;">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td width="44" height="44" align="center" style="width:44px;height:44px;border-radius:22px;background:${corDoSelo};color:#ffffff;font-size:${selo.startsWith("&") ? "20px" : "14px"};font-weight:bold;">${selo}</td>
+</tr></table>
+<div style="margin:16px 0 4px;font-size:20px;font-weight:bold;color:${COR.texto};">${escapar(titulo)}</div>
+<div style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${COR.suave};">Olá, ${escapar(primeiroNome)}. ${escapar(CHAMADAS[d.tipo])}</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${COR.linha};border-radius:10px;">
+<tr><td style="padding:4px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detalhes}</table>
+</td></tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">${botoes.join("")}</table>
+${prazo ? `<div style="margin-top:16px;font-size:12px;line-height:1.6;color:${COR.rotulo};">${escapar(prazo)}</div>` : ""}
+</td></tr>`,
+  });
+}
+
+type EsteticaDoEmail = { nome: string; slug: string; logoUrl: string | null };
+
+// O envelope de todo e-mail do Astro: o topo escuro com o logo (ou a inicial)
+// e o nome da estetica, o corpo, e o rodape com o ASTRO cortado. `previa` e o
+// texto escondido que o Gmail mostra ao lado do assunto na caixa de entrada.
+function casca({
+  estetica,
+  titulo,
+  previa,
+  corpo,
+}: {
+  estetica: EsteticaDoEmail;
+  titulo: string;
+  previa: string;
+  corpo: string;
+}): string {
+  const marca = estetica.logoUrl
+    ? `<img src="${escapar(SITE + estetica.logoUrl)}" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border-radius:10px;object-fit:cover;">`
+    : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="40" height="40" align="center" style="width:40px;height:40px;border-radius:10px;background:${COR.azul};color:#ffffff;font-size:18px;font-weight:bold;">${escapar(estetica.nome.trim()[0]?.toUpperCase() ?? "A")}</td></tr></table>`;
+
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -183,28 +221,13 @@ export function montarEmailHtml(d: DadosDoEmail): string {
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
 <td style="padding-right:12px;">${marca}</td>
 <td>
-<div style="font-size:15px;font-weight:bold;color:#ffffff;">${nomeDaEstetica}</div>
-<div style="font-size:12px;color:#a1a1aa;">${escapar(`${DOMINIO}/${d.estetica.slug}`)}</div>
+<div style="font-size:15px;font-weight:bold;color:#ffffff;">${escapar(estetica.nome)}</div>
+<div style="font-size:12px;color:#a1a1aa;">${escapar(`${DOMINIO}/${estetica.slug}`)}</div>
 </td>
 </tr></table>
 </td></tr>
 
-<tr><td style="padding:24px;">
-<table role="presentation" cellpadding="0" cellspacing="0"><tr>
-<td width="44" height="44" align="center" style="width:44px;height:44px;border-radius:22px;background:${corDoSelo};color:#ffffff;font-size:${selo.startsWith("&") ? "20px" : "14px"};font-weight:bold;">${selo}</td>
-</tr></table>
-<div style="margin:16px 0 4px;font-size:20px;font-weight:bold;color:${COR.texto};">${escapar(titulo)}</div>
-<div style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${COR.suave};">Olá, ${escapar(primeiroNome)}. ${escapar(CHAMADAS[d.tipo])}</div>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${COR.linha};border-radius:10px;">
-<tr><td style="padding:4px 16px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detalhes}</table>
-</td></tr>
-</table>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">${botoes.join("")}</table>
-${prazo ? `<div style="margin-top:16px;font-size:12px;line-height:1.6;color:${COR.rotulo};">${escapar(prazo)}</div>` : ""}
-</td></tr>
+${corpo}
 
 <tr><td style="background:${COR.escuro};padding:20px 24px 0;">
 <div style="font-size:12px;color:${COR.rotulo};">Enviado pelo Astro · não responda este e-mail</div>
@@ -216,4 +239,29 @@ ${prazo ? `<div style="margin-top:16px;font-size:12px;line-height:1.6;color:${CO
 </table>
 </body>
 </html>`;
+}
+
+// RFC 6.2 — o e-mail com o link de criar a senha nova. O link vale 1 hora e
+// uma vez so (ver api/auth/esqueci-senha).
+export function montarEmailRedefinicao({
+  clienteNome,
+  estetica,
+  link,
+}: {
+  clienteNome: string;
+  estetica: EsteticaDoEmail;
+  link: string;
+}): string {
+  const primeiroNome = clienteNome.trim().split(/\s+/)[0] ?? "";
+  return casca({
+    estetica,
+    titulo: "Redefinir sua senha",
+    previa: escapar("Use o link para criar uma senha nova. Ele vale por 1 hora."),
+    corpo: `<tr><td style="padding:24px;">
+<div style="margin:0 0 4px;font-size:20px;font-weight:bold;color:${COR.texto};">Redefinir sua senha</div>
+<div style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${COR.suave};">Olá, ${escapar(primeiroNome)}. Recebemos um pedido para criar uma senha nova na sua conta da ${escapar(estetica.nome)}.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${botao(link, "Criar nova senha", true)}</table>
+<div style="margin-top:16px;font-size:12px;line-height:1.6;color:${COR.rotulo};">O link vale por 1 hora e funciona uma vez só. Se não foi você que pediu, ignore este e-mail: sua senha continua a mesma.</div>
+</td></tr>`,
+  });
 }

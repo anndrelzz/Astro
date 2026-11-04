@@ -18,7 +18,7 @@ import { LIMITES } from "@/compartilhado/validacoes/limites";
 // Regras de senha exibidas ao usuario no cadastro. Precisam bater exatamente
 // com o que /api/auth/cadastro valida — texto que promete uma regra e servidor
 // que aceita outra e pior do que nao ter texto nenhum.
-const REGRAS_SENHA = [
+export const REGRAS_SENHA = [
   { rotulo: "8 caracteres", ok: (s: string) => s.length >= 8 },
   { rotulo: "1 número", ok: (s: string) => /\d/.test(s) },
   { rotulo: "1 letra maiúscula", ok: (s: string) => /[A-Z]/.test(s) },
@@ -318,6 +318,18 @@ export function AuthForm({
                     }
                   />
 
+                  {/* RFC 6.2: quem esqueceu a senha pede um link por e-mail. */}
+                  {eLogin && (
+                    <div className="mt-1.5 flex justify-end">
+                      <Link
+                        href={`/${slug}/esqueci-senha`}
+                        className="text-xs text-astro-muted underline-offset-2 transition hover:text-white hover:underline"
+                      >
+                        Esqueci minha senha
+                      </Link>
+                    </div>
+                  )}
+
                   {/* Medidor de forca: uma barra por regra atendida, com as
                       mesmas regras que o servidor exige. */}
                   {!eLogin && (
@@ -411,7 +423,7 @@ type CampoDoCadastro = (typeof CAMPOS_DO_CADASTRO)[number];
 // Campo do login e do cadastro: rotulo visivel, icone a esquerda e formato
 // de pilula, sobre o lado escuro do cartao. Com `erro`, a borda fica vermelha
 // e a mensagem aparece embaixo, ligada ao input (o leitor de tela le junto).
-function CampoAuth({
+export function CampoAuth({
   id,
   rotulo,
   icone,

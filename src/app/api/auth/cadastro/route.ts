@@ -5,6 +5,7 @@ import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
+import { senhaSchema } from "@/compartilhado/validacoes/senha";
 
 const cadastroSchema = z.object({
   tenantSlug: z.string().min(1),
@@ -23,15 +24,8 @@ const cadastroSchema = z.object({
     .refine((v) => v.length === 10 || v.length === 11, {
       message: "Telefone invalido - informe DDD + numero (10 ou 11 digitos)",
     }),
-  // As tres regras aparecem no medidor de forca da tela 03. Servidor e tela
-  // precisam exigir exatamente o mesmo: prometer "1 maiuscula" e aceitar uma
-  // senha sem maiuscula transforma o medidor em enfeite.
-  senha: z
-    .string()
-    .min(8, "Senha deve ter ao menos 8 caracteres")
-    .max(LIMITES.senha, `Senha deve ter no maximo ${LIMITES.senha} caracteres`)
-    .refine((s) => /\d/.test(s), "Senha deve conter ao menos 1 numero")
-    .refine((s) => /[A-Z]/.test(s), "Senha deve conter ao menos 1 letra maiuscula"),
+  // As mesmas regras do medidor de forca da tela 03 (ver validacoes/senha.ts).
+  senha: senhaSchema,
 });
 
 // UC01 — cliente cria conta informando nome completo, e-mail, telefone e
