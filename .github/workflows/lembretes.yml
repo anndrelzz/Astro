@@ -1,0 +1,59 @@
+# RF09: dispara os lembretes de 24 h e de 2 h e reenvia os avisos que
+# falharam. A logica fica na rota /api/cron/lembretes; aqui so o relogio.
+#
+# Por que no GitHub Actions: o repositorio e publico (minutos gratis) e o
+# agendamento roda fora do App Service, sem servico novo na Azure. O GitHub
+# pode atrasar uma rodada agendada em alguns minutos; as janelas dos
+# lembretes (24 h a 2 h antes e 2 h a 0) sao largas o bastante para isso, e a
+# rota nunca manda o mesmo lembrete duas vezes.
+#
+# O segredo e um secret do repositorio (e nao do environment producao): o
+# environment registraria uma "implantacao" no GitHub a cada 15 minutos.
+
+name: Lembretes
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+# Uma rodada de cada vez: se uma atrasar, a seguinte espera em vez de correr
+# junto e varrer os mesmos agendamentos.
+concurrency:
+  group: lembretes
+  cancel-in-progress: false
+
+jobs:
+  disparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chamar a rota de lembretes
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Secret CRON_SECRET nao configurado no repositorio"
+            exit 1
+          fi
+
+          status=$(curl -sS -o resposta.json -w "%{http_code}" -X POST \
+            -H "x-cron-secret: $CRON_SECRET" \
+            --max-time 60 \
+            https://useastro.app.br/api/cron/lembretes || echo "000")
+          echo "HTTP $status"
+          cat resposta.json 2>/dev/null; echo
+
+          case "$status" in
+            200) ;;
+            # Segredo errado: so se resolve trocando o secret, entao falha e
+            # o GitHub avisa por e-mail.
+            401) echo "::error::CRON_SECRET diferente do configurado na Azure"; exit 1 ;;
+            # Site fora do ar ou banco desligado (ele e parado a noite para
+            # economizar credito): so um aviso, sem falhar. Falhar mandaria um
+            # e-mail a cada 15 minutos. Os lembretes perdidos saem na primeira
+            # rodada com o site de volta, enquanto a janela deles nao fechar.
+            *) echo "::warning::Rota respondeu HTTP $status; tenta de novo na proxima rodada" ;;
+          esac
