@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/back/auth";
 import { prisma } from "@/back/prisma";
+import { temAvisoNoPerfil } from "@/back/aviso-perfil";
 import { ClienteSidebar } from "@/front/cliente/cliente-sidebar";
 import { FundoOndas } from "@/front/componentes/fundo-ondas";
 
@@ -62,6 +63,7 @@ export async function ClienteShell({
         usuarioNome={session.user.name ?? "Você"}
         usuarioEmail={session.user.email ?? ""}
         suporteWhatsapp={tenant.whatsapp}
+        avisoPerfil={await temAvisoNoPerfil(session, tenant.id)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
