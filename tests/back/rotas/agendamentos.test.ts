@@ -97,6 +97,8 @@ describe("POST /api/agendamentos", () => {
     entrarComo(e.cliente);
     const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(3, { hora: "25:00" })));
     expect(resposta.status).toBe(400);
+    // A mensagem do schema, e nao so "Dados invalidos".
+    expect(await resposta.json()).toMatchObject({ error: "Horario invalido", campo: "hora" });
   });
 
   test("agendamento com pagamento no local fica aguardando pagamento", async () => {

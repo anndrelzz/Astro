@@ -167,6 +167,53 @@ describe("AuthForm — cadastro", () => {
     expect(signIn).not.toHaveBeenCalled();
   });
 
+  test("erro de um campo aparece embaixo dele, e o campo fica marcado", async () => {
+    const mensagem = "Telefone invalido - informe DDD + numero (10 ou 11 digitos)";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: mensagem, campo: "telefone" }), { status: 400 })
+    );
+    render(<AuthForm modo="cadastro" estetica={ESTETICA} />);
+
+    preencher(CAMPOS);
+    aceitarTermos();
+    await enviar("Criar conta");
+
+    const telefone = screen.getByPlaceholderText("(00) 00000-0000");
+    expect(telefone).toHaveAttribute("aria-invalid", "true");
+    expect(telefone).toHaveAccessibleDescription(mensagem);
+    // So embaixo do campo: nao repete no aviso do topo.
+    expect(screen.getAllByText(mensagem)).toHaveLength(1);
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  test("ao corrigir o campo, o erro dele some", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "E-mail invalido", campo: "email" }), { status: 400 })
+    );
+    render(<AuthForm modo="cadastro" estetica={ESTETICA} />);
+
+    preencher(CAMPOS);
+    aceitarTermos();
+    await enviar("Criar conta");
+    fireEvent.change(screen.getByPlaceholderText("voce@email.com"), { target: { value: "maria@teste.com.br" } });
+
+    expect(screen.queryByText("E-mail invalido")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("voce@email.com")).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("erro de um campo que nao esta na tela continua no aviso do topo", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "Estetica nao encontrada", campo: "tenantSlug" }), { status: 400 })
+    );
+    render(<AuthForm modo="cadastro" estetica={ESTETICA} />);
+
+    preencher(CAMPOS);
+    aceitarTermos();
+    await enviar("Criar conta");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Estetica nao encontrada");
+  });
+
   test("o link para entrar mantem o callbackUrl", () => {
     busca = new URLSearchParams({ callbackUrl: "/demo/agendar/serv-1" });
     render(<AuthForm modo="cadastro" estetica={ESTETICA} />);
