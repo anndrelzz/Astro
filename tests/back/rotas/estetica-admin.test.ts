@@ -7,6 +7,7 @@ import { GET as baixarLogo } from "@/app/api/tenant/logo/[tenantId]/route";
 import { PATCH as configurarEstetica } from "@/app/api/tenant/route";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
+import { obterCoringa } from "@/back/coringa";
 import { criarEstetica, daqui, entrarComo, pedido, removerEstetica, type Estetica } from "./ajudantes";
 
 // UC09, UC11 a UC14, RF12, RF13, RF17, RF18 — o que o Admin configura na
@@ -190,12 +191,54 @@ describe("GET /api/financeiro/exportar", () => {
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const linhas = new TextDecoder().decode(bytes).split("\r\n");
     expect(linhas[0]).toBe(
-      "Data;Hora;Cliente;Serviço;Forma de pagamento;Situação;Valor;Acréscimo;Total;Recebido;Pago em"
+      "Data;Hora;Cliente;Serviço;Forma de pagamento;Situação;Valor;Acréscimo;Total;Recebido;Pago em;Origem"
     );
     expect(linhas).toHaveLength(3);
     // Mais antigo primeiro: o PIX pendente, depois o pago com acrescimo.
     expect(linhas[1]).toContain(";PIX;PIX pendente;80,00;0,00;80,00;Não");
     expect(linhas[2]).toContain(";No local;Pago;80,00;20,00;100,00;Sim");
+    expect(linhas[2].endsWith(";Site")).toBe(true);
+  });
+
+  test("agendamento do Admin sai com o nome de quem chamou e a origem Admin", async () => {
+    const id = await withTenant(e.tenant.id, async (tx) => {
+      const coringa = await obterCoringa(tx, e.tenant.id);
+      const veiculo = await tx.veiculo.create({
+        data: {
+          tenantId: e.tenant.id,
+          usuarioId: coringa.id,
+          segmentoId: e.segmento.id,
+          modelo: "Civic",
+          marca: "",
+          placa: "",
+          cor: "",
+          ano: 0,
+        },
+      });
+      const ag = await tx.agendamento.create({
+        data: {
+          tenantId: e.tenant.id,
+          usuarioId: coringa.id,
+          veiculoId: veiculo.id,
+          servicoId: e.servico.id,
+          dataHora: daqui(-30),
+          formaPagamento: "LOCAL",
+          status: "PENDENTE_PAGAMENTO",
+          valor: 80,
+          contatoNome: "Joao do WhatsApp",
+          contatoTelefone: "47988887777",
+        },
+      });
+      return ag.id;
+    });
+
+    entrarComo(e.admin);
+    const resposta = await exportarFinanceiro(pedido("GET", "/api/financeiro/exportar?periodo=7dias"));
+    const linha = (await resposta.text()).split("\r\n").find((l) => l.includes("Joao do WhatsApp"));
+
+    expect(linha).toBeDefined();
+    expect(linha!.endsWith(";Admin")).toBe(true);
+    await withTenant(e.tenant.id, (tx) => tx.agendamento.delete({ where: { id } }));
   });
 
   test("PIX pago hoje para um servico futuro entra no periodo, com a data do pagamento", async () => {
@@ -222,7 +265,7 @@ describe("GET /api/financeiro/exportar", () => {
     const pix = csv.split("\r\n").find((l) => l.includes(";350,00;"));
     const diaDoPagamento = pagoEm.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     expect(pix).toBeDefined();
-    expect(pix!.endsWith(`;Sim;${diaDoPagamento}`)).toBe(true);
+    expect(pix!.endsWith(`;Sim;${diaDoPagamento};Site`)).toBe(true);
   });
 
   test("texto que comeca com = vira texto na planilha, nao formula", async () => {

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Car, Mail, MessageCircle, Search, Users } from "lucide-react";
+import type { ContatoDoAdmin } from "@/compartilhado/contato";
 import { iniciais } from "@/compartilhado/iniciais";
 import { FUSO } from "@/compartilhado/fuso";
 import { Modal } from "@/front/admin/modal";
@@ -140,7 +141,16 @@ function dataEHora(iso: string) {
   return `${dia.replace(".", "")} · ${hora}`;
 }
 
-export function ClientesAdmin({ clientes, agoraISO }: { clientes: ClienteDoPainel[]; agoraISO: string }) {
+export function ClientesAdmin({
+  clientes,
+  contatosDoAdmin = [],
+  agoraISO,
+}: {
+  clientes: ClienteDoPainel[];
+  /** Quem o Admin agendou pelo coringa, agrupado por telefone. */
+  contatosDoAdmin?: ContatoDoAdmin[];
+  agoraISO: string;
+}) {
   const agoraMs = new Date(agoraISO).getTime();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
@@ -171,6 +181,12 @@ export function ClientesAdmin({ clientes, agoraISO }: { clientes: ClienteDoPaine
         (filtro === "sumidos" && resumo.sumido) ||
         (filtro === "nunca" && resumo.nunca)) &&
       bateComBusca(cliente, busca)
+  );
+
+  // A mesma busca vale para os agendados pelo Admin: nome, telefone ou placa.
+  const termo = normalizar(busca);
+  const contatosVisiveis = contatosDoAdmin.filter(
+    (c) => !termo || [c.nome, c.telefone, ...c.carros].some((campo) => normalizar(campo).includes(termo))
   );
 
   const selecionado = comResumo.find((c) => c.cliente.id === selecionadoId) ?? visiveis[0] ?? null;
@@ -337,6 +353,66 @@ export function ClientesAdmin({ clientes, agoraISO }: { clientes: ClienteDoPaine
           </div>
         </aside>
       </div>
+
+      {/* Quem chamou no WhatsApp ou no Instagram e foi agendado pelo Admin,
+          pelo coringa: nao tem conta, entao fica fora da lista de cima. */}
+      {contatosDoAdmin.length > 0 && (
+        <section
+          aria-label="Agendado pelo Admin"
+          className="mt-5 rounded-3xl border border-admin-border bg-admin-surface p-4 sm:p-5"
+        >
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-base font-semibold text-white">Agendado pelo Admin</h2>
+            <span className="text-xs text-astro-muted">Quem chamou no WhatsApp ou no Instagram</span>
+          </div>
+          {contatosVisiveis.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-admin-border p-6 text-center text-sm text-astro-muted">
+              Ninguém agendado pelo Admin com essa busca.
+            </p>
+          ) : (
+            <ul className="grid gap-2 md:grid-cols-2">
+              {contatosVisiveis.map((c) => {
+                const whatsapp = linkWhatsApp(c.telefone);
+                return (
+                  <li
+                    key={c.telefone}
+                    className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-admin-surface-2 px-3 py-2.5"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-admin-border text-xs font-bold text-white">
+                      {iniciais(c.nome)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-white">{c.nome}</span>
+                      <span className="block truncate text-xs text-astro-muted">
+                        {formatarTelefone(c.telefone)} · {c.carros.join(", ")}
+                      </span>
+                      <span className="block text-[0.7rem] text-astro-muted">
+                        {c.agendamentos} {c.agendamentos === 1 ? "agendamento" : "agendamentos"}
+                        {c.proximoISO
+                          ? ` · próximo ${dataCurta(c.proximoISO)}`
+                          : c.ultimoISO
+                            ? ` · último ${dataCurta(c.ultimoISO)}`
+                            : ""}
+                      </span>
+                    </span>
+                    {whatsapp && (
+                      <a
+                        href={whatsapp}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`WhatsApp de ${c.nome}`}
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-astro-blue text-white transition hover:brightness-110"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* Celular: o mesmo detalhe num modal. */}
       <div className="lg:hidden">
