@@ -1,5 +1,10 @@
 import "server-only";
 import { Resend } from "resend";
+import { DOMINIO } from "@/compartilhado/dominio";
+
+// Dominio verificado no Resend (registros DKIM, SPF e DMARC no Registro.br).
+// O onboarding@resend.dev de antes so entregava ao dono da conta Resend.
+const REMETENTE = `Astro <nao-responda@${DOMINIO}>`;
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -18,7 +23,7 @@ export async function enviarEmail(destinatario: string, assunto: string, corpo: 
   }
 
   const { error } = await resend.emails.send({
-    from: "Astro <onboarding@resend.dev>",
+    from: REMETENTE,
     to: destinatario,
     subject: assunto,
     text: corpo,

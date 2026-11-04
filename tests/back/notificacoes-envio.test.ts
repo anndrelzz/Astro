@@ -59,6 +59,19 @@ describe("enviarEmail", () => {
     );
   });
 
+  test("sai do dominio do Astro, e nao do endereco de teste do Resend", async () => {
+    // O onboarding@resend.dev so entrega ao dono da conta Resend; os clientes
+    // nunca recebiam. O useastro.app.br e o dominio verificado no Resend.
+    enviarResend.mockResolvedValue({ error: null });
+    const { enviarEmail } = await carregarEmail("re_teste");
+
+    await enviarEmail("cliente@teste.com", "Assunto", "Texto");
+
+    expect(enviarResend).toHaveBeenCalledWith(
+      expect.objectContaining({ from: "Astro <nao-responda@useastro.app.br>" })
+    );
+  });
+
   test("erro do Resend volta como envio que falhou, sem derrubar o fluxo", async () => {
     enviarResend.mockResolvedValue({ error: { message: "dominio nao verificado" } });
     const { enviarEmail } = await carregarEmail("re_teste");
