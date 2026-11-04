@@ -10,8 +10,12 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const slug = url.searchParams.get("slug") ?? "";
   const token = url.searchParams.get("token") ?? "";
+  // O endereco publico do site, e nao o do pedido: na Azure o servidor recebe
+  // o pedido como http://0.0.0.0:8080, e voltar para la deixava o cliente numa
+  // pagina de erro. O NEXTAUTH_URL e o mesmo endereco que o login ja usa.
+  const site = process.env.NEXTAUTH_URL ?? url.origin;
   const voltar = (resultado: "confirmado" | "link-invalido") =>
-    NextResponse.redirect(new URL(`/${encodeURIComponent(slug)}/perfil?email=${resultado}`, url));
+    NextResponse.redirect(new URL(`/${encodeURIComponent(slug)}/perfil?email=${resultado}`, site));
 
   const tenant = slug ? await prisma.tenant.findUnique({ where: { slug }, select: { id: true } }) : null;
   if (!tenant || !token) return voltar("link-invalido");
