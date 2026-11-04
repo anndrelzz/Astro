@@ -87,6 +87,19 @@ describe("GET /api/auth/confirmar-email", () => {
     expect(await confirmado(usuario.id)).not.toBeNull();
   });
 
+  test("volta para o endereco publico do site, e nao para o endereco interno do servidor", async () => {
+    // Na Azure, o servidor recebe o pedido como http://0.0.0.0:8080. Montar o
+    // redirecionamento com request.url mandava o cliente para la.
+    vi.stubEnv("NEXTAUTH_URL", "https://useastro.app.br");
+    await novaConta();
+    const link = linkDoUltimoEmail();
+
+    const resposta = await confirmar(new Request(`http://0.0.0.0:8080${link.pathname}${link.search}`));
+
+    expect(resposta.headers.get("location")).toBe(`https://useastro.app.br/${e.tenant.slug}/perfil?email=confirmado`);
+    vi.unstubAllEnvs();
+  });
+
   test("o link funciona uma vez so", async () => {
     await novaConta();
     const link = linkDoUltimoEmail();
