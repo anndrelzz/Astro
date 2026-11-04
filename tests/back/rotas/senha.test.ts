@@ -174,3 +174,28 @@ describe("POST /api/auth/redefinir-senha", () => {
     expect((await trocar(token)).status).toBe(200);
   });
 });
+
+describe("links e a conta", () => {
+  test("apagar a conta apaga os links dela, sem travar no banco", async () => {
+    // Sugestao do review do Bryann no #103: sem cascade, o usuario com link
+    // aberto nao podia ser apagado (Restrict), e um "excluir minha conta"
+    // (LGPD) travaria nele.
+    const usuario = await withTenant(e.tenant.id, (tx) =>
+      tx.usuario.create({
+        data: {
+          tenantId: e.tenant.id,
+          nome: "Conta Que Sai",
+          email: "conta-que-sai@teste.local",
+          senhaHash: "x",
+          role: "CLIENTE",
+        },
+      })
+    );
+    await pedir(usuario.email);
+
+    await withTenant(e.tenant.id, (tx) => tx.usuario.delete({ where: { id: usuario.id } }));
+
+    const sobrou = await withTenant(e.tenant.id, (tx) => tx.tokenEmail.count({ where: { usuarioId: usuario.id } }));
+    expect(sobrou).toBe(0);
+  });
+});
