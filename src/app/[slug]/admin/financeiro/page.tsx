@@ -7,9 +7,11 @@ import {
   janela,
   lerPeriodo,
   pendenteNoPeriodo,
+  receitaPorOrigem,
   recebidoNoPeriodo,
   totalCobrado,
 } from "@/compartilhado/financeiro";
+import { nomeDoCliente } from "@/compartilhado/contato";
 import { FUSO, chaveDia, inicioDoDia } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
@@ -86,8 +88,10 @@ export default async function AdminFinanceiroPage({
     porServico.set(a.servicoId, item);
   }
 
+  // O coringa fica fora do ranking: os agendados pelo Admin aparecem juntos
+  // no bloco "Origem", e nao como um cliente so que gastou muito.
   const porCliente = new Map<string, { nome: string; receita: number; visitas: number }>();
-  for (const a of recebidos) {
+  for (const a of recebidos.filter((r) => !r.usuario.coringa)) {
     const item = porCliente.get(a.usuarioId) ?? { nome: a.usuario.nome, receita: 0, visitas: 0 };
     item.receita += totalCobrado(a);
     item.visitas += 1;
@@ -102,7 +106,7 @@ export default async function AdminFinanceiroPage({
     .map((a) => ({
       id: a.id,
       dia: a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: FUSO }),
-      cliente: a.usuario.nome,
+      cliente: nomeDoCliente(a),
       veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
       placa: a.veiculo.placa,
       valor: Number(a.valor),
@@ -117,7 +121,7 @@ export default async function AdminFinanceiroPage({
       chaveDia(a.dataHora) === hojeChave
         ? "Hoje"
         : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
-    cliente: a.usuario.nome,
+    cliente: nomeDoCliente(a),
     servico: a.servico.nome,
     forma: a.formaPagamento,
     valor: Number(a.valor),
@@ -139,6 +143,7 @@ export default async function AdminFinanceiroPage({
       porCliente={[...porCliente.values()].sort((a, b) => b.receita - a.receita).slice(0, 5)}
       aReceberLista={aReceberLista}
       acrescimos={acrescimos}
+      origem={receitaPorOrigem(recebidos)}
     />
   );
 }

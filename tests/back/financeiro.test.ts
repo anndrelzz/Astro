@@ -7,6 +7,7 @@ import {
   janela,
   lerPeriodo,
   PERIODOS,
+  receitaPorOrigem,
   resumoDoPeriodo,
   totalCobrado,
 } from "@/compartilhado/financeiro";
@@ -167,5 +168,23 @@ describe("filtroDoPeriodo", () => {
       status: { not: "CANCELADO" },
       OR: [{ dataHora: { gte: inicio, lte: fim } }, { pagoEm: { gte: inicio, lte: fim } }],
     });
+  });
+});
+
+describe("receitaPorOrigem", () => {
+  const recebido = (valor: number, acrescimo: number | null, coringa: boolean) => ({
+    valor: new Prisma.Decimal(valor),
+    acrescimoAplicado: acrescimo === null ? null : new Prisma.Decimal(acrescimo),
+    usuario: { coringa },
+  });
+
+  test("separa o que veio do site do que o Admin agendou pelo coringa, com o acrescimo", () => {
+    expect(
+      receitaPorOrigem([recebido(80, null, false), recebido(120, 20, false), recebido(60, null, true)])
+    ).toEqual({ site: { valor: 220, qtd: 2 }, admin: { valor: 60, qtd: 1 } });
+  });
+
+  test("sem nada recebido, zera os dois lados", () => {
+    expect(receitaPorOrigem([])).toEqual({ site: { valor: 0, qtd: 0 }, admin: { valor: 0, qtd: 0 } });
   });
 });

@@ -41,6 +41,20 @@ export function janela(periodo: Periodo, agora = new Date()) {
 // Admin lancou na avaliacao presencial. Somar so `valor` fazia o relatorio
 // divergir do caixa — uma lavacao combinada por R$ 120,00 e cobrada por
 // R$ 156,00 aparecia como R$ 120,00.
+// Quanto da receita veio de quem agendou pelo site e quanto o Admin agendou
+// pelo coringa, para quem chamou no WhatsApp (decisao de 04/11).
+export function receitaPorOrigem(
+  recebidos: { valor: Prisma.Decimal; acrescimoAplicado: Prisma.Decimal | null; usuario: { coringa: boolean } }[]
+) {
+  const origem = { site: { valor: 0, qtd: 0 }, admin: { valor: 0, qtd: 0 } };
+  for (const a of recebidos) {
+    const lado = a.usuario.coringa ? origem.admin : origem.site;
+    lado.valor += totalCobrado(a);
+    lado.qtd += 1;
+  }
+  return origem;
+}
+
 export function totalCobrado(a: { valor: Prisma.Decimal; acrescimoAplicado: Prisma.Decimal | null }) {
   return Number(a.valor) + Number(a.acrescimoAplicado ?? 0);
 }
