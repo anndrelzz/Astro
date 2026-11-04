@@ -77,11 +77,11 @@ beforeEach(() => {
 });
 
 describe("registrarNotificacao", () => {
-  function transacaoFalsa(telegramChatId: string | null, existe = true, coringa = false) {
+  function transacaoFalsa(telegramChatId: string | null, existe = true, coringa = false, emailConfirmado = true) {
     const criadas: { data: Record<string, unknown> }[] = [];
     const tx = {
       agendamento: {
-        findUnique: async () => (existe ? { tenantId: "tenant-1", usuario: { telegramChatId, coringa } } : null),
+        findUnique: async () => (existe ? { tenantId: "tenant-1", usuario: { telegramChatId, coringa, emailConfirmadoEm: emailConfirmado ? new Date() : null } } : null),
       },
       notificacao: {
         create: async (args: { data: Record<string, unknown> }) => {
@@ -113,6 +113,22 @@ describe("registrarNotificacao", () => {
 
     expect(pendentes).toHaveLength(2);
     expect(criadas.map((c) => c.data.canal)).toEqual(["EMAIL", "TELEGRAM"]);
+  });
+
+  test("e-mail nao confirmado: so o Telegram recebe o aviso", async () => {
+    // Decisao de 04/11: e-mail digitado errado mandaria os dados do
+    // agendamento para um estranho (LGPD).
+    const { tx, criadas } = transacaoFalsa("chat-42", true, false, false);
+    const pendentes = await registrarNotificacao(tx, "ag-1", "CONFIRMACAO_AGENDAMENTO");
+
+    expect(pendentes).toHaveLength(1);
+    expect(criadas.map((c) => c.data.canal)).toEqual(["TELEGRAM"]);
+  });
+
+  test("e-mail nao confirmado e sem Telegram: nao registra nada", async () => {
+    const { tx, criadas } = transacaoFalsa(null, true, false, false);
+    expect(await registrarNotificacao(tx, "ag-1", "LEMBRETE_24H")).toEqual([]);
+    expect(criadas).toHaveLength(0);
   });
 
   test("agendamento do coringa (feito pelo Admin) nao registra nada", async () => {

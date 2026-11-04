@@ -10,10 +10,14 @@ import { PerfilCliente } from "@/front/cliente/perfil-cliente";
 // e lista de veiculos. A edicao (tela 05) e um modal em PerfilCliente.
 export default async function PerfilPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ email?: string }>;
 }) {
   const { slug } = await params;
+  // Volta do link de confirmacao do e-mail (api/auth/confirmar-email).
+  const { email: retornoDoLink } = await searchParams;
 
   const tenant = await prisma.tenant.findUnique({ where: { slug } });
   if (!tenant) notFound();
@@ -49,6 +53,10 @@ export default async function PerfilPage({
         telefone={usuario.telefone ?? ""}
         totalAgendamentos={usuario._count.agendamentos}
         telegramVinculado={!!usuario.telegramChatId}
+        emailConfirmado={usuario.emailConfirmadoEm !== null}
+        statusEmail={
+          retornoDoLink === "confirmado" || retornoDoLink === "link-invalido" ? retornoDoLink : undefined
+        }
         veiculos={usuario.veiculos.map((v) => ({
           id: v.id,
           marca: v.marca,
