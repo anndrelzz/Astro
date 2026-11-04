@@ -74,9 +74,12 @@ export async function registrarNotificacao(
 ): Promise<NotificacaoPendente[]> {
   const agendamento = await tx.agendamento.findUnique({
     where: { id: agendamentoId },
-    select: { tenantId: true, usuario: { select: { telegramChatId: true } } },
+    select: { tenantId: true, usuario: { select: { telegramChatId: true, coringa: true } } },
   });
-  if (!agendamento) return [];
+  // Agendamento feito pelo Admin pelo coringa: nao ha e-mail nem Telegram de
+  // verdade para avisar, e quem chamou no WhatsApp combina direto com a
+  // estetica. Vale para a confirmacao, os lembretes e o cancelamento.
+  if (!agendamento || agendamento.usuario.coringa) return [];
 
   const canais: CanalNotificacao[] = agendamento.usuario.telegramChatId
     ? ["EMAIL", "TELEGRAM"]
