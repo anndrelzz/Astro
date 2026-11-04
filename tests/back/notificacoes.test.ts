@@ -49,8 +49,18 @@ function noBanco(
     tipo,
     agendamento: {
       dataHora: DATA_HORA,
-      usuario: { email: "cliente@teste.com", telegramChatId },
+      valor: 120,
+      formaPagamento: "LOCAL",
+      usuario: { nome: "Maria Souza", email: "cliente@teste.com", telegramChatId },
       servico: { nome: "Lavagem completa" },
+      veiculo: { marca: "Honda", modelo: "Civic", placa: "HND1234" },
+      tenant: {
+        nome: "Estetica Demo",
+        slug: "demo",
+        logoUrl: null,
+        whatsapp: "47999990000",
+        cancelamentoHorasLimite: 2,
+      },
     },
   });
   return { tenantId: "tenant-1", notificacaoId: id };
@@ -123,6 +133,15 @@ describe("enviarNotificacoes", () => {
     expect(texto).toContain("29/10/2026");
     expect(texto).toContain("10:00");
     expect(telegram).not.toHaveBeenCalled();
+  });
+
+  test("o e-mail tambem sai em HTML, com a estetica e o veiculo do agendamento", async () => {
+    await enviarNotificacoes([noBanco("n1", "EMAIL")]);
+
+    const html = email.mock.calls[0][3];
+    expect(html).toContain("Estetica Demo");
+    expect(html).toContain("Honda Civic · HND1234");
+    expect(html).toContain("https://useastro.app.br/demo/historico");
   });
 
   test.each([
