@@ -3,7 +3,7 @@ import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/back/auth";
 import { conferirDataAgendamento } from "@/compartilhado/agenda";
-import { lerJson } from "@/back/api-helpers";
+import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
 import { instanteNoFuso } from "@/compartilhado/fuso";
 import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
 import { calcularPreco } from "@/compartilhado/precificacao";
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
   const parsed = agendamentoSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Dados invalidos" }, { status: 400 });
+    return respostaDadosInvalidos(parsed.error);
   }
   const { servicoId, veiculoId, data, hora, formaPagamento } = parsed.data;
 
