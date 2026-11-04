@@ -14,9 +14,10 @@ const VEICULOS = [
   { id: "v2", marca: "Honda", modelo: "Civic", placa: "RTY2U34", ano: 2021, cor: "Cinza", segmento: "Sedan" },
 ];
 
-function renderizar() {
+function renderizar(extra: Partial<Parameters<typeof PerfilCliente>[0]> = {}) {
   return render(
     <PerfilCliente
+      emailConfirmado
       slug="demo"
       nome="Maria Souza"
       email="maria@teste.com"
@@ -24,6 +25,7 @@ function renderizar() {
       totalAgendamentos={3}
       veiculos={VEICULOS}
       telegramVinculado={false}
+      {...extra}
     />
   );
 }
@@ -115,5 +117,46 @@ describe("PerfilCliente", () => {
     await clicar("Editar dados");
 
     expect(screen.getByLabelText("E-mail (não editável)")).toHaveAttribute("readonly");
+  });
+});
+
+describe("PerfilCliente — confirmacao do e-mail", () => {
+  test("e-mail nao confirmado: avisa que os e-mails de agendamento nao saem e oferece reenviar", async () => {
+    const fetchMock = respostaDaApi(200, { ok: true });
+    renderizar({ emailConfirmado: false });
+
+    const aviso = screen.getByRole("status");
+    expect(aviso).toHaveTextContent("Confirme seu e-mail");
+    expect(aviso).toHaveTextContent("maria@teste.com");
+
+    await clicar("Reenviar e-mail de confirmação");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/perfil/reenviar-confirmacao", expect.objectContaining({ method: "POST" }));
+    expect(screen.getByText(/Enviamos um novo link/)).toBeInTheDocument();
+  });
+
+  test("limite de reenvios: mostra o motivo da API", async () => {
+    respostaDaApi(429, { error: "Você já pediu 3 links na última hora. Tente de novo mais tarde." });
+    renderizar({ emailConfirmado: false });
+
+    await clicar("Reenviar e-mail de confirmação");
+
+    expect(screen.getByText("Você já pediu 3 links na última hora. Tente de novo mais tarde.")).toBeInTheDocument();
+  });
+
+  test("voltando do link: avisa que o e-mail foi confirmado", () => {
+    renderizar({ statusEmail: "confirmado" });
+    expect(screen.getByText("E-mail confirmado! Agora os avisos dos agendamentos chegam por lá.")).toBeInTheDocument();
+  });
+
+  test("link vencido: explica e deixa pedir outro", () => {
+    renderizar({ emailConfirmado: false, statusEmail: "link-invalido" });
+    expect(screen.getByText(/Esse link de confirmação expirou ou já foi usado/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reenviar e-mail de confirmação" })).toBeInTheDocument();
+  });
+
+  test("e-mail confirmado: nenhum aviso", () => {
+    renderizar();
+    expect(screen.queryByText("Confirme seu e-mail")).not.toBeInTheDocument();
   });
 });
