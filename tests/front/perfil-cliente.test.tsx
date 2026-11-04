@@ -93,6 +93,22 @@ describe("PerfilCliente", () => {
     expect(roteador.refresh).toHaveBeenCalled();
   });
 
+  test("telefone recusado pela API: o erro aparece embaixo do telefone", async () => {
+    const mensagem = "Telefone invalido - informe DDD + numero (10 ou 11 digitos)";
+    respostaDaApi(400, { error: mensagem, campo: "telefone" });
+    renderizar();
+
+    await clicar("Editar dados");
+    fireEvent.change(screen.getByPlaceholderText("(00) 00000-0000"), { target: { value: "123" } });
+    await clicar("Salvar alterações");
+
+    const telefone = screen.getByPlaceholderText("(00) 00000-0000");
+    expect(telefone).toHaveAttribute("aria-invalid", "true");
+    expect(telefone).toHaveAccessibleDescription(mensagem);
+    expect(screen.getAllByText(mensagem)).toHaveLength(1);
+    expect(roteador.refresh).not.toHaveBeenCalled();
+  });
+
   test("o e-mail aparece no modal, mas nao pode ser editado", async () => {
     renderizar();
 
