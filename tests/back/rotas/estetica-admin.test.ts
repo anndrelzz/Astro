@@ -265,7 +265,7 @@ describe("GET /api/financeiro/exportar", () => {
     const pix = csv.split("\r\n").find((l) => l.includes(";350,00;"));
     const diaDoPagamento = pagoEm.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
     expect(pix).toBeDefined();
-    expect(pix!.endsWith(`;Sim;${diaDoPagamento}`)).toBe(true);
+    expect(pix!.endsWith(`;Sim;${diaDoPagamento};Site`)).toBe(true);
   });
 
   test("texto que comeca com = vira texto na planilha, nao formula", async () => {

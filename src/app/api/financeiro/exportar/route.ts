@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/back/auth";
 import { filtroDoPeriodo, foiRecebido, janela, lerPeriodo, totalCobrado } from "@/compartilhado/financeiro";
+import { nomeDoCliente } from "@/compartilhado/contato";
 import { FUSO, chaveDia } from "@/compartilhado/fuso";
 import { withTenant } from "@/back/tenant-db";
 
@@ -48,11 +49,12 @@ export async function GET(request: Request) {
   );
 
   const linhas = [
-    ["Data", "Hora", "Cliente", "Serviço", "Forma de pagamento", "Situação", "Valor", "Acréscimo", "Total", "Recebido", "Pago em"],
+    ["Data", "Hora", "Cliente", "Serviço", "Forma de pagamento", "Situação", "Valor", "Acréscimo", "Total", "Recebido", "Pago em", "Origem"],
     ...agendamentos.map((a) => [
       a.dataHora.toLocaleDateString("pt-BR", { timeZone: FUSO }),
       a.dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO }),
-      a.usuario.nome,
+      // Agendado pelo Admin: quem chamou no WhatsApp, e nao o coringa.
+      nomeDoCliente(a),
       a.servico.nome,
       a.formaPagamento === "PIX" ? "PIX" : "No local",
       SITUACAO[a.status] ?? a.status,
@@ -61,6 +63,7 @@ export async function GET(request: Request) {
       reais(totalCobrado(a)),
       foiRecebido(a.status) ? "Sim" : "Não",
       a.pagoEm ? a.pagoEm.toLocaleDateString("pt-BR", { timeZone: FUSO }) : "",
+      a.usuario.coringa ? "Admin" : "Site",
     ]),
   ];
 
