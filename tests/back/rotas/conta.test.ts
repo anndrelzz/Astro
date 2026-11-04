@@ -251,7 +251,9 @@ describe("vinculo com o Telegram", () => {
     const resposta = await doTelegram({ message: { text: `/start ${token}`, chat: { id: 987654 } } });
     expect(await resposta.json()).toEqual({ ok: true });
     expect(await usuario(e.cliente.id)).toMatchObject({ telegramChatId: "987654", telegramLinkToken: null });
-    expect(enviarTelegram).toHaveBeenCalledWith("987654", "Conta vinculada com sucesso!");
+    expect(enviarTelegram).toHaveBeenCalledWith("987654", expect.stringContaining("<b>Telegram vinculado!</b>"));
+    // A mensagem diz de qual estetica vem os avisos.
+    expect(vi.mocked(enviarTelegram).mock.calls.at(-1)![1]).toContain(e.tenant.nome);
   });
 
   test("mensagens que nao sao um /start valido sao ignoradas sem erro", async () => {
