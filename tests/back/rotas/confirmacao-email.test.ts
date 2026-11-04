@@ -119,7 +119,7 @@ describe("GET /api/auth/confirmar-email", () => {
 });
 
 describe("POST /api/perfil/reenviar-confirmacao", () => {
-  const pedirDeNovo = () => reenviar(pedido("POST", "/api/perfil/reenviar-confirmacao"));
+  const pedirDeNovo = () => reenviar();
 
   test("sem login responde 401", async () => {
     entrarComo(null);

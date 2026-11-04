@@ -265,3 +265,29 @@ export function montarEmailRedefinicao({
 </td></tr>`,
   });
 }
+
+// O e-mail com o link de confirmar o e-mail (enviado no cadastro e pelo
+// "Reenviar" do Perfil). Sem confirmar, os avisos dos agendamentos nao saem
+// por e-mail.
+export function montarEmailConfirmacao({
+  clienteNome,
+  estetica,
+  link,
+}: {
+  clienteNome: string;
+  estetica: EsteticaDoEmail;
+  link: string;
+}): string {
+  const primeiroNome = clienteNome.trim().split(/\s+/)[0] ?? "";
+  return casca({
+    estetica,
+    titulo: "Confirme seu e-mail",
+    previa: escapar("Confirme o e-mail para receber os avisos dos seus agendamentos."),
+    corpo: `<tr><td style="padding:24px;">
+<div style="margin:0 0 4px;font-size:20px;font-weight:bold;color:${COR.texto};">Confirme seu e-mail</div>
+<div style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${COR.suave};">Olá, ${escapar(primeiroNome)}. Sua conta na ${escapar(estetica.nome)} está pronta. Confirme que este e-mail é seu para receber aqui a confirmação e os lembretes dos seus agendamentos.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${botao(link, "Confirmar e-mail", true)}</table>
+<div style="margin-top:16px;font-size:12px;line-height:1.6;color:${COR.rotulo};">O link vale por 7 dias. Se não foi você que criou a conta, ignore este e-mail.</div>
+</td></tr>`,
+  });
+}
