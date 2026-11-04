@@ -212,6 +212,11 @@ model Usuario {
   role              Role     @default(CLIENTE)
   telegramChatId    String? // RNF11 — uso exclusivo para notificacoes
   telegramLinkToken String?
+  /// Cliente interno da estetica, pelo qual o Admin agenda quem chamou no
+  /// WhatsApp ou no Instagram (decisao do orientador, 30/10). Um por estetica,
+  /// sem e-mail real e com senha aleatoria: ninguem entra com ele, e os
+  /// agendamentos dele nao geram notificacao.
+  coringa           Boolean  @default(false)
   criadoEm          DateTime @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
@@ -302,6 +307,10 @@ model Agendamento {
   /// NULO = ainda nao pago. Os pagos antes desta coluna existir receberam o
   /// dia do servico (migration 20261103_agendamento_pago_em).
   pagoEm         DateTime?
+  /// Quem chamou no WhatsApp, quando o Admin agenda pelo coringa. NULO nos
+  /// agendamentos feitos pelo proprio cliente, que ja tem nome e telefone.
+  contatoNome     String?
+  contatoTelefone String?
   criadoEm       DateTime          @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
