@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { montarEmailHtml, type DadosDoEmail } from "@/back/notificacoes/modelo-email";
+import { montarEmailHtml, montarEmailRedefinicao, type DadosDoEmail } from "@/back/notificacoes/modelo-email";
 
 // RF08, RF09 — o e-mail em HTML que o cliente recebe: a estetica no topo, os
 // dados do agendamento, os botoes e o Astro no rodape. Funcao pura: recebe os
@@ -163,5 +163,33 @@ describe("montarEmailHtml — seguranca", () => {
     expect(html).not.toContain("<img src=x");
     expect(html).not.toContain("<b>Loja</b>");
     expect(html).toContain("&lt;b&gt;Loja&lt;/b&gt; &amp; Cia");
+  });
+});
+
+describe("montarEmailRedefinicao (RFC 6.2)", () => {
+  const LINK = "https://useastro.app.br/demo/redefinir-senha?token=abc123";
+  const montar = (nome = "Estetica Demo") =>
+    montarEmailRedefinicao({
+      clienteNome: "Maria Souza",
+      estetica: { nome, slug: "demo", logoUrl: null },
+      link: LINK,
+    });
+
+  test("traz a estetica, o primeiro nome e o botao com o link", () => {
+    const html = montar();
+    expect(html).toContain("Estetica Demo");
+    expect(html).toContain("Olá, Maria.");
+    expect(html).toContain(`href="${LINK}"`);
+    expect(html).toContain("Criar nova senha");
+  });
+
+  test("avisa que o link vale 1 hora e o que fazer se nao foi a pessoa", () => {
+    const html = montar();
+    expect(html).toContain("vale por 1 hora");
+    expect(html).toContain("Se não foi você");
+  });
+
+  test("texto da estetica nao vira HTML", () => {
+    expect(montar("<b>Loja</b>")).toContain("&lt;b&gt;Loja&lt;/b&gt;");
   });
 });

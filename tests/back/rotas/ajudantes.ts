@@ -101,6 +101,7 @@ export async function removerEstetica(slug: string) {
 
   await withTenant(tenantId, async (tx) => {
     await tx.notificacao.deleteMany({ where: { tenantId } });
+    await tx.tokenEmail.deleteMany({ where: { tenantId } });
     await tx.agendamento.deleteMany({ where: { tenantId } });
     await tx.precoServico.deleteMany({ where: { tenantId } });
     await tx.veiculo.deleteMany({ where: { tenantId } });
