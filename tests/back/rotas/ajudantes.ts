@@ -45,6 +45,8 @@ export async function criarEstetica(nome: string) {
           telefone: "47999990000",
           senhaHash: SENHA_HASH,
           role: papel,
+          // Clientes que ja confirmaram o e-mail: recebem os avisos por e-mail.
+          emailConfirmadoEm: new Date(),
         },
       });
 

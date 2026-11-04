@@ -17,6 +17,10 @@ import { criarEstetica, entrarComo, pedido, removerEstetica, SENHA, type Estetic
 // vinculo com o Telegram. Tambem a rota chamada pelo agendador de lembretes.
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
+// O cadastro manda o link de confirmacao: sem isto, sairia e-mail de verdade.
+vi.mock("@/back/notificacoes/email", () => ({
+  enviarEmail: vi.fn(async () => ({ enviado: true, modo: "log" })),
+}));
 vi.mock("@/back/notificacoes/telegram", () => ({
   enviarTelegram: vi.fn(async () => ({ enviado: true, modo: "log" })),
 }));
