@@ -80,6 +80,7 @@ export function FinanceiroDashboard({
   porCliente,
   aReceberLista,
   acrescimos,
+  origem,
 }: {
   slug: string;
   periodo: Periodo;
@@ -95,6 +96,8 @@ export function FinanceiroDashboard({
   porCliente: { nome: string; receita: number; visitas: number }[];
   aReceberLista: ItemPagamento[];
   acrescimos: ItemAcrescimo[];
+  // Receita de quem agendou pelo site x a que o Admin agendou pelo coringa.
+  origem: Record<"site" | "admin", { valor: number; qtd: number }>;
 }) {
   const router = useRouter();
   const [verAcrescimos, setVerAcrescimos] = useState(false);
@@ -277,8 +280,39 @@ export function FinanceiroDashboard({
               <p className="my-auto py-6 text-center text-sm text-astro-muted">Nenhum pagamento confirmado no período.</p>
             )}
 
-            {/* Acrescimos: um resumo aqui e o detalhe no modal */}
-            <div className="mt-auto pt-5">
+            <div className="mt-auto grid gap-3 pt-5">
+              {/* Origem: quanto veio do site e quanto o Admin agendou pelo
+                  coringa (quem chamou no WhatsApp ou no Instagram). */}
+              <section aria-label="Origem" className="rounded-2xl bg-white/[0.04] p-3.5">
+                <p className="text-xs text-astro-muted">Origem</p>
+                {receitaTotal > 0 && (
+                  <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
+                    <span
+                      className="bg-astro-blue-bright"
+                      style={{ width: `${(origem.site.valor / receitaTotal) * 100}%` }}
+                    />
+                  </div>
+                )}
+                <ul className="mt-2 grid gap-1.5 text-sm">
+                  {[
+                    { rotulo: "Pelo site", ...origem.site, cor: "var(--color-astro-blue-bright)" },
+                    { rotulo: "Agendado pelo Admin", ...origem.admin, cor: "rgb(255 255 255 / 0.28)" },
+                  ].map((o) => (
+                    <li key={o.rotulo} className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: o.cor }} />
+                      <span className="min-w-0">
+                        <span className="block text-slate-200">{o.rotulo}</span>
+                        <span className="block text-xs text-astro-muted">
+                          {o.qtd} {o.qtd === 1 ? "atendimento" : "atendimentos"}
+                        </span>
+                      </span>
+                      <span className="ml-auto font-semibold whitespace-nowrap text-white">{formatarReal(o.valor)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              {/* Acrescimos: um resumo aqui e o detalhe no modal */}
               <div className="rounded-2xl bg-white/[0.04] p-3.5">
                 <p className="text-xs text-astro-muted">Acréscimos cobrados</p>
                 <p className="mt-0.5 text-sm text-slate-200">

@@ -6,6 +6,7 @@ import { filtroDoPeriodo, resumoDoPeriodo } from "@/compartilhado/financeiro";
 import { FUSO, chaveDia, fimDoDia, horaMinuto, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
+import { nomeDoCliente } from "@/compartilhado/contato";
 import { AgendaHoje } from "@/front/admin/agenda-hoje";
 import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "@/front/admin/cartao-faturamento";
 import { EsperandoVoce } from "@/front/admin/esperando-voce";
@@ -173,7 +174,7 @@ export default async function AdminDashboardPage({
       id: a.id,
       inicioMin,
       fimMin: inicioMin + a.servico.duracaoMin,
-      cliente: a.usuario.nome,
+      cliente: nomeDoCliente(a),
       detalhe: `${a.servico.nome} · ${a.veiculo.modelo}`,
       status: a.status,
     };
@@ -195,7 +196,7 @@ export default async function AdminDashboardPage({
           : dia === amanhaChave
             ? "amanhã"
             : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
-      cliente: a.usuario.nome,
+      cliente: nomeDoCliente(a),
       detalhe: `${a.servico.nome} · ${a.veiculo.modelo} · ${a.veiculo.placa} · ${formatarReal(Number(a.valor))}`,
     };
   });

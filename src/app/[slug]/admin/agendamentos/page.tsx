@@ -6,6 +6,7 @@ import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { AgendamentosLista, type DiaSemana, type ItemAgendamento } from "@/front/admin/agendamentos-lista";
 import { NovoAgendamentoAdmin } from "@/front/admin/novo-agendamento-admin";
+import { nomeDoCliente } from "@/compartilhado/contato";
 
 // RF11, UC10 — agenda do painel administrativo, em linha do tempo.
 //
@@ -102,7 +103,7 @@ export default async function AdminAgendamentosPage({
       fimISO: new Date(a.dataHora.getTime() + a.servico.duracaoMin * 60000).toISOString(),
       duracaoMin: a.servico.duracaoMin,
       // Pelo coringa, o contato e quem chamou no WhatsApp, e nao ha e-mail.
-      clienteNome: a.contatoNome ?? a.usuario.nome,
+      clienteNome: nomeDoCliente(a),
       clienteTelefone: a.contatoTelefone ?? a.usuario.telefone ?? "",
       clienteEmail: a.usuario.coringa ? "" : a.usuario.email,
       peloAdmin: a.usuario.coringa,

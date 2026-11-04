@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/back/auth";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
+import { agruparContatosDoAdmin } from "@/compartilhado/contato";
 import { ClientesAdmin, type ClienteDoPainel } from "@/front/admin/clientes-admin";
 
 // Aba Clientes do painel (decisao do orientador, 30/10): quem ja se cadastrou
@@ -22,15 +23,23 @@ export default async function AdminClientesPage({ params }: { params: Promise<{ 
     redirect(`/${slug}`);
   }
 
-  const usuarios = await withTenant(tenant.id, (tx) =>
-    tx.usuario.findMany({
-      where: { tenantId: tenant.id, role: "CLIENTE" },
-      include: {
-        veiculos: { where: { ativo: true }, include: { segmento: true } },
-        agendamentos: { include: { servico: true, veiculo: true }, orderBy: { dataHora: "desc" } },
-      },
-      orderBy: { nome: "asc" },
-    })
+  const [usuarios, doCoringa] = await withTenant(tenant.id, (tx) =>
+    Promise.all([
+      tx.usuario.findMany({
+        // O coringa nao e um cliente: os agendados por ele vao para o bloco
+        // "Agendado pelo Admin", agrupados por quem chamou.
+        where: { tenantId: tenant.id, role: "CLIENTE", coringa: false },
+        include: {
+          veiculos: { where: { ativo: true }, include: { segmento: true } },
+          agendamentos: { include: { servico: true, veiculo: true }, orderBy: { dataHora: "desc" } },
+        },
+        orderBy: { nome: "asc" },
+      }),
+      tx.agendamento.findMany({
+        where: { tenantId: tenant.id, usuario: { coringa: true } },
+        include: { veiculo: true },
+      }),
+    ])
   );
 
   const clientes: ClienteDoPainel[] = usuarios.map((u) => ({
@@ -57,5 +66,12 @@ export default async function AdminClientesPage({ params }: { params: Promise<{ 
     })),
   }));
 
-  return <ClientesAdmin clientes={clientes} agoraISO={new Date().toISOString()} />;
+  const agora = new Date();
+  return (
+    <ClientesAdmin
+      clientes={clientes}
+      contatosDoAdmin={agruparContatosDoAdmin(doCoringa, agora)}
+      agoraISO={agora.toISOString()}
+    />
+  );
 }
