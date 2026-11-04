@@ -186,3 +186,51 @@ describe("ClientesAdmin", () => {
     expect(screen.getByText("Quando alguém criar conta na sua estética, aparece aqui.")).toBeInTheDocument();
   });
 });
+
+describe("ClientesAdmin — agendados pelo Admin", () => {
+  const CONTATOS = [
+    {
+      telefone: "47988887777",
+      nome: "Joao do WhatsApp",
+      agendamentos: 2,
+      ultimoISO: dias(-3),
+      proximoISO: dias(4),
+      carros: ["Civic · QWE1R23"],
+    },
+    { telefone: "47911112222", nome: "Ana do Instagram", agendamentos: 1, ultimoISO: dias(-40), proximoISO: null, carros: ["Onix"] },
+  ];
+
+  test("ficam num bloco separado, com o carro e o WhatsApp de quem chamou", () => {
+    render(<ClientesAdmin clientes={[cliente("maria", "Maria Souza")]} contatosDoAdmin={CONTATOS} agoraISO={AGORA} />);
+
+    const bloco = screen.getByRole("region", { name: "Agendado pelo Admin" });
+    expect(within(bloco).getByText("Joao do WhatsApp")).toBeInTheDocument();
+    expect(within(bloco).getByText(/Civic · QWE1R23/)).toBeInTheDocument();
+    expect(within(bloco).getAllByRole("link", { name: /WhatsApp/ })[0]).toHaveAttribute(
+      "href",
+      "https://wa.me/5547988887777"
+    );
+    // Nao se misturam com os clientes que tem conta.
+    expect(nomesDaLista()).toEqual([expect.stringContaining("Maria Souza")]);
+  });
+
+  test("a busca tambem procura neles", () => {
+    render(<ClientesAdmin clientes={[]} contatosDoAdmin={CONTATOS} agoraISO={AGORA} />);
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar cliente" }), { target: { value: "qwe-1r23" } });
+
+    const bloco = screen.getByRole("region", { name: "Agendado pelo Admin" });
+    expect(within(bloco).getByText("Joao do WhatsApp")).toBeInTheDocument();
+    expect(within(bloco).queryByText("Ana do Instagram")).not.toBeInTheDocument();
+  });
+
+  test("sem ninguem agendado pelo Admin, o bloco nao aparece", () => {
+    render(<ClientesAdmin clientes={[cliente("maria", "Maria Souza")]} contatosDoAdmin={[]} agoraISO={AGORA} />);
+    expect(screen.queryByRole("region", { name: "Agendado pelo Admin" })).not.toBeInTheDocument();
+  });
+});
+
+const nomesDaLista = () =>
+  within(screen.getByRole("region", { name: "Lista de clientes" }))
+    .getAllByRole("button")
+    .map((b) => b.textContent);
