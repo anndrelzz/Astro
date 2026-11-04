@@ -62,16 +62,17 @@ describe("POST /api/auth/cadastro", () => {
     expect((await cadastrar(pedido("POST", "/api/auth/cadastro", "x"))).status).toBe(400);
   });
 
+  // O `campo` deixa a tela mostrar a mensagem embaixo do campo certo.
   test.each([
-    [{ senha: "senha123" }, "Senha deve conter ao menos 1 letra maiuscula"],
-    [{ senha: "SenhaSemNumero" }, "Senha deve conter ao menos 1 numero"],
-    [{ senha: "Se1" }, "Senha deve ter ao menos 8 caracteres"],
-    [{ telefone: "1234" }, "Telefone invalido - informe DDD + numero (10 ou 11 digitos)"],
-    [{ email: "maria@" }, "E-mail invalido"],
-  ])("dado invalido %o responde 400 com a mensagem certa", async (extra, mensagem) => {
+    [{ senha: "senha123" }, "Senha deve conter ao menos 1 letra maiuscula", "senha"],
+    [{ senha: "SenhaSemNumero" }, "Senha deve conter ao menos 1 numero", "senha"],
+    [{ senha: "Se1" }, "Senha deve ter ao menos 8 caracteres", "senha"],
+    [{ telefone: "1234" }, "Telefone invalido - informe DDD + numero (10 ou 11 digitos)", "telefone"],
+    [{ email: "maria@" }, "E-mail invalido", "email"],
+  ])("dado invalido %o responde 400 com a mensagem e o campo", async (extra, mensagem, campo) => {
     const resposta = await cadastrar(pedido("POST", "/api/auth/cadastro", conta(extra)));
     expect(resposta.status).toBe(400);
-    expect(await resposta.json()).toEqual({ error: mensagem });
+    expect(await resposta.json()).toMatchObject({ error: mensagem, campo });
   });
 
   test("estetica que nao existe responde 404", async () => {
@@ -166,7 +167,17 @@ describe("PATCH /api/perfil", () => {
     entrarComo(e.outroCliente);
     expect((await editarPerfil(pedido("PATCH", "/api/perfil", "x"))).status).toBe(400);
     const resposta = await editarPerfil(pedido("PATCH", "/api/perfil", { nome: " ", telefone: "4799999999" }));
-    expect(await resposta.json()).toEqual({ error: "Informe o nome completo" });
+    expect(await resposta.json()).toMatchObject({ error: "Informe o nome completo", campo: "nome" });
+  });
+
+  test("telefone invalido aponta o campo telefone", async () => {
+    entrarComo(e.outroCliente);
+    const resposta = await editarPerfil(pedido("PATCH", "/api/perfil", { nome: "Joao", telefone: "123" }));
+    expect(resposta.status).toBe(400);
+    expect(await resposta.json()).toMatchObject({
+      error: "Telefone invalido - informe DDD + numero (10 ou 11 digitos)",
+      campo: "telefone",
+    });
   });
 
   test("atualiza nome e telefone do proprio cliente", async () => {
