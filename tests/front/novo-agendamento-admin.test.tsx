@@ -25,7 +25,7 @@ afterEach(() => {
   for (const f of Object.values(roteador)) f.mockReset();
 });
 
-const SERVICOS = [
+const SERVICOS: { id: string; nome: string; duracaoMin: number; precos: Record<string, number> }[] = [
   { id: "serv-lav", nome: "Lavagem completa", duracaoMin: 60, precos: { "seg-hatch": 60, "seg-suv": 90 } },
   { id: "serv-pol", nome: "Polimento", duracaoMin: 180, precos: { "seg-hatch": 350 } },
 ];

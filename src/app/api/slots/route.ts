@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { conferirDataAgendamento } from "@/compartilhado/agenda";
+import { conferirDataAgendamento, JANELA_AGENDAMENTO_ADMIN_DIAS } from "@/compartilhado/agenda";
 import { authOptions } from "@/back/auth";
 import { instanteNoFuso } from "@/compartilhado/fuso";
 import { calcularSlotsDisponiveis } from "@/back/slots";
@@ -22,12 +22,15 @@ export async function GET(request: Request) {
   const tenantId = searchParams.get("tenantId");
   const servicoId = searchParams.get("servicoId");
   const data = searchParams.get("data"); // formato YYYY-MM-DD
+  // Horarios para o Admin agendar pelo coringa: ate 60 dias e sem a
+  // antecedencia minima (decisao de 04/11). So o Admin pode pedir.
+  const paraAdmin = searchParams.get("paraAdmin") === "1";
 
   if (!tenantId || !servicoId || !data) {
     return NextResponse.json({ error: "Parametros invalidos" }, { status: 400 });
   }
 
-  if (tenantId !== session.user.tenantId) {
+  if (tenantId !== session.user.tenantId || (paraAdmin && session.user.role !== "ADMIN")) {
     return NextResponse.json({ error: "Nao autorizado" }, { status: 403 });
   }
 
@@ -38,7 +41,9 @@ export async function GET(request: Request) {
     );
   }
 
-  const erroData = conferirDataAgendamento(data);
+  const erroData = paraAdmin
+    ? conferirDataAgendamento(data, new Date(), JANELA_AGENDAMENTO_ADMIN_DIAS)
+    : conferirDataAgendamento(data);
   if (erroData) {
     return NextResponse.json({ error: erroData }, { status: 400 });
   }
@@ -63,7 +68,14 @@ export async function GET(request: Request) {
       return { error: "Nao encontrado" } as const;
     }
 
-    const slots = await calcularSlotsDisponiveis(tx, tenant, servico, dataConsulta);
+    const slots = await calcularSlotsDisponiveis(
+      tx,
+      tenant,
+      servico,
+      dataConsulta,
+      new Date(),
+      paraAdmin ? { antecedenciaMin: 0 } : {}
+    );
     return { slots } as const;
   });
 

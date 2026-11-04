@@ -7,6 +7,9 @@ import { chaveDia, inicioDoDia, instanteNoFuso } from "@/compartilhado/fuso";
 // Importado pela tela (componente client): nada de servidor aqui.
 export const JANELA_AGENDAMENTO_DIAS = 14;
 
+// O Admin agenda mais longe, por quem chamou no WhatsApp (decisao de 04/11).
+export const JANELA_AGENDAMENTO_ADMIN_DIAS = 60;
+
 /**
  * Confere uma data "AAAA-MM-DD" vinda do cliente. Devolve a mensagem de erro,
  * ou null se a data existe e esta entre hoje e o ultimo dia da janela, no
@@ -15,7 +18,11 @@ export const JANELA_AGENDAMENTO_DIAS = 14;
  * "Existe" importa porque instanteNoFuso normaliza como o Date.UTC: 31/02 vira
  * 03/03 em silencio, e o cliente ficaria agendado num dia que nao escolheu.
  */
-export function conferirDataAgendamento(data: string, agora: Date = new Date()): string | null {
+export function conferirDataAgendamento(
+  data: string,
+  agora: Date = new Date(),
+  janelaDias: number = JANELA_AGENDAMENTO_DIAS
+): string | null {
   // Fora do formato, o split gera NaN e o Date invalido faz o chaveDia lancar.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
     return "Data invalida";
@@ -28,9 +35,9 @@ export function conferirDataAgendamento(data: string, agora: Date = new Date()):
 
   // "AAAA-MM-DD" ordena como texto na mesma ordem do calendario.
   const hoje = chaveDia(agora);
-  const ultimoDia = chaveDia(inicioDoDia(agora, JANELA_AGENDAMENTO_DIAS - 1));
+  const ultimoDia = chaveDia(inicioDoDia(agora, janelaDias - 1));
   if (data < hoje || data > ultimoDia) {
-    return `Escolha uma data entre hoje e os proximos ${JANELA_AGENDAMENTO_DIAS} dias`;
+    return `Escolha uma data entre hoje e os proximos ${janelaDias} dias`;
   }
 
   return null;
