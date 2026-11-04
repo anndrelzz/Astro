@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/back/auth";
-import { lerJson } from "@/back/api-helpers";
+import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
 import { withTenant } from "@/back/tenant-db";
 import { veiculoSchema } from "@/compartilhado/validacoes/veiculo";
 
@@ -18,10 +18,7 @@ export async function POST(request: Request) {
   }
   const parsed = veiculoSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Dados invalidos", detalhes: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return respostaDadosInvalidos(parsed.error);
   }
 
   const resultado = await withTenant(session.user.tenantId, async (tx) => {

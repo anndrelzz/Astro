@@ -66,6 +66,26 @@ describe("POST /api/veiculos", () => {
     expect((await resposta.json()).detalhes.fieldErrors.placa).toBeDefined();
   });
 
+  test("placa invalida devolve a mensagem do campo, e nao so 'Dados invalidos'", async () => {
+    entrarComo(e.cliente);
+    const resposta = await cadastrarVeiculo(pedido("POST", "/api/veiculos", carro({ placa: "aaaaaaa" })));
+
+    expect(resposta.status).toBe(400);
+    expect(await resposta.json()).toMatchObject({
+      error: "Placa invalida - use o formato ABC-1234 ou ABC1D23 (Mercosul)",
+      campo: "placa",
+    });
+  });
+
+  test("com mais de um campo errado, aponta o primeiro do formulario", async () => {
+    entrarComo(e.cliente);
+    const resposta = await cadastrarVeiculo(
+      pedido("POST", "/api/veiculos", carro({ marca: "", ano: 1900 }))
+    );
+
+    expect(await resposta.json()).toMatchObject({ error: "Informe a marca", campo: "marca" });
+  });
+
   test("cadastra o carro no nome do cliente logado, com a placa normalizada", async () => {
     entrarComo(e.cliente);
     const resposta = await cadastrarVeiculo(pedido("POST", "/api/veiculos", carro()));
