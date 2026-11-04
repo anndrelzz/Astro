@@ -5,6 +5,7 @@ import { FUSO } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { enviarEmail } from "@/back/notificacoes/email";
+import { montarEmailHtml } from "@/back/notificacoes/modelo-email";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
 
 const ASSUNTOS: Record<TipoNotificacao, string> = {
@@ -100,18 +101,31 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
     const notificacao = await withTenant(tenantId, (tx) =>
       tx.notificacao.findUnique({
         where: { id: notificacaoId },
-        include: { agendamento: { include: { usuario: true, servico: true } } },
+        include: {
+          agendamento: { include: { usuario: true, servico: true, veiculo: true, tenant: true } },
+        },
       })
     );
     if (!notificacao) return;
 
-    const { usuario, servico, dataHora } = notificacao.agendamento;
+    const { usuario, servico, veiculo, tenant, dataHora } = notificacao.agendamento;
     const texto = montarMensagem(notificacao.tipo, servico.nome, dataHora);
 
     let enviado = false;
     try {
       if (notificacao.canal === "EMAIL") {
-        enviado = (await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto)).enviado;
+        const html = montarEmailHtml({
+          tipo: notificacao.tipo,
+          clienteNome: usuario.nome,
+          estetica: tenant,
+          servicoNome: servico.nome,
+          veiculo,
+          dataHora,
+          valor: Number(notificacao.agendamento.valor),
+          formaPagamento: notificacao.agendamento.formaPagamento,
+          agora: new Date(),
+        });
+        enviado = (await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto, html)).enviado;
       } else if (usuario.telegramChatId) {
         // Se o cliente desvinculou o Telegram depois do registro, nao ha para
         // onde mandar: fica FALHA, e o reenvio tambem nao acha o chat.

@@ -117,7 +117,12 @@ describe("POST /api/agendamentos", () => {
     expect(gravado!.notificacoes.map((n) => [n.tipo, n.canal])).toEqual([["CONFIRMACAO_AGENDAMENTO", "EMAIL"]]);
     expect(enviarEmail).not.toHaveBeenCalled();
     await depoisDaResposta();
-    expect(enviarEmail).toHaveBeenCalledWith(e.cliente.email, "Agendamento confirmado", expect.any(String));
+    expect(enviarEmail).toHaveBeenCalledWith(
+      e.cliente.email,
+      "Agendamento confirmado",
+      expect.any(String),
+      expect.stringContaining("<!doctype html>")
+    );
   });
 
   test("agendamento por PIX fica com PIX pendente e devolve o codigo", async () => {
