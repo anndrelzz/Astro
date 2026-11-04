@@ -64,9 +64,15 @@ export default defineConfig(({ mode }) => ({
       exclude: ["src/front/cliente/cliente-shell.tsx"],
       // Metas do Playbook (requisito de aprovacao): 75% das linhas do backend e
       // 25% do front. Abaixo disso, `npm run test:cobertura` e o CI falham, e o
-      // PR fica vermelho.
+      // PR fica vermelho. O proxy e backend: tem meta propria porque fica fora
+      // das pastas do glob.
+      //
+      // As metas so fazem sentido numa rodada com os dois projetos. Com um so
+      // (`--project front --coverage`), a meta do outro falha, porque os
+      // arquivos dele nao rodaram.
       thresholds: {
         "src/{back,compartilhado,app/api}/**": { lines: 75 },
+        "src/proxy.ts": { lines: 75 },
         "src/front/**": { lines: 25 },
       },
       // text: tabela no terminal; html: relatorio navegavel; lcov: formato

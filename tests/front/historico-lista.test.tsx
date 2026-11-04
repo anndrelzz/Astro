@@ -102,6 +102,19 @@ describe("HistoricoLista — cancelamento (RN11)", () => {
     expect(screen.queryAllByRole("button", { name: "Cancelar Lavagem rapida" })).toHaveLength(0);
   });
 
+  // Na fronteira exata, um `>=` trocado por `>` passaria pelos outros testes.
+  test("a janela vale ate o limite exato: 24 h antes ainda pode, 1 min depois nao", () => {
+    render(
+      <HistoricoLista
+        itens={[item("b1", "No limite", 24), item("b2", "Logo depois", 24 - 1 / 60)]}
+        horasLimite={24}
+      />
+    );
+
+    expect(screen.queryAllByRole("button", { name: "Cancelar No limite" }).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("button", { name: "Cancelar Logo depois" })).toHaveLength(0);
+  });
+
   test("confirmando, chama a API e atualiza a tela", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
     renderizar();
