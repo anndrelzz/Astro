@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Car, Mail, MessageCircle, Search, Users } from "lucide-react";
 import type { ContatoDoAdmin } from "@/compartilhado/contato";
 import { iniciais } from "@/compartilhado/iniciais";
@@ -40,6 +40,10 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 // foi ha mais de 60 dias e nao ha nada marcado: e quem o dono quer chamar.
 const NOVO_DIAS = 30;
 const SUMIDO_DIAS = 60;
+
+// Mesma largura do `lg:` do Tailwind (64rem): dali para cima o detalhe fica no
+// painel ao lado da lista; abaixo, no modal.
+const TELA_DE_COMPUTADOR = "(min-width: 64rem)";
 
 const FILTROS: { chave: Filtro; rotulo: string }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -191,9 +195,25 @@ export function ClientesAdmin({
 
   const selecionado = comResumo.find((c) => c.cliente.id === selecionadoId) ?? visiveis[0] ?? null;
 
+  // Se a tela cresce para computador com o modal aberto (janela redimensionada,
+  // celular girado), o modal fica escondido mas ainda aberto — e trava a
+  // pagina. Fecha junto.
+  useEffect(() => {
+    const consulta = window.matchMedia?.(TELA_DE_COMPUTADOR);
+    if (!consulta) return;
+    const aoMudar = (e: { matches: boolean }) => {
+      if (e.matches) setModalAberto(false);
+    };
+    consulta.addEventListener("change", aoMudar);
+    return () => consulta.removeEventListener("change", aoMudar);
+  }, []);
+
   function abrir(id: string) {
     setSelecionadoId(id);
-    setModalAberto(true);
+    // O modal so existe no celular. O <dialog> nativo aberto deixa o resto da
+    // pagina inerte mesmo escondido pelo lg:hidden: no computador, abrir o
+    // modal travava a tela inteira (so saia com F5).
+    if (!window.matchMedia?.(TELA_DE_COMPUTADOR).matches) setModalAberto(true);
     // No computador, o detalhe precisa aparecer inteiro: se ele estiver
     // cortado pela borda da tela, a pagina rola ate o topo dele, e o `sticky`
     // o segura ali enquanto a lista continua rolando.
