@@ -38,7 +38,7 @@ export function Plano() {
   const plano = PLANOS[cobranca];
 
   return (
-    <div className="grid justify-items-center gap-7">
+    <div className="grid justify-items-center gap-5">
       <div
         role="group"
         aria-label="Forma de cobrança"
@@ -83,7 +83,7 @@ export function Plano() {
 
       {/* No computador, preco e botao a esquerda e o que esta incluido a
           direita: o cartao fica baixo e a secao cabe numa tela. */}
-      <article className="grid w-full max-w-[31rem] gap-6 rounded-[1.75rem] border border-landing-glow/45 bg-[linear-gradient(180deg,#27272a,#111113)] p-6 shadow-[0_30px_80px_-30px_rgba(37,99,235,0.6)] sm:p-9 md:max-w-[62rem] md:grid-cols-2 md:gap-x-10">
+      <article className="grid w-full max-w-[31rem] gap-6 rounded-[1.75rem] border border-landing-glow/45 bg-[linear-gradient(180deg,#27272a,#111113)] p-6 shadow-[0_30px_80px_-30px_rgba(37,99,235,0.6)] sm:p-7 md:max-w-[62rem] md:grid-cols-2 md:gap-x-10">
         <div className="grid content-between gap-6">
           <div className="flex items-center justify-between gap-4">
             <h3 className="text-2xl font-extrabold">Astro</h3>
