@@ -183,7 +183,7 @@ export function PorDentro() {
       </div>
 
       {/* Janela de navegador com o print real. */}
-      <div className="mx-auto w-full lg:max-w-[calc((100svh_-_15.25rem)_*_1.6)]">
+      <div className="mx-auto w-full lg:max-w-[calc((100svh_-_15.5rem)_*_1.6)]">
         <Janela
           aba={aba}
           ativa={ativa}
