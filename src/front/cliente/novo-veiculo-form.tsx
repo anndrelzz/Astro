@@ -1,0 +1,400 @@
+"use client";
+
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft, Check } from "lucide-react";
+import Link from "next/link";
+import { ThemeColor } from "@/front/componentes/theme-color";
+import { InputPlaca } from "@/front/componentes/input-placa";
+import { callbackUrlSeguro } from "@/compartilhado/callback-url";
+import { LIMITES } from "@/compartilhado/validacoes/limites";
+
+// Os tipos de veiculo agora sao da estetica (RN01 revisada), entao chegam do
+// servidor em vez de estarem escritos aqui. Cada uma define os seus: uma pode
+// separar picape pequena de grande, outra pode nem atender picape.
+export type SegmentoOpcao = { id: string; nome: string };
+
+// Quanto tempo a confirmacao "Carro cadastrado!" fica na tela antes de seguir.
+// Curto o bastante para nao atrasar quem agenda toda semana, longo o bastante
+// para o cliente ler que deu certo.
+export const TEMPO_CONFIRMACAO_MS = 900;
+
+// UC02, tela 08 — cadastro de veiculo. RN04: apos salvar, retorna ao fluxo
+// de agendamento (callbackUrl) quando acessado a partir do "Agendar".
+//
+// A tela vive aqui, e nao em page.tsx, porque precisa de estado do formulario
+// (client). A pagina virou um Server Component so para poder envolver isto na
+// ClienteShell, que consulta a sessao no servidor.
+//
+// `emModal` troca so o involucro: dentro do pop-up (rota interceptada) o
+// cabecalho escuro e o titulo ja vem do casulo, entao aqui sobra o formulario.
+// Os campos e as regras sao os mesmos nos dois casos.
+export function NovoVeiculoForm({
+  emModal = false,
+  segmentos,
+}: {
+  emModal?: boolean;
+  segmentos: SegmentoOpcao[];
+}) {
+  const { slug } = useParams<{ slug: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Valor fora da propria estetica e ignorado (ver callback-url.ts).
+  const callbackUrl = callbackUrlSeguro(searchParams.get("callbackUrl"), slug) ?? `/${slug}`;
+
+  const [form, setForm] = useState({
+    segmentoId: segmentos[0]?.id ?? "",
+    marca: "",
+    modelo: "",
+    placa: "",
+    ano: "",
+    cor: "",
+  });
+  const [erro, setErro] = useState<string | null>(null);
+  // Erro que a API apontou num campo: aparece embaixo dele, nao no topo.
+  const [erroCampo, setErroCampo] = useState<{ campo: string; mensagem: string } | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  // Depois de salvar: o nome do carro, para a confirmacao.
+  const [salvo, setSalvo] = useState<string | null>(null);
+  const movimentoReduzido = useReducedMotion();
+  // Veio do "Agendar" de um servico: depois de salvar, segue para ele.
+  const vaiAgendar = callbackUrl.startsWith(`/${slug}/agendar/`);
+
+  // Timers e escuta do "voltar" que ainda estiverem pendentes quando o
+  // componente sair da tela.
+  const limpezas = useRef<(() => void)[]>([]);
+  useEffect(() => () => limpezas.current.forEach((limpar) => limpar()), []);
+
+  function set(campo: string, valor: string) {
+    setForm((a) => ({ ...a, [campo]: valor }));
+    // Mexeu no campo errado: o aviso dele ja nao vale.
+    setErroCampo((atual) => (atual?.campo === campo ? null : atual));
+  }
+
+  // Liga o campo a mensagem de erro dele (o leitor de tela le as duas juntas).
+  function marcacao(campo: string) {
+    return erroCampo?.campo === campo
+      ? { "aria-invalid": true, "aria-describedby": `erro-${campo}` }
+      : {};
+  }
+
+  function erroDo(campo: string) {
+    return (
+      erroCampo?.campo === campo && (
+        <p id={`erro-${campo}`} className="text-xs font-medium text-red-600">
+          {erroCampo.mensagem}
+        </p>
+      )
+    );
+  }
+
+  function depois(ms: number, fn: () => void) {
+    const id = setTimeout(fn, ms);
+    limpezas.current.push(() => clearTimeout(id));
+  }
+
+  // Sai do cadastro para o destino. No modal, fechar e SEMPRE ir com
+  // router.back() (mesmo metodo do X, do Cancelar e do Esc em ModalRota) - e
+  // o unico jeito que fecha de verdade o slot da rota interceptada.
+  // router.replace(callbackUrl) so trocava a URL de fundo sem desmontar o
+  // pop-up, porque replace nao desfaz a navegacao soft que abriu a rota
+  // interceptada.
+  //
+  // Vindo do "Agendar" de um servico, a tela de tras e a home, nao o
+  // agendamento: entao primeiro volta (o pop-up fecha) e, so quando o
+  // navegador terminou de voltar, segue para o agendamento. Navegar antes do
+  // "voltar" terminar faria as duas navegacoes brigarem pelo historico.
+  function sair() {
+    if (!emModal) {
+      router.push(callbackUrl);
+      router.refresh();
+      return;
+    }
+    if (!vaiAgendar) {
+      router.back();
+      router.refresh();
+      return;
+    }
+    // O Next ouve o popstate antes daqui e, no mesmo instante, fecha o pop-up:
+    // este componente sai da tela antes de o evento chegar a este ouvinte. Por
+    // isso nem o ouvinte nem a ida ao agendamento entram nas limpezas, senao a
+    // propria saida do pop-up os cancelaria. O ouvinte se remove ao rodar.
+    const seguir = () => {
+      window.removeEventListener("popstate", seguir);
+      setTimeout(() => router.push(callbackUrl), 0);
+    };
+    window.addEventListener("popstate", seguir);
+    router.back();
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    setErroCampo(null);
+    setCarregando(true);
+
+    const resposta = await fetch("/api/veiculos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
+    setCarregando(false);
+    if (!resposta.ok) {
+      const json = await resposta.json().catch(() => null);
+      if (json?.campo && json?.error) {
+        setErroCampo({ campo: json.campo, mensagem: json.error });
+        return;
+      }
+      setErro(json?.error ?? "Não foi possível cadastrar o veículo. Confira os dados.");
+      return;
+    }
+
+    // Confirma antes de trocar de tela: uma troca instantanea deixava a duvida
+    // de se tinha dado certo.
+    const segmento = segmentos.find((s) => s.id === form.segmentoId)?.nome;
+    setSalvo(`${form.marca.trim()} ${form.modelo.trim()}${segmento ? ` · ${segmento}` : ""}`);
+    depois(TEMPO_CONFIRMACAO_MS, sair);
+  }
+
+  const inputCls =
+    "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-astro-blue focus:outline-none aria-[invalid=true]:border-red-500";
+
+  const formulario = (
+    <form
+      onSubmit={handleSubmit}
+      className={`space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 ${
+        emModal ? "mt-5" : "mt-6"
+      }`}
+    >
+          {erro && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 lg:order-1 lg:col-span-2">
+              {erro}
+            </p>
+          )}
+
+          {/* O mockup poe o segmento depois dos dados do carro: primeiro se
+              descreve o veiculo, depois se classifica. No celular ele continua
+              em primeiro, como estava — a ordem muda so no desktop, via
+              `order`, sem mexer na ordem do DOM. */}
+          <div className="space-y-1.5 lg:order-7 lg:col-span-2">
+            <label className="astro-label">Segmento</label>
+            {/* Lista suspensa no celular (um toque, sem ocupar altura) e
+                pastilhas no desktop, que mostram de uma vez o que existe. Os
+                dois escrevem no mesmo estado. Quantas opcoes aparecem depende
+                da estetica, entao as pastilhas quebram em linhas. */}
+            <select
+              value={form.segmentoId}
+              onChange={(e) => set("segmentoId", e.target.value)}
+              className={`${inputCls} lg:hidden`}
+              {...marcacao("segmentoId")}
+            >
+              {segmentos.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
+
+            <div className="hidden flex-wrap gap-2 lg:flex">
+              {segmentos.map((s) => {
+                const ativo = form.segmentoId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => set("segmentoId", s.id)}
+                    aria-pressed={ativo}
+                    className={
+                      ativo
+                        ? "flex items-center gap-1.5 rounded-xl bg-astro-bg px-4 py-2.5 text-sm font-semibold text-white"
+                        : "rounded-xl border border-zinc-200 px-4 py-2.5 text-sm text-zinc-700 transition hover:border-zinc-300"
+                    }
+                  >
+                    {ativo && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-astro-blue-bright" />
+                    )}
+                    {s.nome}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* RN01 — o segmento e o que decide o preco. A dica fica colada na
+                escolha, que e onde ela muda a decisao. */}
+            <p className="pt-1 text-xs text-zinc-500">
+              O segmento define o preço do serviço.
+            </p>
+            {erroDo("segmentoId")}
+          </div>
+
+          <div className="space-y-1.5 lg:order-2">
+            <label className="astro-label">Marca</label>
+            <input
+              className={inputCls}
+              placeholder="Ex: Jeep"
+              value={form.marca}
+              maxLength={LIMITES.marcaVeiculo}
+              onChange={(e) => set("marca", e.target.value)}
+              required
+              {...marcacao("marca")}
+            />
+            {erroDo("marca")}
+          </div>
+
+          <div className="space-y-1.5 lg:order-3">
+            <label className="astro-label">Modelo</label>
+            <input
+              className={inputCls}
+              placeholder="Ex: Compass Limited"
+              value={form.modelo}
+              maxLength={LIMITES.modeloVeiculo}
+              onChange={(e) => set("modelo", e.target.value)}
+              required
+              {...marcacao("modelo")}
+            />
+            {erroDo("modelo")}
+          </div>
+
+          <div className="space-y-1.5 lg:order-5">
+            <label className="astro-label">Placa</label>
+            <InputPlaca
+              valor={form.placa}
+              aoMudar={(v) => set("placa", v)}
+              invalido={erroCampo?.campo === "placa"}
+              descritoPor={erroCampo?.campo === "placa" ? "erro-placa" : undefined}
+            />
+            {erroDo("placa")}
+          </div>
+
+          <div className="space-y-1.5 lg:order-4">
+            <label className="astro-label">Ano</label>
+            <input
+              type="number"
+              className={inputCls}
+              placeholder="2023"
+              value={form.ano}
+              onChange={(e) => set("ano", e.target.value)}
+              required
+              {...marcacao("ano")}
+            />
+            {erroDo("ano")}
+          </div>
+
+          <div className="space-y-1.5 lg:order-6">
+            <label className="astro-label">Cor</label>
+            <input
+              className={inputCls}
+              placeholder="Ex: Preto Carbon"
+              value={form.cor}
+              maxLength={LIMITES.corVeiculo}
+              onChange={(e) => set("cor", e.target.value)}
+              required
+              {...marcacao("cor")}
+            />
+            {erroDo("cor")}
+          </div>
+
+      {/* Na tela cheia do celular so o botao de enviar, como estava — quem
+          volta usa a seta do cabecalho escuro. No desktop e dentro do modal
+          nao ha essa seta, entao o cancelar precisa existir aqui. */}
+      <div
+        className={`lg:order-8 lg:col-span-2 lg:flex lg:flex-row-reverse lg:gap-3 ${
+          emModal ? "flex flex-col-reverse gap-2 lg:gap-3" : ""
+        }`}
+      >
+        <button
+          type="submit"
+          disabled={carregando}
+          className="mt-2 w-full rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25 disabled:opacity-50 lg:mt-0 lg:flex-1"
+        >
+          {carregando ? "Salvando..." : "Cadastrar veículo"}
+        </button>
+
+        {emModal ? (
+          // Dentro do modal, cancelar e voltar no historico — a rota
+          // interceptada trocou a URL, e um link para o callbackUrl empilharia
+          // mais uma entrada em vez de desfazer a que abriu o pop-up.
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="w-full rounded-xl border border-zinc-200 py-3.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 lg:w-auto lg:px-8"
+          >
+            Cancelar
+          </button>
+        ) : (
+          <Link
+            href={callbackUrl}
+            className="hidden items-center justify-center rounded-xl border border-zinc-200 px-8 py-3.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 lg:flex"
+          >
+            Cancelar
+          </Link>
+        )}
+      </div>
+    </form>
+  );
+
+  // Confirmacao no lugar do formulario, enquanto a troca de tela nao acontece.
+  // O aviso vai tambem para leitor de tela (role="status").
+  const confirmacao = salvo && (
+    <motion.div
+      role="status"
+      className={`flex flex-col items-center py-10 text-center ${emModal ? "mt-2" : "mt-6"}`}
+      initial={movimentoReduzido ? false : { opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+    >
+      <motion.span
+        className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_0_0_10px_rgb(16_185_129/0.15)]"
+        initial={movimentoReduzido ? false : { scale: 0.4 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", damping: 14, stiffness: 260, delay: 0.05 }}
+      >
+        <Check className="h-8 w-8" strokeWidth={3} />
+      </motion.span>
+      <p className="mt-5 text-lg font-bold text-zinc-900">Carro cadastrado!</p>
+      <p className="mt-1 text-sm text-zinc-500">{salvo}</p>
+      {vaiAgendar && (
+        <p className="mt-4 text-xs font-medium text-zinc-400">Levando você para o agendamento…</p>
+      )}
+    </motion.div>
+  );
+  const conteudo = confirmacao || formulario;
+
+  // Dentro do pop-up o casulo (ModalRota) ja desenhou o fundo, o titulo e o
+  // botao de fechar. Aqui sobra o formulario.
+  if (emModal) return conteudo;
+
+  return (
+    <div className="min-h-dvh bg-white lg:min-h-0 lg:bg-transparent">
+      <ThemeColor color="#09090b" />
+      {/* Cabecalho escuro — celular. No desktop o titulo vem da casca. */}
+      <div className="astro-dark px-5 pb-10 pt-[calc(env(safe-area-inset-top)+1.5rem)] lg:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-between">
+          <Link
+            href={callbackUrl}
+            aria-label="Voltar"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="font-semibold text-white">Novo veículo</h1>
+          <span className="h-11 w-11" />
+        </div>
+      </div>
+
+      {/* Sheet claro no celular; cartao unico no desktop. A largura e travada
+          em 48rem: num monitor largo, um formulario esticado de ponta a ponta
+          deixa os campos absurdamente longos para dados curtos como ano e cor. */}
+      <div className="mx-auto -mt-4 max-w-md rounded-t-3xl bg-white px-5 pb-10 pt-6 lg:mx-0 lg:mt-0 lg:max-w-none lg:rounded-none lg:bg-transparent lg:px-8 lg:pt-0">
+        <div className="lg:max-w-3xl lg:rounded-2xl lg:border lg:border-zinc-100 lg:bg-white lg:p-7 lg:shadow-sm">
+          <h2 className="text-2xl font-bold text-zinc-900 lg:text-xl">
+            Sobre o veículo
+          </h2>
+          {conteudo}
+        </div>
+      </div>
+    </div>
+  );
+}

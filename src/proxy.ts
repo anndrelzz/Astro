@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 
 // RN02 — acesso aos servicos da estetica exige autenticacao; cliente nao
 // autenticado e redirecionado para a tela de login DAQUELA estetica
-// (astro.app/[slug]/login), nao uma tela generica.
+// (useastro.app.br/[slug]/login), nao uma tela generica.
 export default async function proxy(req: NextRequest) {
   // O matcher usa ":slug" como coringa para o primeiro segmento, o que
   // colide com "/api/..." (ex: /api/veiculos bate com "/:slug/veiculos/:path*").

@@ -1,19 +1,23 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ClienteShell } from "../cliente-shell";
-import { PerfilCliente } from "./perfil-cliente";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ClienteShell } from "@/front/cliente/cliente-shell";
+import { PerfilCliente } from "@/front/cliente/perfil-cliente";
 
 // UC15, tela 04 do mockup — perfil do cliente: dados de contato, estatisticas
 // e lista de veiculos. A edicao (tela 05) e um modal em PerfilCliente.
 export default async function PerfilPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ email?: string }>;
 }) {
   const { slug } = await params;
+  // Volta do link de confirmacao do e-mail (api/auth/confirmar-email).
+  const { email: retornoDoLink } = await searchParams;
 
   const tenant = await prisma.tenant.findUnique({ where: { slug } });
   if (!tenant) notFound();
@@ -41,7 +45,7 @@ export default async function PerfilPage({
   if (!usuario) redirect(`/${slug}/login`);
 
   return (
-    <ClienteShell slug={slug} trilha={["Conta", "Perfil"]} titulo="Meu perfil">
+    <ClienteShell slug={slug} pontos titulo="Meu perfil">
       <PerfilCliente
         slug={slug}
         nome={usuario.nome}
@@ -49,6 +53,10 @@ export default async function PerfilPage({
         telefone={usuario.telefone ?? ""}
         totalAgendamentos={usuario._count.agendamentos}
         telegramVinculado={!!usuario.telegramChatId}
+        emailConfirmado={usuario.emailConfirmadoEm !== null}
+        statusEmail={
+          retornoDoLink === "confirmado" || retornoDoLink === "link-invalido" ? retornoDoLink : undefined
+        }
         veiculos={usuario.veiculos.map((v) => ({
           id: v.id,
           marca: v.marca,

@@ -1,13 +1,14 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { instanteNoFuso } from "@/lib/fuso";
-import { dispararNotificacao } from "@/lib/notificacoes";
-import { calcularPreco } from "@/lib/precificacao";
-import { withTenant } from "@/lib/tenant-db";
-import { calcularSlotsDisponiveis } from "@/lib/slots";
+import { authOptions } from "@/back/auth";
+import { conferirDataAgendamento } from "@/compartilhado/agenda";
+import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
+import { instanteNoFuso } from "@/compartilhado/fuso";
+import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
+import { calcularPreco } from "@/compartilhado/precificacao";
+import { withTenant } from "@/back/tenant-db";
+import { calcularSlotsDisponiveis, FilaDeAgendamentoOcupada, travarDiaParaAgendamento } from "@/back/slots";
 
 const agendamentoSchema = z.object({
   servicoId: z.string().uuid(),
@@ -31,9 +32,16 @@ export async function POST(request: Request) {
   }
   const parsed = agendamentoSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Dados invalidos" }, { status: 400 });
+    return respostaDadosInvalidos(parsed.error);
   }
   const { servicoId, veiculoId, data, hora, formaPagamento } = parsed.data;
+
+  // A tela so oferece os proximos dias; o servidor confere o mesmo limite e
+  // recusa data inexistente (31/02), que viraria outro dia sem aviso.
+  const erroData = conferirDataAgendamento(data);
+  if (erroData) {
+    return NextResponse.json({ error: erroData }, { status: 400 });
+  }
 
   const resultado = await withTenant(session.user.tenantId, async (tx) => {
     const tenant = await tx.tenant.findUnique({
@@ -87,7 +95,9 @@ export async function POST(request: Request) {
     // O horario escolhido e o do relogio da estetica, nao o do servidor.
     const dataHora = instanteNoFuso(ano, mes, dia, h, m);
 
-    // Reconfere disponibilidade no momento da confirmacao (RN06).
+    // Reconfere disponibilidade no momento da confirmacao (RN06). A trava vem
+    // antes: sem ela, duas confirmacoes simultaneas veriam a mesma vaga livre.
+    await travarDiaParaAgendamento(tx, tenant.id, dataHora);
     const slotsDisponiveis = await calcularSlotsDisponiveis(tx, tenant, servico, dataHora);
     if (!slotsDisponiveis.includes(hora)) {
       return { error: "Horario nao esta mais disponivel", httpStatus: 409 } as const;
@@ -106,19 +116,40 @@ export async function POST(request: Request) {
       },
     });
 
-    // RF08, Gatilho 1 (secao 3.4) — disparada imediatamente apos confirmacao.
-    await dispararNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
+    // RF08, Gatilho 1 (secao 3.4) — registrada aqui, enviada so depois do
+    // commit (ver back/notificacoes).
+    const notificacoes = await registrarNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
 
     return {
       id: agendamento.id,
       status: agendamento.status,
       pixChaveCopiaCola: tenant.pixChaveCopiaCola,
+      notificacoes,
     } as const;
+  }).catch((erro) => {
+    // A fila de confirmacoes do dia nao andou a tempo (ver back/slots). Nada
+    // foi gravado; o cliente pode tentar de novo em seguida.
+    if (erro instanceof FilaDeAgendamentoOcupada) {
+      return {
+        error: "Muitas confirmacoes para esse dia agora. Tente de novo em instantes.",
+        httpStatus: 503,
+      } as const;
+    }
+    throw erro;
   });
 
   if ("error" in resultado) {
+    if (resultado.httpStatus === 503) {
+      return NextResponse.json(
+        { error: resultado.error },
+        { status: 503, headers: { "Retry-After": "2" } }
+      );
+    }
     return NextResponse.json({ error: resultado.error }, { status: resultado.httpStatus });
   }
 
-  return NextResponse.json(resultado, { status: 201 });
+  const { notificacoes, ...corpo } = resultado;
+  after(() => enviarNotificacoes(notificacoes));
+
+  return NextResponse.json(corpo, { status: 201 });
 }

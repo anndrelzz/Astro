@@ -1,10 +1,16 @@
-import { ModalSlot } from "@/components/ui/modal-slot";
-import { getTenantPorSlug } from "@/lib/tenant";
+import { BarraCliente } from "@/front/componentes/bottom-nav";
+import { ModalSlot } from "@/front/componentes/modal-slot";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/back/auth";
+import { temAvisoNoPerfil } from "@/back/aviso-perfil";
+import { getTenantPorSlug } from "@/back/tenant";
 
-// Layout de /[slug] que existe por dois motivos: abrir o slot paralelo
+// Layout de /[slug] que existe por tres motivos: abrir o slot paralelo
 // @modal, usado pelas rotas interceptadas (o cadastro de veiculo), e aplicar
 // a cor de marca do tenant (RF13, UC12) via variavel CSS — vale tanto para o
-// site do cliente quanto para o Admin, que compartilham os tokens astro-*.
+// site do cliente quanto para o Admin, que compartilham os tokens astro-*. E
+// manter montada a barra de baixo do cliente, para o circulo do item ativo
+// deslizar entre as telas (ela mesma decide em quais rotas aparece).
 //
 // Ele nao desenha chrome. A casca visual do cliente continua sendo a
 // ClienteShell, um componente que cada tela importa se quiser — login,
@@ -25,6 +31,8 @@ export default async function SlugLayout({
   const { slug } = await params;
   const tenant = await getTenantPorSlug(slug);
   const cor = tenant?.corPrimaria ?? "#2563eb";
+  // Ponto vermelho no Perfil da barra do celular (ver back/aviso-perfil.ts).
+  const avisoPerfil = await temAvisoNoPerfil(await getServerSession(authOptions), tenant?.id);
 
   return (
     <div
@@ -42,6 +50,7 @@ export default async function SlugLayout({
       }
     >
       {children}
+      <BarraCliente slug={slug} avisoPerfil={avisoPerfil} />
       <ModalSlot>{modal}</ModalSlot>
     </div>
   );
