@@ -3,9 +3,9 @@
 import { AnimatePresence, motion, useReducedMotion, type PanInfo } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
-// Vitrine do topo: o fluxo de agendamento do cliente num carrossel em pilha
+// Vitrine (secao "Voce manda o link"): o fluxo de agendamento do cliente num carrossel em pilha
 // (como um baralho). Tres cartoes aparecem: um na frente, grande e nitido, e
 // um espiando de cada lado, atras. Na troca, o da frente vai para tras da
 // pilha e o de tras do outro lado vem para a frente.
@@ -31,7 +31,9 @@ const CARTOES = [
 const ETAPAS = ["Serviço", "Horário", "PIX", "Agendado"];
 const INTERVALO_MS = 2500;
 
-export function Vitrine() {
+// `cabecalho` e o titulo da secao: fica na coluna do texto no computador (o
+// celular ganha a altura toda da tela) e acima da pilha no celular.
+export function Vitrine({ cabecalho }: { cabecalho: ReactNode }) {
   const [ativo, setAtivo] = useState(0);
   const [pausado, setPausado] = useState(false);
   const movimentoReduzido = useReducedMotion();
@@ -65,15 +67,16 @@ export function Vitrine() {
     };
   }, []);
 
-  // Altura do print: o maior que cabe na tela junto com as etapas e o pe do
-  // palco (~200px), ate 640px. A largura vem da proporcao do celular, e o
-  // cartao inteiro (print + faixa) tambem precisa caber na largura da pilha
-  // com os vizinhos espiando.
+  // Altura do print: o maior que cabe numa tela junto com o menu fixo, as
+  // etapas, a barra de progresso e as margens da secao (~260px no total),
+  // entre 300 e 620px. Assim o palco inteiro aparece de uma vez, sem corte.
+  // A largura vem da proporcao do celular, e o cartao inteiro (print + faixa)
+  // tambem precisa caber na largura da pilha com os vizinhos espiando.
   // No celular a faixa preta e mais fina e os vizinhos espiam menos, para
   // sobrar largura para o print.
   const estreito = largura < 500;
   const FAIXA = estreito ? 40 : 52;
-  const telaA0 = Math.min(640, Math.max(360, alturaTela - 200));
+  const telaA0 = Math.min(620, Math.max(300, alturaTela - 260));
   const telaL0 = (telaA0 * 390) / 844;
   const cabeLargura = largura / (estreito ? 1.22 : 1.5) - FAIXA;
   const telaL = Math.round(Math.min(telaL0, cabeLargura));
@@ -120,11 +123,12 @@ export function Vitrine() {
         </ol>
       </div>
 
-      {/* Meio: no computador, texto e setas a esquerda e a pilha a direita;
-          no celular, a pilha em cima e o texto embaixo. */}
-      <div className="relative z-10 grid items-center gap-6 px-5 pt-5 pb-6 sm:px-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10">
-        <div className="order-2 grid gap-5 lg:order-1">
-          <div aria-live="polite" className="min-h-28">
+      {/* Meio: no computador, titulo, texto e setas a esquerda e a pilha a
+          direita; no celular, titulo, pilha e texto, nessa ordem. */}
+      <div className="relative z-10 grid items-center gap-6 px-5 pt-5 pb-6 [grid-template-areas:'cab'_'pilha'_'texto'] sm:px-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-x-10 lg:gap-y-8 lg:[grid-template-areas:'cab_pilha'_'texto_pilha'] lg:[grid-template-rows:auto_1fr]">
+        <div className="self-end [grid-area:cab]">{cabecalho}</div>
+        <div className="grid content-start gap-5 [grid-area:texto]">
+          <div aria-live="polite" className="min-h-32">
             <AnimatePresence mode="wait">
               <motion.div
                 key={atual.img}
@@ -172,7 +176,7 @@ export function Vitrine() {
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.15}
           onDragEnd={aoSoltar}
-          className="relative order-1 cursor-grab touch-pan-y rounded-3xl outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-landing-glow lg:order-2"
+          className="relative cursor-grab touch-pan-y rounded-3xl outline-none [grid-area:pilha] active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-landing-glow"
           style={{ height: telaA }}
         >
           {CARTOES.map((c, i) => {

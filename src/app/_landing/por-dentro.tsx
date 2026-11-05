@@ -13,7 +13,8 @@ import { useRef, useState, type KeyboardEvent } from "react";
 // numeros.
 //
 // Abas acessiveis pelo teclado (padrao WAI-ARIA de tabs): setas trocam de
-// aba, Home e End vao para a primeira e a ultima.
+// aba (as de cima e baixo tambem, porque no computador as abas ficam em
+// coluna), Home e End vao para a primeira e a ultima.
 
 type Aba = {
   id: string;
@@ -29,7 +30,11 @@ const ABAS: Aba[] = [
     id: "painel",
     rotulo: "Painel do dia",
     texto: "Abriu o Astro, já vê quem chega hoje e quanto entrou.",
-    itens: ["Agenda de hoje em ordem de horário", "Receita do dia e do mês", "Vagas livres no dia"],
+    itens: [
+      "Agenda de hoje em ordem de horário",
+      "Receita do dia e do mês",
+      "Vagas livres no dia",
+    ],
     img: "painel",
     rota: "admin",
   },
@@ -37,7 +42,11 @@ const ABAS: Aba[] = [
     id: "agenda",
     rotulo: "Agendamentos",
     texto: "Todos os horários marcados, separados pela situação do pagamento.",
-    itens: ["Confirmados, PIX pendente, no local e concluídos", "Busca por cliente, placa ou serviço", "Confirmação do PIX com um toque"],
+    itens: [
+      "Confirmados, PIX pendente, no local e concluídos",
+      "Busca por cliente, placa ou serviço",
+      "Confirmação do PIX com um toque",
+    ],
     img: "agendamentos",
     rota: "admin/agendamentos",
   },
@@ -45,7 +54,11 @@ const ABAS: Aba[] = [
     id: "clientes",
     rotulo: "Clientes",
     texto: "Quem são os seus clientes, quem é novo e quem parou de voltar.",
-    itens: ["Busca por nome, telefone, e-mail ou placa", "Novos, sem voltar há 60 dias e nunca agendaram", "WhatsApp do cliente a um toque"],
+    itens: [
+      "Busca por nome, telefone, e-mail ou placa",
+      "Novos, sem voltar há 60 dias e nunca agendaram",
+      "WhatsApp do cliente a um toque",
+    ],
     img: "clientes",
     rota: "admin/clientes",
   },
@@ -53,7 +66,11 @@ const ABAS: Aba[] = [
     id: "catalogo",
     rotulo: "Catálogo",
     texto: "Cada serviço com duração e um preço para cada tipo de veículo.",
-    itens: ["Tipos de veículo definidos por você", "Pause um serviço sem apagar o histórico", "Grade de horários e capacidade por dia"],
+    itens: [
+      "Tipos de veículo definidos por você",
+      "Pause um serviço sem apagar o histórico",
+      "Grade de horários e capacidade por dia",
+    ],
     img: "catalogo",
     rota: "admin/catalogo",
   },
@@ -61,7 +78,11 @@ const ABAS: Aba[] = [
     id: "financeiro",
     rotulo: "Financeiro",
     texto: "Quanto entrou, de onde veio e quanto ainda falta receber.",
-    itens: ["Receita pelo dia em que o dinheiro entrou", "Por serviço, PIX contra no local e origem", "Clientes que mais gastaram e exportação em CSV"],
+    itens: [
+      "Receita pelo dia em que o dinheiro entrou",
+      "Por serviço, PIX contra no local e origem",
+      "Clientes que mais gastaram e exportação em CSV",
+    ],
     img: "financeiro",
     rota: "admin/financeiro",
   },
@@ -69,7 +90,11 @@ const ABAS: Aba[] = [
     id: "marca",
     rotulo: "Sua marca",
     texto: "O cliente vê a sua estética do começo ao fim, não o Astro.",
-    itens: ["Logo e cor principal da estética", "Endereço, WhatsApp e horário de funcionamento", "Link próprio para divulgar"],
+    itens: [
+      "Logo e cor principal da estética",
+      "Endereço, WhatsApp e horário de funcionamento",
+      "Link próprio para divulgar",
+    ],
     img: "identidade",
     rota: "admin/identidade",
   },
@@ -82,11 +107,19 @@ export function PorDentro() {
   function teclado(e: KeyboardEvent, i: number) {
     const ultimo = ABAS.length - 1;
     const destino =
-      e.key === "ArrowRight" ? (i === ultimo ? 0 : i + 1)
-      : e.key === "ArrowLeft" ? (i === 0 ? ultimo : i - 1)
-      : e.key === "Home" ? 0
-      : e.key === "End" ? ultimo
-      : null;
+      e.key === "ArrowRight" || e.key === "ArrowDown"
+        ? i === ultimo
+          ? 0
+          : i + 1
+        : e.key === "ArrowLeft" || e.key === "ArrowUp"
+          ? i === 0
+            ? ultimo
+            : i - 1
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? ultimo
+              : null;
     if (destino === null) return;
     e.preventDefault();
     setAtiva(destino);
@@ -95,9 +128,17 @@ export function PorDentro() {
 
   const aba = ABAS[ativa];
 
+  // Abas numa linha so; embaixo, no computador, o texto da aba ativa a
+  // esquerda e o print a direita. O print e limitado pela ALTURA da tela
+  // (largura = altura x 1,6, a proporcao dele), para a secao inteira caber
+  // numa tela sem cortar o painel. No celular: abas, texto e print.
   return (
-    <div>
-      <div role="tablist" aria-label="Telas do painel" className="mb-8 flex flex-wrap justify-center gap-2">
+    <div className="grid gap-5">
+      <div
+        role="tablist"
+        aria-label="Telas do painel"
+        className="flex flex-wrap justify-center gap-2"
+      >
         {ABAS.map((a, i) => (
           <button
             key={a.id}
@@ -130,13 +171,8 @@ export function PorDentro() {
         ))}
       </div>
 
-      <div
-        role="tabpanel"
-        id={`painel-${aba.id}`}
-        aria-labelledby={`aba-${aba.id}`}
-        className="grid gap-6 rounded-[1.75rem] border border-landing-line bg-landing-card p-4 sm:p-8"
-      >
-        {/* Texto da aba em uma linha so, para o print ganhar espaco. */}
+      <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-center lg:gap-10">
+        {/* Texto da aba ativa. */}
         <AnimatePresence mode="wait">
           <motion.div
             key={aba.id}
@@ -144,16 +180,17 @@ export function PorDentro() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.25 }}
-            className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-10"
+            className="grid gap-3 text-center lg:text-left"
           >
-            <div className="grid gap-1">
-              <h3 className="text-2xl font-extrabold">{aba.rotulo}</h3>
-              <p className="text-landing-muted">{aba.texto}</p>
-            </div>
-            <ul className="grid gap-1.5 text-sm lg:text-base">
+            <h3 className="text-2xl font-extrabold">{aba.rotulo}</h3>
+            <p className="text-landing-muted">{aba.texto}</p>
+            <ul className="mx-auto grid gap-1.5 text-left text-sm lg:mx-0">
               {aba.itens.map((item) => (
                 <li key={item} className="flex items-start gap-2">
-                  <Check className="mt-1 size-4 shrink-0 text-landing-glow" strokeWidth={3} />
+                  <Check
+                    className="mt-1 size-4 shrink-0 text-landing-glow"
+                    strokeWidth={3}
+                  />
                   {item}
                 </li>
               ))}
@@ -161,36 +198,43 @@ export function PorDentro() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Janela de navegador com o print real. */}
-        <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_80px_-30px_rgba(37,99,235,0.45)]">
-          <div className="flex items-center gap-3 border-b border-landing-line px-4 py-2.5">
-            <span aria-hidden className="flex gap-1.5">
-              <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-              <span className="size-2.5 rounded-full bg-[#febc2e]" />
-              <span className="size-2.5 rounded-full bg-[#28c840]" />
-            </span>
-            <span className="min-w-0 flex-1 truncate rounded-md bg-landing-card px-3 py-1 text-center font-mono text-xs text-landing-muted">
-              …/sua-estetica/{aba.rota}
-            </span>
+        <div
+          role="tabpanel"
+          id={`painel-${aba.id}`}
+          aria-labelledby={`aba-${aba.id}`}
+          className="min-w-0"
+        >
+          {/* Janela de navegador com o print real. */}
+          <div className="mx-auto w-full overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_80px_-30px_rgba(37,99,235,0.45)] lg:max-w-[calc((100svh-21.5rem)*1.6)]">
+            <div className="flex items-center gap-3 border-b border-landing-line px-4 py-2.5">
+              <span aria-hidden className="flex gap-1.5">
+                <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+                <span className="size-2.5 rounded-full bg-[#febc2e]" />
+                <span className="size-2.5 rounded-full bg-[#28c840]" />
+              </span>
+              <span className="min-w-0 flex-1 truncate rounded-md bg-landing-card px-3 py-1 text-center font-mono text-xs text-landing-muted">
+                …/sua-estetica/{aba.rota}
+              </span>
+            </div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={aba.id}
+                initial={{ opacity: 0, scale: 0.985 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Image
+                  src={`/landing/telas-admin/${aba.img}.webp`}
+                  alt={`Tela real do painel do Astro: ${aba.rotulo}`}
+                  width={1600}
+                  height={1000}
+                  sizes="(min-width: 72rem) 56rem, 100vw"
+                  className="block h-auto w-full"
+                />
+              </motion.div>
+            </AnimatePresence>
           </div>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={aba.id}
-              initial={{ opacity: 0, scale: 0.985 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Image
-                src={`/landing/telas-admin/${aba.img}.webp`}
-                alt={`Tela real do painel do Astro: ${aba.rotulo}`}
-                width={1600}
-                height={1000}
-                sizes="(min-width: 72rem) 68rem, 100vw"
-                className="block h-auto w-full"
-              />
-            </motion.div>
-          </AnimatePresence>
         </div>
       </div>
     </div>
