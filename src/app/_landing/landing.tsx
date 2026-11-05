@@ -191,45 +191,49 @@ function PrecoPorCarro() {
       aria-labelledby="t-preco-carro"
       className="landing-tela flex items-center pt-24 pb-12 lg:min-h-svh"
     >
-      <div className="landing-wrap grid items-center gap-12 lg:grid-cols-2">
-        <Revelar className="vidro grid gap-5 rounded-3xl p-6 sm:p-8">
+      {/* O foco da secao sao os prints: a coluna deles e mais larga, e o
+          texto fica menor, num vidro abaixo do titulo. */}
+      <div className="landing-wrap grid items-center gap-10 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+        <Revelar className="grid gap-5">
           <h2
             id="t-preco-carro"
             className="text-[clamp(1.9rem,3.6vw,2.9rem)] leading-[1.08] font-extrabold tracking-tight"
           >
             Preço certo para cada carro.
           </h2>
-          <p className="text-lg text-zinc-300">
-            Lavar um SUV não custa o mesmo que lavar um hatch. No Astro, cada
-            serviço tem um preço por porte, e o cliente vê o valor do carro dele
-            antes de marcar.
-          </p>
-          <p className="text-lg text-zinc-300">
-            Se o carro chegar em condição pior que o normal, você lança um
-            acréscimo de até 30% ao confirmar. O cliente é avisado antes de
-            agendar.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { icone: Tag, texto: "Preço por porte" },
-              { icone: Car, texto: "Tipos de veículo seus" },
-              { icone: TriangleAlert, texto: "Acréscimo avisado" },
-            ].map(({ icone: Icone, texto }) => (
-              <span
-                key={texto}
-                className="inline-flex items-center gap-1.5 rounded-full border border-landing-line-strong px-3 py-1.5 text-sm font-semibold"
-              >
-                <Icone className="size-4 text-landing-glow" />
-                {texto}
-              </span>
-            ))}
+          <div className="vidro grid gap-4 rounded-3xl p-5">
+            <p className="text-zinc-300">
+              Lavar um SUV não custa o mesmo que lavar um hatch. No Astro, cada
+              serviço tem um preço por porte, e o cliente vê o valor do carro
+              dele antes de marcar.
+            </p>
+            <p className="text-zinc-300">
+              Se o carro chegar em condição pior que o normal, você lança um
+              acréscimo de até 30% ao confirmar. O cliente é avisado antes de
+              agendar.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { icone: Tag, texto: "Preço por porte" },
+                { icone: Car, texto: "Tipos de veículo seus" },
+                { icone: TriangleAlert, texto: "Acréscimo avisado" },
+              ].map(({ icone: Icone, texto }) => (
+                <span
+                  key={texto}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-landing-line-strong px-3 py-1.5 text-xs font-semibold"
+                >
+                  <Icone className="size-4 text-landing-glow" />
+                  {texto}
+                </span>
+              ))}
+            </div>
           </div>
         </Revelar>
 
         {/* Prints reais: os tipos de veiculo e os precos por tipo no Catalogo
             (Admin) e, por cima, o aviso de acrescimo que o cliente ve antes
             de pagar. */}
-        <Revelar atraso={0.12} className="relative pb-24 sm:pr-28 sm:pb-12">
+        <Revelar atraso={0.12} className="relative pb-24 sm:pr-36 sm:pb-10">
           <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_70px_-40px_rgba(37,99,235,0.7)]">
             <div className="flex items-center gap-3 border-b border-landing-line px-4 py-2.5">
               <span aria-hidden className="flex gap-1.5">
@@ -246,17 +250,17 @@ function PrecoPorCarro() {
               alt="Tela real do Catálogo do Astro: os tipos de veículo da estética e o preço de cada serviço para Hatch, Sedan, SUV, Picape pequena e Picape grande"
               width={1200}
               height={650}
-              sizes="(min-width: 64rem) 34rem, 100vw"
+              sizes="(min-width: 64rem) 46rem, 100vw"
               className="block h-auto w-full"
             />
           </div>
-          <div className="absolute right-0 bottom-0 w-[30%] max-w-44 overflow-hidden rounded-[1.4rem] border-4 border-[#27272a] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.95)]">
+          <div className="absolute right-0 bottom-0 w-[32%] max-w-[min(14rem,calc((100svh-15rem)/2.163))] overflow-hidden rounded-[1.4rem] border-4 border-[#27272a] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.95)]">
             <Image
               src="/landing/fluxo/4-acrescimo.webp"
               alt="Tela real do cliente: aviso de que o valor pode ter acréscimo de até 30% pela condição do veículo"
               width={600}
               height={1298}
-              sizes="12rem"
+              sizes="14rem"
               className="block h-auto w-full"
             />
           </div>
