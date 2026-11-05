@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeAll, describe, expect, test } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   bateComBusca,
   ClientesAdmin,
@@ -227,6 +227,65 @@ describe("ClientesAdmin — agendados pelo Admin", () => {
   test("sem ninguem agendado pelo Admin, o bloco nao aparece", () => {
     render(<ClientesAdmin clientes={[cliente("maria", "Maria Souza")]} contatosDoAdmin={[]} agoraISO={AGORA} />);
     expect(screen.queryByRole("region", { name: "Agendado pelo Admin" })).not.toBeInTheDocument();
+  });
+});
+
+// O detalhe aparece de um jeito em cada tela: no computador, no painel ao lado
+// da lista; no celular, num modal. O modal nativo deixa o resto da pagina
+// inerte enquanto esta aberto — se ele abrir no computador, onde fica
+// escondido, a pagina parece travada e so sai com F5 (bug de 05/11/2026).
+describe("ClientesAdmin — modal so no celular", () => {
+  const CLIENTES = [cliente("ana", "Ana Pereira"), cliente("joao", "João Lima")];
+  let telaDeComputador = false;
+  let avisarMudanca: ((e: { matches: boolean }) => void) | null = null;
+
+  beforeEach(() => {
+    avisarMudanca = null;
+    window.matchMedia = vi.fn((consulta: string) => ({
+      matches: telaDeComputador,
+      media: consulta,
+      onchange: null,
+      addEventListener: (_tipo: string, ouvinte: (e: { matches: boolean }) => void) => {
+        avisarMudanca = ouvinte;
+      },
+      removeEventListener: () => {
+        avisarMudanca = null;
+      },
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  });
+
+  const modalAberto = () => document.querySelector("dialog")?.open ?? false;
+
+  test("no computador, clicar num cliente nao abre o modal escondido", () => {
+    telaDeComputador = true;
+    render(<ClientesAdmin clientes={CLIENTES} agoraISO={AGORA} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /João Lima/ })[0]);
+
+    expect(modalAberto()).toBe(false);
+  });
+
+  test("no celular, clicar num cliente abre o modal", () => {
+    telaDeComputador = false;
+    render(<ClientesAdmin clientes={CLIENTES} agoraISO={AGORA} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /João Lima/ })[0]);
+
+    expect(modalAberto()).toBe(true);
+  });
+
+  test("se a tela cresce para computador com o modal aberto, ele fecha", () => {
+    telaDeComputador = false;
+    render(<ClientesAdmin clientes={CLIENTES} agoraISO={AGORA} />);
+    fireEvent.click(screen.getAllByRole("button", { name: /João Lima/ })[0]);
+    expect(modalAberto()).toBe(true);
+
+    act(() => avisarMudanca?.({ matches: true }));
+
+    expect(modalAberto()).toBe(false);
   });
 });
 
