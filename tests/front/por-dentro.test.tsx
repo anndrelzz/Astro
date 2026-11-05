@@ -43,6 +43,16 @@ describe("PorDentro", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  test("todo o menu do print funciona, inclusive Grade de horarios e Configuracoes", async () => {
+    render(<PorDentro />);
+    await clicar("Abrir Grade de horários");
+    expect(await screen.findByRole("img", { name: /Grade de horários/ })).toBeInTheDocument();
+    expect(screen.getByText("…/sua-estetica/admin/horarios")).toBeInTheDocument();
+    await clicar("Abrir Configurações");
+    expect(await screen.findByRole("img", { name: /Configurações/ })).toBeInTheDocument();
+    expect(screen.getByText("…/sua-estetica/admin/configuracoes")).toBeInTheDocument();
+  });
+
   test("o item da tela aberta fica marcado como atual", async () => {
     render(<PorDentro />);
     await clicar("Abrir Financeiro");
