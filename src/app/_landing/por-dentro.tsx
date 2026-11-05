@@ -151,7 +151,7 @@ export function PorDentro() {
       </div>
 
       {/* Janela de navegador com o print real. */}
-      <div className="mx-auto w-full lg:max-w-[calc((100svh-22.5rem)*1.6)]">
+      <div className="mx-auto w-full lg:max-w-[calc((100svh_-_15.25rem)_*_1.6)]">
         <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_80px_-30px_rgba(37,99,235,0.45)]">
           <div className="flex items-center gap-3 border-b border-landing-line px-4 py-1.5">
             <span aria-hidden className="flex gap-1.5">

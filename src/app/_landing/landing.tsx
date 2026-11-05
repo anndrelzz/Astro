@@ -59,11 +59,22 @@ export function Landing() {
         <Heroi />
         <ComoFunciona />
         <Comparativo />
-        <Secao id="por-dentro" alternada titulo="Conheça o Astro por dentro">
-          <Revelar>
-            <PorDentro />
-          </Revelar>
-        </Secao>
+        {/* Sem titulo visivel: o espaco vai todo para a janela do painel. O
+            titulo fica so para leitor de tela (e o menu "Por dentro" leva aqui). */}
+        <section
+          id="por-dentro"
+          aria-labelledby="t-por-dentro"
+          className="landing-tela border-y border-landing-line bg-white/[0.02] pt-22 pb-8"
+        >
+          <h2 id="t-por-dentro" className="sr-only">
+            Conheça o Astro por dentro
+          </h2>
+          <div className="landing-wrap">
+            <Revelar>
+              <PorDentro />
+            </Revelar>
+          </div>
+        </section>
         <PrecoPorCarro />
         <Recursos />
         <Aparelhos />
