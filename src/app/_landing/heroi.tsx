@@ -3,9 +3,11 @@
 import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import Image from "next/image";
 import { useRef, useState } from "react";
+import { EntrarNaEstetica } from "@/front/landing/entrar-na-estetica";
 
 // Topo da landing: imagem do ceu ao fundo, orbitas por cima, menu, titulo,
-// frase e os dois botoes. Ocupa exatamente uma tela (min-h-svh): o fluxo do
+// frase e os dois botoes ("Comecar agora" e "Ja tenho cadastro", que abre a
+// busca da estetica, igual ao "Entrar" do menu). Ocupa exatamente uma tela (min-h-svh): o fluxo do
 // cliente com o celular fica na secao seguinte, para nada aparecer cortado
 // no pe da primeira tela.
 //
@@ -79,9 +81,15 @@ export function Heroi() {
                 </a>
               ))}
             </nav>
-            <a href="#preco" className="landing-btn landing-btn-primary landing-btn-sm">
-              Começar agora
-            </a>
+            <div className="flex items-center gap-2">
+              <EntrarNaEstetica className="landing-btn landing-btn-ghost landing-btn-sm whitespace-nowrap">Entrar</EntrarNaEstetica>
+              {/* No celular, "Comecar agora" nao cabe na barra ao lado do
+                  "Entrar": fica so "Comecar" (o completo esta logo abaixo). */}
+              <a href="#preco" className="landing-btn landing-btn-primary landing-btn-sm whitespace-nowrap">
+                <span className="sm:hidden">Começar</span>
+                <span className="max-sm:hidden">Começar agora</span>
+              </a>
+            </div>
           </div>
         </div>
       </header>
@@ -106,9 +114,7 @@ export function Heroi() {
             <a href="#preco" className="landing-btn landing-btn-primary">
               Começar agora
             </a>
-            <a href="#agendar" className="landing-btn landing-btn-ghost">
-              Ver como o cliente agenda
-            </a>
+            <EntrarNaEstetica className="landing-btn landing-btn-ghost">Já tenho cadastro</EntrarNaEstetica>
           </div>
         </div>
       </div>
