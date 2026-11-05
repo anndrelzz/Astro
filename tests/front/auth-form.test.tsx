@@ -42,6 +42,23 @@ afterEach(() => {
   for (const f of Object.values(roteador)) f.mockReset();
 });
 
+describe("AuthForm — login bloqueado (issue #107)", () => {
+  test("conta bloqueada por tentativas explica quanto esperar e aponta o Esqueci minha senha", async () => {
+    vi.mocked(signIn).mockResolvedValue({ error: "LOGIN_BLOQUEADO", ok: false, status: 401, url: null });
+    render(<AuthForm modo="login" estetica={ESTETICA} />);
+
+    preencher({ "voce@email.com": "maria@teste.com", "••••••••": "Senha123" });
+    await enviar("Entrar");
+
+    expect(
+      screen.getByText(
+        "Muitas tentativas sem acertar a senha. Tente de novo em 15 minutos ou use o Esqueci minha senha."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText("E-mail ou senha inválidos.")).not.toBeInTheDocument();
+  });
+});
+
 describe("AuthForm — login", () => {
   test("credenciais erradas mostram o aviso e nao entram", async () => {
     vi.mocked(signIn).mockResolvedValue({ error: "CredentialsSignin", ok: false, status: 401, url: null });
