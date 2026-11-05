@@ -20,6 +20,7 @@ import {
 import { Manrope } from "next/font/google";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { FundoOndas } from "@/front/componentes/fundo-ondas";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { Heroi } from "./heroi";
 import { Plano } from "./plano";
@@ -46,7 +47,10 @@ export function Landing() {
   return (
     <ConfigAnimacao>
       <ThemeColor color="#09090b" />
-      <div className={`landing ${manrope.className} min-h-dvh overflow-x-hidden bg-landing-night text-landing-ink`}>
+      {/* isolate: o FundoOndas (fixo, -z-10) fica acima do preto desta casca e
+          abaixo das secoes. A abertura cobre os pontos com a foto do ceu. */}
+      <div className={`landing ${manrope.className} isolate min-h-dvh overflow-x-hidden bg-landing-night text-landing-ink`}>
+        <FundoOndas rapido />
         <Heroi />
         <Comparativo />
         <Secao id="por-dentro" alternada titulo="Conheça o Astro por dentro" subtitulo="O painel que você usa para acompanhar a estética, do primeiro horário do dia ao fechamento do mês.">
@@ -87,7 +91,7 @@ function Secao({
     <section
       id={id}
       aria-labelledby={idTitulo}
-      className={`scroll-mt-24 py-16 md:py-24 ${alternada ? "border-y border-landing-line bg-landing-surface" : ""}`}
+      className={`scroll-mt-24 py-16 md:py-24 ${alternada ? "border-y border-landing-line bg-white/[0.02]" : ""}`}
     >
       <div className="landing-wrap">
         <Revelar className="mx-auto mb-12 grid max-w-2xl justify-items-center gap-4 text-center">
