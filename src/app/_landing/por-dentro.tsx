@@ -1,9 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Maximize2, X } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 // "Conheca o Astro por dentro": o print real de cada parte do painel do Admin
 // (estetica limpa de demonstracao, tela de 1024x640: na landing o print aparece
@@ -17,6 +18,9 @@ import { useState } from "react";
 // Clientes, como no Astro de verdade. Funciona porque todos os prints tem a
 // mesma lateral, no mesmo lugar (y = centro do item, em pixels do print de
 // 1600x1000). A faixa embaixo da janela traz o texto da tela aberta.
+//
+// "Ampliar" (no computador) abre a mesma janela em tela cheia, para ler os
+// numeros do painel; o menu continua clicavel la dentro.
 //
 // No celular o menu do print fica pequeno demais para o dedo: la aparecem
 // tambem botoes em linha acima da janela (rolam para o lado).
@@ -118,6 +122,7 @@ export function PorDentro() {
   // Ate a primeira troca, um ponto pulsa sobre "Clientes" no print, para
   // mostrar que o menu dele e clicavel.
   const [explorou, setExplorou] = useState(false);
+  const [ampliado, setAmpliado] = useState(false);
   const aba = ABAS[ativa];
 
   function abrir(i: number) {
@@ -152,64 +157,41 @@ export function PorDentro() {
 
       {/* Janela de navegador com o print real. */}
       <div className="mx-auto w-full lg:max-w-[calc((100svh_-_15.25rem)_*_1.6)]">
-        <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_80px_-30px_rgba(37,99,235,0.45)]">
-          <div className="flex items-center gap-3 border-b border-landing-line px-4 py-1.5">
-            <span aria-hidden className="flex gap-1.5">
-              <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-              <span className="size-2.5 rounded-full bg-[#febc2e]" />
-              <span className="size-2.5 rounded-full bg-[#28c840]" />
-            </span>
-            <span className="min-w-0 flex-1 truncate rounded-md bg-landing-card px-3 py-1 text-center font-mono text-xs text-landing-muted">
-              …/sua-estetica/{aba.rota}
-            </span>
-          </div>
-          <div className="relative">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={aba.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Image
-                  src={`/landing/telas-admin/${aba.img}.webp`}
-                  alt={`Tela real do painel do Astro: ${aba.rotulo}`}
-                  width={1600}
-                  height={1000}
-                  sizes="(min-width: 72rem) 72rem, 100vw"
-                  className="block h-auto w-full"
-                />
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Itens clicaveis por cima do menu lateral do print. */}
-            <nav aria-label="Menu do painel" className="absolute inset-0">
-              {ABAS.map((a, i) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  aria-label={`Abrir ${a.rotulo}`}
-                  aria-current={i === ativa ? "page" : undefined}
-                  onClick={() => abrir(i)}
-                  className="absolute left-[1.5%] w-[23.8%] cursor-pointer rounded-[0.6rem] outline-none transition-colors hover:bg-white/10 hover:ring-1 hover:ring-white/40 focus-visible:ring-2 focus-visible:ring-landing-glow"
-                  style={{ top: `${(a.y - 34) / 10}%`, height: "6.8%" }}
-                >
-                  {!explorou && a.id === "clientes" && (
-                    <span
-                      aria-hidden
-                      className="absolute top-1/2 right-[10%] flex size-3 -translate-y-1/2"
-                    >
-                      <span className="absolute inline-flex size-full animate-ping rounded-full bg-white/80 motion-reduce:animate-none" />
-                      <span className="relative inline-flex size-3 rounded-full bg-white" />
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
+        <Janela
+          aba={aba}
+          ativa={ativa}
+          abrir={abrir}
+          explorou={explorou}
+          acao={
+            <button
+              type="button"
+              onClick={() => setAmpliado(true)}
+              aria-label="Ampliar o painel"
+              className="hidden shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-landing-line-strong px-2.5 py-1 text-xs font-semibold text-landing-ink transition-colors hover:border-landing-glow lg:inline-flex"
+            >
+              <Maximize2 aria-hidden className="size-3.5" />
+              Ampliar
+            </button>
+          }
+        />
       </div>
+
+      {ampliado &&
+        createPortal(
+          <TelaCheia aoFechar={() => setAmpliado(false)}>
+            {(fechar) => (
+              <Janela
+                grande
+                aba={aba}
+                ativa={ativa}
+                abrir={abrir}
+                explorou={explorou}
+                acao={fechar}
+              />
+            )}
+          </TelaCheia>,
+          document.body,
+        )}
 
       {/* Faixa com o texto da tela aberta, embaixo da janela. */}
       <AnimatePresence mode="wait" initial={false}>
@@ -247,6 +229,136 @@ export function PorDentro() {
           )}
         </motion.div>
       </AnimatePresence>
+    </div>
+  );
+}
+
+// A janela de navegador com o print e o menu clicavel por cima. Usada na
+// secao e na tela cheia do "Ampliar" (grande), com o mesmo estado: trocar de
+// tela numa troca na outra.
+function Janela({
+  aba,
+  ativa,
+  abrir,
+  explorou,
+  acao,
+  grande = false,
+}: {
+  aba: Aba;
+  ativa: number;
+  abrir: (i: number) => void;
+  explorou: boolean;
+  acao: ReactNode;
+  grande?: boolean;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_80px_-30px_rgba(37,99,235,0.45)]">
+      <div className="flex items-center gap-3 border-b border-landing-line px-4 py-1.5">
+        <span aria-hidden className="flex gap-1.5">
+          <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+          <span className="size-2.5 rounded-full bg-[#febc2e]" />
+          <span className="size-2.5 rounded-full bg-[#28c840]" />
+        </span>
+        <span className="min-w-0 flex-1 truncate rounded-md bg-landing-card px-3 py-1 text-center font-mono text-xs text-landing-muted">
+          …/sua-estetica/{aba.rota}
+        </span>
+        {acao}
+      </div>
+      <div className="relative">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={aba.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Image
+              src={`/landing/telas-admin/${aba.img}.webp`}
+              alt={`Tela real do painel do Astro: ${aba.rotulo}`}
+              width={1600}
+              height={1000}
+              sizes={grande ? "100vw" : "(min-width: 72rem) 72rem, 100vw"}
+              className="block h-auto w-full"
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Itens clicaveis por cima do menu lateral do print. */}
+        <nav aria-label="Menu do painel" className="absolute inset-0">
+          {ABAS.map((a, i) => (
+            <button
+              key={a.id}
+              type="button"
+              aria-label={`Abrir ${a.rotulo}`}
+              aria-current={i === ativa ? "page" : undefined}
+              onClick={() => abrir(i)}
+              className="absolute left-[1.5%] w-[23.8%] cursor-pointer rounded-[0.6rem] outline-none transition-colors hover:bg-white/10 hover:ring-1 hover:ring-white/40 focus-visible:ring-2 focus-visible:ring-landing-glow"
+              style={{ top: `${(a.y - 34) / 10}%`, height: "6.8%" }}
+            >
+              {!explorou && a.id === "clientes" && (
+                <span
+                  aria-hidden
+                  className="absolute top-1/2 right-[10%] flex size-3 -translate-y-1/2"
+                >
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-white/80 motion-reduce:animate-none" />
+                  <span className="relative inline-flex size-3 rounded-full bg-white" />
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+// Tela cheia do "Ampliar": o painel ocupa o monitor inteiro (limitado pela
+// altura, na proporcao do print). Esc, o botao Fechar ou o clique fora fecham.
+// Vai para o <body> (portal) porque a secao tem animacao com transform, que
+// prenderia o "position: fixed" dentro dela.
+function TelaCheia({
+  aoFechar,
+  children,
+}: {
+  aoFechar: () => void;
+  children: (fechar: ReactNode) => ReactNode;
+}) {
+  const botao = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    botao.current?.focus();
+    const antes = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = antes;
+    };
+  }, []);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Painel do Astro em tela cheia"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") aoFechar();
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) aoFechar();
+      }}
+      className="fixed inset-0 z-[60] grid place-items-center bg-black/85 p-4 backdrop-blur-sm"
+    >
+      <div className="w-full max-w-[calc((100svh_-_5.5rem)_*_1.6)]">
+        {children(
+          <button
+            ref={botao}
+            type="button"
+            onClick={aoFechar}
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-landing-line-strong px-2.5 py-1 text-xs font-semibold text-landing-ink transition-colors hover:border-landing-glow"
+          >
+            <X aria-hidden className="size-3.5" />
+            Fechar
+          </button>,
+        )}
+      </div>
     </div>
   );
 }
