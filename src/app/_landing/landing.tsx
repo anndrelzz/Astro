@@ -190,8 +190,9 @@ function PrecoPorCarro() {
           </div>
         </Revelar>
 
-        {/* Prints reais: a tabela de precos do Catalogo (Admin) e, por cima,
-            o aviso de acrescimo que o cliente ve antes de pagar. */}
+        {/* Prints reais: os tipos de veiculo e os precos por tipo no Catalogo
+            (Admin) e, por cima, o aviso de acrescimo que o cliente ve antes
+            de pagar. */}
         <Revelar atraso={0.12} className="relative pb-24 sm:pr-28 sm:pb-12">
           <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_70px_-40px_rgba(37,99,235,0.7)]">
             <div className="flex items-center gap-3 border-b border-landing-line px-4 py-2.5">
@@ -206,9 +207,9 @@ function PrecoPorCarro() {
             </div>
             <Image
               src="/landing/telas-admin/catalogo-precos.webp"
-              alt="Tela real do Catálogo do Astro: preço de cada serviço para Hatch, Sedan, SUV, Picape pequena e Picape grande"
+              alt="Tela real do Catálogo do Astro: os tipos de veículo da estética e o preço de cada serviço para Hatch, Sedan, SUV, Picape pequena e Picape grande"
               width={1200}
-              height={566}
+              height={650}
               sizes="(min-width: 64rem) 34rem, 100vw"
               className="block h-auto w-full"
             />
