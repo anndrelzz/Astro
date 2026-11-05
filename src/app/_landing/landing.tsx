@@ -202,9 +202,11 @@ function PrecoPorCarro() {
       className="landing-tela flex items-center pt-24 pb-12 lg:min-h-svh"
     >
       {/* O foco da secao sao os prints: a coluna deles e mais larga, e o
-          texto fica menor, num vidro abaixo do titulo. */}
-      <div className="landing-wrap grid items-center gap-10 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
-        <Revelar className="grid gap-5">
+          texto fica menor, num vidro abaixo do titulo. No computador, o texto
+          vai do topo ao pe do celular: o titulo encosta em cima e o vidro
+          embaixo (as duas colunas tem a altura do celular). */}
+      <div className="landing-wrap grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] lg:items-stretch">
+        <Revelar className="grid gap-5 lg:h-full lg:content-between">
           <h2
             id="t-preco-carro"
             className="text-[clamp(1.9rem,3.6vw,2.9rem)] leading-[1.08] font-extrabold tracking-tight"
@@ -243,8 +245,8 @@ function PrecoPorCarro() {
         {/* Prints reais: os tipos de veiculo e os precos por tipo no Catalogo
             (Admin) e, por cima, o aviso de acrescimo que o cliente ve antes
             de pagar. */}
-        <Revelar atraso={0.12} className="relative pb-24 sm:pr-36 sm:pb-10">
-          <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_70px_-40px_rgba(37,99,235,0.7)]">
+        <Revelar atraso={0.12} className="flex items-center">
+          <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_70px_-40px_rgba(37,99,235,0.7)]">
             <div className="flex items-center gap-3 border-b border-landing-line px-4 py-2.5">
               <span aria-hidden className="flex gap-1.5">
                 <span className="size-2.5 rounded-full bg-[#ff5f57]" />
@@ -264,14 +266,16 @@ function PrecoPorCarro() {
               className="block h-auto w-full"
             />
           </div>
-          <div className="absolute right-0 bottom-0 w-[32%] max-w-[min(14rem,calc((100svh-15rem)/2.163))] overflow-hidden rounded-[1.4rem] border-4 border-[#27272a] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.95)]">
+          {/* O celular entra por cima da borda direita da janela. A altura
+              vem da tela, e ele define a altura das duas colunas. */}
+          <div className="relative z-10 -ml-[14%] aspect-[600/1298] h-64 shrink-0 overflow-hidden rounded-[1.4rem] border-4 border-[#27272a] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.95)] sm:h-[min(30rem,calc(100svh_-_11rem))]">
             <Image
               src="/landing/fluxo/4-acrescimo.webp"
               alt="Tela real do cliente: aviso de que o valor pode ter acréscimo de até 30% pela condição do veículo"
               width={600}
               height={1298}
               sizes="14rem"
-              className="block h-auto w-full"
+              className="block h-full w-auto"
             />
           </div>
         </Revelar>
