@@ -6,7 +6,9 @@ import Image from "next/image";
 import { useState } from "react";
 
 // "Conheca o Astro por dentro": o print real de cada parte do painel do Admin
-// (estetica limpa de demonstracao, 1280x800), em public/landing/telas-admin,
+// (estetica limpa de demonstracao, tela de 1024x640: na landing o print aparece
+// pequeno, e numa tela estreita a letra do painel sai maior), em
+// public/landing/telas-admin,
 // numa moldura de janela de navegador. O caminho nao pode ter "/admin/": o
 // proxy.ts trata /{slug}/admin/... como area do Admin e manda para o login.
 //
@@ -41,7 +43,7 @@ const ABAS: Aba[] = [
       "Vagas livres no dia",
     ],
     img: "painel",
-    y: 295,
+    y: 369,
     rota: "admin",
   },
   {
@@ -54,7 +56,7 @@ const ABAS: Aba[] = [
       "Confirmação do PIX com um toque",
     ],
     img: "agendamentos",
-    y: 352,
+    y: 440,
     rota: "admin/agendamentos",
   },
   {
@@ -67,7 +69,7 @@ const ABAS: Aba[] = [
       "WhatsApp do cliente a um toque",
     ],
     img: "clientes",
-    y: 410,
+    y: 512,
     rota: "admin/clientes",
   },
   {
@@ -80,7 +82,7 @@ const ABAS: Aba[] = [
       "Grade de horários e capacidade por dia",
     ],
     img: "catalogo",
-    y: 468,
+    y: 584,
     rota: "admin/catalogo",
   },
   {
@@ -93,7 +95,7 @@ const ABAS: Aba[] = [
       "Clientes que mais gastaram e exportação em CSV",
     ],
     img: "financeiro",
-    y: 583,
+    y: 728,
     rota: "admin/financeiro",
   },
   {
@@ -106,7 +108,7 @@ const ABAS: Aba[] = [
       "Link próprio para divulgar",
     ],
     img: "identidade",
-    y: 697,
+    y: 870,
     rota: "admin/identidade",
   },
 ];
@@ -190,8 +192,8 @@ export function PorDentro() {
                   aria-label={`Abrir ${a.rotulo}`}
                   aria-current={i === ativa ? "page" : undefined}
                   onClick={() => abrir(i)}
-                  className="absolute left-[1.25%] w-[19%] cursor-pointer rounded-[0.6rem] outline-none transition-colors hover:bg-white/10 hover:ring-1 hover:ring-white/40 focus-visible:ring-2 focus-visible:ring-landing-glow"
-                  style={{ top: `${(a.y - 27) / 10}%`, height: "5.4%" }}
+                  className="absolute left-[1.5%] w-[23.8%] cursor-pointer rounded-[0.6rem] outline-none transition-colors hover:bg-white/10 hover:ring-1 hover:ring-white/40 focus-visible:ring-2 focus-visible:ring-landing-glow"
+                  style={{ top: `${(a.y - 34) / 10}%`, height: "6.8%" }}
                 >
                   {!explorou && a.id === "clientes" && (
                     <span
