@@ -12,6 +12,7 @@ import { FundoOndas } from "@/front/componentes/fundo-ondas";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { SuccessScreen } from "@/front/componentes/success-screen";
 import { callbackUrlSeguro } from "@/compartilhado/callback-url";
+import { LOGIN_BLOQUEADO, MINUTOS_BLOQUEIO_LOGIN } from "@/compartilhado/limite-login";
 import { PainelMarca, type Estetica } from "@/front/login/painel-marca";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
 
@@ -105,7 +106,13 @@ export function AuthForm({
       redirect: false,
     });
     if (resultado?.error) {
-      setErro("E-mail ou senha inválidos.");
+      // Issue #107: depois de 5 tentativas sem acertar, o login bloqueia por
+      // um tempo. A mensagem diz quanto esperar e qual e a saida.
+      setErro(
+        resultado.error === LOGIN_BLOQUEADO
+          ? `Muitas tentativas sem acertar a senha. Tente de novo em ${MINUTOS_BLOQUEIO_LOGIN} minutos ou use o Esqueci minha senha.`
+          : "E-mail ou senha inválidos."
+      );
       return false;
     }
     return true;
