@@ -129,6 +129,22 @@ describe("POST /api/auth/redefinir-senha", () => {
     expect(depois!.emailConfirmadoEm).not.toBeNull();
   });
 
+  // Issue #107: o "Esqueci minha senha" e a saida de quem ficou bloqueado por
+  // errar a senha. Redefinir zera a contagem e tira o bloqueio.
+  test("redefinir a senha tira o bloqueio de tentativas do login", async () => {
+    await withTenant(e.tenant.id, (tx) =>
+      tx.usuario.update({
+        where: { id: e.cliente.id },
+        data: { tentativasErradas: 5, bloqueadoAte: new Date(Date.now() + 15 * 60 * 1000) },
+      })
+    );
+    await pedir(e.cliente.email);
+
+    expect((await trocar(tokenDoUltimoEmail())).status).toBe(200);
+
+    expect(await cliente()).toMatchObject({ tentativasErradas: 0, bloqueadoAte: null });
+  });
+
   test("o link funciona uma vez so", async () => {
     await pedir(e.cliente.email);
     const token = tokenDoUltimoEmail();
