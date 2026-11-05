@@ -185,6 +185,10 @@ body {
   html:has(.landing) { scroll-behavior: smooth; }
 }
 
+/* Letreiro da faixa de palavras da abertura: a lista vem duas vezes, e andar
+   metade da largura emenda no mesmo desenho. */
+@keyframes landing-letreiro { to { transform: translateX(-50%); } }
+
 /* Cada secao da landing cabe numa tela (.landing-tela) e, no computador, a
    rolagem "encaixa" no comeco da secao mais proxima: parar no meio de duas
    secoes, com as duas cortadas, fica mais dificil. "proximity" so encaixa
