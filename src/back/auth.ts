@@ -4,6 +4,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
+import { registrarAcerto, registrarErro, reservarTentativa } from "@/back/limite-login";
+import { LOGIN_BLOQUEADO } from "@/compartilhado/limite-login";
 
 // RFC 6.2 — payload do JWT inclui tenant_id, user_id e role, permitindo
 // que o middleware valide permissoes sem consulta adicional ao banco.
@@ -54,19 +56,32 @@ export const authOptions: NextAuthOptions = {
 
         // RN02/RN03 — acesso aos servicos exige autenticacao dentro do tenant correto.
         // E-mail e tratado sem diferenciar maiusculas/minusculas.
-        const usuario = await withTenant(tenant.id, (tx) =>
-          tx.usuario.findUnique({
+        // Issue #107 — no maximo 5 tentativas sem acertar; depois, 15 minutos
+        // de bloqueio (ver back/limite-login.ts). A tentativa e reservada e
+        // gravada antes de conferir a senha, numa transacao propria: o erro
+        // de bloqueio e lancado fora dela, para nao desfazer a contagem.
+        const agora = new Date();
+        const reserva = await withTenant(tenant.id, async (tx) => {
+          const encontrado = await tx.usuario.findUnique({
             where: {
               tenantId_email: {
                 tenantId: tenant.id,
                 email: credentials.email.toLowerCase(),
               },
             },
-          })
-        );
-        if (!usuario) return null;
+          });
+          if (!encontrado) return null;
+          return { usuario: encontrado, numero: await reservarTentativa(tx, encontrado.id, agora) };
+        });
+        if (!reserva) return null;
+        // O NextAuth repassa a mensagem do erro para a tela, que explica o bloqueio.
+        if (reserva.numero === null) throw new Error(LOGIN_BLOQUEADO);
+        const { usuario, numero } = reserva;
 
         const senhaValida = await bcrypt.compare(credentials.password, usuario.senhaHash);
+        await withTenant(tenant.id, (tx) =>
+          senhaValida ? registrarAcerto(tx, usuario.id) : registrarErro(tx, usuario.id, numero, agora)
+        );
         if (!senhaValida) return null;
 
         return {

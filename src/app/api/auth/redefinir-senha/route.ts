@@ -59,7 +59,13 @@ export async function POST(request: Request) {
 
     await tx.usuario.update({
       where: { id: pedido.usuarioId },
-      data: { senhaHash, emailConfirmadoEm: pedido.usuario.emailConfirmadoEm ?? agora },
+      data: {
+        senhaHash,
+        emailConfirmadoEm: pedido.usuario.emailConfirmadoEm ?? agora,
+        // Issue #107: quem ficou bloqueado por errar a senha sai por aqui.
+        tentativasErradas: 0,
+        bloqueadoAte: null,
+      },
     });
     await tx.tokenEmail.updateMany({
       where: { usuarioId: pedido.usuarioId, tipo: "REDEFINIR_SENHA", usadoEm: null },
