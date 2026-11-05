@@ -42,6 +42,14 @@ const ABAS: Aba[] = [
     rota: "admin/agendamentos",
   },
   {
+    id: "clientes",
+    rotulo: "Clientes",
+    texto: "Quem são os seus clientes, quem é novo e quem parou de voltar.",
+    itens: ["Busca por nome, telefone, e-mail ou placa", "Novos, sem voltar há 60 dias e nunca agendaram", "WhatsApp do cliente a um toque"],
+    img: "clientes",
+    rota: "admin/clientes",
+  },
+  {
     id: "catalogo",
     rotulo: "Catálogo",
     texto: "Cada serviço com duração e um preço para cada tipo de veículo.",
@@ -53,7 +61,7 @@ const ABAS: Aba[] = [
     id: "financeiro",
     rotulo: "Financeiro",
     texto: "Quanto entrou, de onde veio e quanto ainda falta receber.",
-    itens: ["Receita por período, comparada ao anterior", "Receita por serviço e PIX contra no local", "Clientes que mais gastaram"],
+    itens: ["Receita pelo dia em que o dinheiro entrou", "Por serviço, PIX contra no local e origem", "Clientes que mais gastaram e exportação em CSV"],
     img: "financeiro",
     rota: "admin/financeiro",
   },
