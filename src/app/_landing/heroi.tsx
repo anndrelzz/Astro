@@ -3,14 +3,15 @@
 import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { Vitrine } from "./vitrine";
 
-// Topo da landing: imagem do ceu ao fundo, orbitas por cima, menu, titulo
-// e a vitrine com o celular.
+// Topo da landing: imagem do ceu ao fundo, orbitas por cima, menu, titulo,
+// frase e os dois botoes. Ocupa exatamente uma tela (min-h-svh): o fluxo do
+// cliente com o celular fica na secao seguinte, para nada aparecer cortado
+// no pe da primeira tela.
 //
 // Duas animacoes aqui:
-// - Entrada: titulo e frase aparecem um depois do outro; a vitrine
-//   sobe por ultimo. E animacao CSS (classe landing-subir em globals.css), nao
+// - Entrada: titulo, frase e botoes aparecem um depois do outro. E animacao
+//   CSS (classe landing-subir em globals.css), nao
 //   framer-motion: assim roda assim que o HTML chega, sem esperar o JavaScript
 //   carregar — com framer, o titulo ficaria invisivel ate a pagina hidratar,
 //   o que no 4G pode levar segundos.
@@ -43,14 +44,14 @@ export function Heroi() {
   useMotionValueEvent(scrollY, "change", (y) => setRolou(y > 24));
 
   return (
-    <section ref={ref} id="topo" aria-labelledby="titulo" className="relative overflow-hidden pt-18 pb-20">
-      {/* Foto: a altura acompanha a proporcao dela (2000x1125) para nao ampliar
-          mais que o necessario numa tela larga. */}
-      <motion.div
-        aria-hidden
-        style={{ y: yFoto }}
-        className="absolute inset-x-0 top-0 h-[max(40rem,56.25vw)]"
-      >
+    <section
+      ref={ref}
+      id="topo"
+      aria-labelledby="titulo"
+      className="landing-tela relative flex min-h-svh items-center overflow-hidden pt-24 pb-16"
+    >
+      {/* Foto: cobre a tela inteira da abertura. */}
+      <motion.div aria-hidden style={{ y: yFoto }} className="absolute inset-0">
         <Image src="/landing/ceu-pb.webp" alt="" fill priority sizes="100vw" className="object-cover object-top" />
         {/* Veu escuro: segura a leitura do titulo e funde a foto com o fundo. */}
         <div className="absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_32%,rgba(9,9,11,0.55),rgba(9,9,11,0)_70%),linear-gradient(180deg,rgba(9,9,11,0.25)_0%,rgba(9,9,11,0)_35%,rgba(9,9,11,0.6)_70%,#09090b_100%)]" />
@@ -86,10 +87,10 @@ export function Heroi() {
       </header>
 
       <div className="landing-wrap relative z-10">
-        <div className="grid justify-items-center gap-5 pt-12 pb-8 text-center md:pt-18 md:pb-12">
+        <div className="grid justify-items-center gap-6 text-center">
           <h1
             id="titulo"
-            className="landing-subir [animation-delay:100ms] max-w-[50rem] text-[clamp(2.2rem,5.2vw,3.9rem)] leading-[1.07] font-extrabold tracking-tight text-balance [text-shadow:0_2px_30px_rgba(9,9,11,0.8)]"
+            className="landing-subir [animation-delay:100ms] max-w-[50rem] text-[clamp(2.2rem,5.6vw,4.4rem)] leading-[1.07] font-extrabold tracking-tight text-balance [text-shadow:0_2px_30px_rgba(9,9,11,0.8)]"
           >
             A agenda da sua estética <span className="text-landing-glow">no ar</span>, com o
             cliente marcando sozinho.
@@ -101,10 +102,14 @@ export function Heroi() {
             </mark>{" "}
             no mesmo lugar, com o logo e a cor da sua estética.
           </p>
-        </div>
-
-        <div className="landing-subir [animation-delay:600ms] [animation-duration:0.9s]">
-          <Vitrine />
+          <div className="landing-subir [animation-delay:400ms] flex flex-wrap justify-center gap-3 pt-2">
+            <a href="#preco" className="landing-btn landing-btn-primary">
+              Começar agora
+            </a>
+            <a href="#agendar" className="landing-btn landing-btn-ghost">
+              Ver como o cliente agenda
+            </a>
+          </div>
         </div>
       </div>
     </section>

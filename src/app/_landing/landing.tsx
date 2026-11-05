@@ -24,6 +24,7 @@ import { FundoOndas } from "@/front/componentes/fundo-ondas";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { Heroi } from "./heroi";
 import { Plano } from "./plano";
+import { Vitrine } from "./vitrine";
 import { PorDentro } from "./por-dentro";
 import { ConfigAnimacao, Revelar } from "./revelar";
 
@@ -33,7 +34,7 @@ import { ConfigAnimacao, Revelar } from "./revelar";
 //
 // Este arquivo e componente de servidor e guarda as secoes sem interacao.
 // O que se mexe ou responde a clique fica em arquivos "use client":
-// heroi.tsx (topo e vitrine), por-dentro.tsx (abas), plano.tsx (preco) e
+// heroi.tsx (topo), vitrine.tsx (fluxo do cliente), por-dentro.tsx (abas), plano.tsx (preco) e
 // revelar.tsx (secoes surgindo ao rolar).
 //
 // So promete o que o Astro faz. Os numeros da secao de comparacao vem da
@@ -52,14 +53,14 @@ export function Landing() {
       <div className={`landing ${manrope.className} isolate min-h-dvh overflow-x-hidden bg-landing-night text-landing-ink`}>
         <FundoOndas rapido />
         <Heroi />
+        <ComoFunciona />
         <Comparativo />
-        <Secao id="por-dentro" alternada titulo="Conheça o Astro por dentro" subtitulo="O painel que você usa para acompanhar a estética, do primeiro horário do dia ao fechamento do mês.">
+        <Secao id="por-dentro" alternada titulo="Conheça o Astro por dentro">
           <Revelar>
             <PorDentro />
           </Revelar>
         </Secao>
         <PrecoPorCarro />
-        <ComoFunciona />
         <Recursos />
         <Aparelhos />
         <Preco />
@@ -87,14 +88,16 @@ function Secao({
   children: ReactNode;
 }) {
   const idTitulo = `t-${id ?? titulo.slice(0, 12).replace(/\W/g, "")}`;
+  // Cada secao cabe numa tela (landing-tela, em globals.css): o pt-22 deixa
+  // o conteudo abaixo do menu fixo quando a secao encosta no topo.
   return (
     <section
       id={id}
       aria-labelledby={idTitulo}
-      className={`scroll-mt-24 py-16 md:py-24 ${alternada ? "border-y border-landing-line bg-white/[0.02]" : ""}`}
+      className={`landing-tela pt-22 pb-10 md:pb-12 ${alternada ? "border-y border-landing-line bg-white/[0.02]" : ""}`}
     >
       <div className="landing-wrap">
-        <Revelar className="mx-auto mb-12 grid max-w-2xl justify-items-center gap-4 text-center">
+        <Revelar className="mx-auto mb-8 grid max-w-4xl justify-items-center gap-3 text-center">
           <h2 id={idTitulo} className="text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight font-bold tracking-tight text-balance">
             {titulo}
           </h2>
@@ -131,10 +134,10 @@ function Comparativo() {
       titulo="Por que sair do agendamento pelo WhatsApp?"
       subtitulo="Cinco estéticas foram ouvidas antes de o Astro existir. As cinco agendavam pelo WhatsApp, e quatro tinham perdido cliente por conflito de horário no último mês."
     >
-      <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
-        <Revelar className="grid content-start gap-5 rounded-3xl border border-landing-line bg-landing-surface p-6 sm:p-8">
+      <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-2">
+        <Revelar className="grid content-start gap-3 rounded-3xl border border-landing-line bg-landing-surface p-5 sm:p-6">
           <h3 className="text-base font-extrabold tracking-widest text-landing-muted uppercase">Agenda pelo WhatsApp</h3>
-          <ul className="grid gap-4">
+          <ul className="grid gap-2.5">
             {SEM_ASTRO.map((t) => (
               <li key={t} className="flex items-start gap-3 text-landing-muted">
                 <X className="mt-0.5 size-6 shrink-0 rounded-full bg-red-400/12 p-1 text-red-400" strokeWidth={3} />
@@ -143,9 +146,9 @@ function Comparativo() {
             ))}
           </ul>
         </Revelar>
-        <Revelar atraso={0.12} className="grid content-start gap-5 rounded-3xl border border-landing-glow/45 bg-[linear-gradient(180deg,rgba(37,99,235,0.24),rgba(37,99,235,0.08))] p-6 sm:p-8">
+        <Revelar atraso={0.12} className="grid content-start gap-3 rounded-3xl border border-landing-glow/45 bg-[linear-gradient(180deg,rgba(37,99,235,0.24),rgba(37,99,235,0.08))] p-5 sm:p-6">
           <h3 className="text-base font-extrabold tracking-widest text-landing-glow uppercase">Com o Astro</h3>
-          <ul className="grid gap-4">
+          <ul className="grid gap-2.5">
             {COM_ASTRO.map((t) => (
               <li key={t} className="flex items-start gap-3">
                 <Check className="mt-0.5 size-6 shrink-0 rounded-full bg-emerald-400/14 p-1 text-emerald-400" strokeWidth={3} />
@@ -155,14 +158,14 @@ function Comparativo() {
           </ul>
         </Revelar>
       </div>
-      <p className="mt-8 text-center text-landing-muted">Você percebe a diferença na primeira semana de agenda cheia.</p>
+      <p className="mt-4 text-center text-landing-muted">Você percebe a diferença na primeira semana de agenda cheia.</p>
     </Secao>
   );
 }
 
 function PrecoPorCarro() {
   return (
-    <section aria-labelledby="t-preco-carro" className="py-16 md:py-24">
+    <section aria-labelledby="t-preco-carro" className="landing-tela flex items-center pt-24 pb-12 lg:min-h-svh">
       <div className="landing-wrap grid items-center gap-12 lg:grid-cols-2">
         <Revelar className="grid gap-5">
           <h2 id="t-preco-carro" className="text-[clamp(1.9rem,3.6vw,2.9rem)] leading-[1.08] font-extrabold tracking-tight">
@@ -230,28 +233,29 @@ function PrecoPorCarro() {
   );
 }
 
-const PASSOS = [
-  { titulo: "Escolhe o serviço", texto: "Cadastra o carro e já vê o preço para o porte dele." },
-  { titulo: "Escolhe o horário", texto: "Só aparecem horários com vaga, pela sua grade e capacidade." },
-  { titulo: "Escolhe como pagar", texto: "PIX copia e cola com a sua chave, ou pagamento no local." },
-  { titulo: "Recebe a confirmação", texto: "Por e-mail e Telegram, com lembretes 24 horas e 2 horas antes." },
-];
-
+// O fluxo do cliente com os prints do celular. O titulo vai para dentro da
+// vitrine (coluna do texto), para o celular usar a altura inteira da tela.
 function ComoFunciona() {
   return (
-    <Secao id="agendar" alternada titulo="Você manda o link. O cliente faz o resto." subtitulo="Do clique no link ao carro na sua porta, sem nenhuma mensagem trocada.">
-      <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {PASSOS.map((p, i) => (
-          <li key={p.titulo}>
-            <Revelar atraso={i * 0.1} className="grid h-full content-start gap-3 rounded-3xl border border-landing-line bg-landing-card p-6">
-              <span className="font-mono text-sm font-bold text-landing-glow">{i + 1}</span>
-              <h3 className="text-lg font-bold">{p.titulo}</h3>
-              <p className="text-landing-muted">{p.texto}</p>
-            </Revelar>
-          </li>
-        ))}
-      </ol>
-    </Secao>
+    <section id="agendar" aria-labelledby="t-agendar" className="landing-tela pt-24 pb-8">
+      <div className="landing-wrap">
+        <Revelar>
+          <Vitrine
+            cabecalho={
+              <div className="grid gap-3">
+                <h2 id="t-agendar" className="text-[clamp(1.8rem,3.2vw,2.5rem)] leading-tight font-bold tracking-tight text-balance">
+                  Você manda o link. O cliente faz o resto.
+                </h2>
+                <p className="text-landing-muted lg:text-lg">
+                  Do clique no link ao carro na sua porta, sem nenhuma mensagem trocada. A confirmação e os
+                  lembretes chegam por e-mail e Telegram.
+                </p>
+              </div>
+            }
+          />
+        </Revelar>
+      </div>
+    </section>
   );
 }
 
@@ -270,15 +274,19 @@ const RECURSOS = [
 function Recursos() {
   return (
     <Secao id="recursos" titulo="Tudo o que a agenda da sua estética precisa" subtitulo="Agendamento, pagamento e acompanhamento num lugar só.">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Icone ao lado do titulo (e nao em cima): cartoes mais baixos, e as
+          tres fileiras cabem numa tela. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {RECURSOS.map(({ icone: Icone, titulo, texto }, i) => (
           <Revelar key={titulo} atraso={(i % 3) * 0.08} className="h-full">
-            <div className="grid h-full content-start gap-3 rounded-3xl border border-landing-line bg-landing-card p-6 transition-colors hover:border-landing-line-strong">
-              <span className="grid size-11 place-items-center rounded-xl bg-landing-blue/18 text-landing-glow">
+            <div className="flex h-full items-start gap-4 rounded-3xl border border-landing-line bg-landing-card p-4 transition-colors hover:border-landing-line-strong">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-landing-blue/18 text-landing-glow">
                 <Icone className="size-5" />
               </span>
-              <h3 className="text-lg font-bold">{titulo}</h3>
-              <p className="text-landing-muted">{texto}</p>
+              <div className="grid gap-1">
+                <h3 className="font-bold">{titulo}</h3>
+                <p className="text-sm text-landing-muted">{texto}</p>
+              </div>
             </div>
           </Revelar>
         ))}
@@ -309,13 +317,13 @@ function Aparelhos() {
 
 function Preco() {
   return (
-    <section id="preco" aria-labelledby="t-preco" className="relative scroll-mt-24 overflow-hidden py-16 md:py-24">
-      <svg aria-hidden viewBox="0 0 1000 420" className="pointer-events-none absolute top-12 left-1/2 w-[60rem] max-w-none -translate-x-1/2">
+    <section id="preco" aria-labelledby="t-preco" className="landing-tela relative overflow-hidden pt-22 pb-10 md:pb-12">
+      <svg aria-hidden viewBox="0 0 1000 420" className="pointer-events-none absolute top-20 left-1/2 w-[60rem] max-w-none -translate-x-1/2">
         <ellipse cx="500" cy="210" rx="480" ry="160" fill="none" stroke="#ffffff" strokeOpacity=".16" />
         <ellipse cx="500" cy="210" rx="380" ry="118" fill="none" stroke="#ffffff" strokeOpacity=".1" strokeDasharray="3 10" />
       </svg>
       <div className="landing-wrap relative">
-        <Revelar className="mx-auto mb-8 grid max-w-2xl justify-items-center gap-4 text-center">
+        <Revelar className="mx-auto mb-6 grid max-w-2xl justify-items-center gap-3 text-center">
           <h2 id="t-preco" className="text-[clamp(1.8rem,3.4vw,2.5rem)] leading-tight font-bold tracking-tight">
             Um plano, tudo incluído
           </h2>
@@ -378,7 +386,7 @@ function Duvidas() {
 
 function FaixaFinal() {
   return (
-    <section aria-labelledby="t-fim" className="relative overflow-hidden bg-[linear-gradient(135deg,#1e3a8a_0%,#2563eb_45%,#1e40af_100%)]">
+    <section aria-labelledby="t-fim" className="landing-tela relative overflow-hidden bg-[linear-gradient(135deg,#1e3a8a_0%,#2563eb_45%,#1e40af_100%)]">
       <svg aria-hidden viewBox="0 0 600 600" className="pointer-events-none absolute -top-32 -right-40 w-[34rem] max-w-none opacity-50">
         <circle cx="300" cy="300" r="280" fill="none" stroke="#fff" strokeOpacity=".25" />
         <circle cx="300" cy="300" r="200" fill="none" stroke="#fff" strokeOpacity=".18" strokeDasharray="3 10" />
@@ -410,12 +418,11 @@ const PRODUTO = [
   { href: "#preco", rotulo: "Começar agora" },
 ];
 
-// Rodape em cartao, com o logo do Astro gigante no fim, cortado pela borda
-// de baixo (mesma ideia do rodape da Orbita). O corte e feito pela caixa com
-// overflow-hidden e altura menor que a do logo; o logo sobe ao aparecer.
+// Rodape em cartao, com o logo do Astro grande no fim, inteiro. O logo sobe
+// ao aparecer.
 function Rodape() {
   return (
-    <footer className="landing-wrap py-10">
+    <footer className="landing-tela landing-wrap pt-10 pb-10">
       <div className="overflow-hidden rounded-[2rem] border border-landing-line bg-landing-surface">
         <div className="grid gap-10 px-6 pt-10 sm:px-12 sm:pt-14">
           <div className="flex flex-wrap justify-between gap-10">
@@ -435,8 +442,7 @@ function Rodape() {
           </div>
         </div>
 
-        {/* Altura da caixa = 78% da altura do logo: corta o pe das letras. */}
-        <div aria-hidden className="mt-8 aspect-[712/171] overflow-hidden px-4 sm:px-10">
+        <div aria-hidden className="mx-auto mt-6 mb-6 w-full max-w-md px-4 sm:mb-8 sm:px-10">
           <Revelar>
             <Image
               src="/logo-astro-branco.png"
