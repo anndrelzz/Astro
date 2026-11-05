@@ -83,11 +83,25 @@ const ABAS: Aba[] = [
     itens: [
       "Tipos de veículo definidos por você",
       "Pause um serviço sem apagar o histórico",
-      "Grade de horários e capacidade por dia",
+      "Duração e preço de cada serviço",
     ],
     img: "catalogo",
     y: 584,
     rota: "admin/catalogo",
+  },
+  {
+    id: "horarios",
+    rotulo: "Grade de horários",
+    texto:
+      "Os dias e horários em que a estética atende, e quantos carros ao mesmo tempo.",
+    itens: [
+      "Abre e fecha por dia da semana",
+      "Copiar o horário para outros dias",
+      "Capacidade e intervalo entre horários",
+    ],
+    img: "horarios",
+    y: 656,
+    rota: "admin/horarios",
   },
   {
     id: "financeiro",
@@ -114,6 +128,19 @@ const ABAS: Aba[] = [
     img: "identidade",
     y: 870,
     rota: "admin/identidade",
+  },
+  {
+    id: "configuracoes",
+    rotulo: "Configurações",
+    texto: "O que o cliente vê sobre a estética e as regras de pagamento.",
+    itens: [
+      "Nome, descrição e endereço pelo CEP",
+      "WhatsApp e contato da página",
+      "Chave PIX e prazo de cancelamento",
+    ],
+    img: "configuracoes",
+    y: 942,
+    rota: "admin/configuracoes",
   },
 ];
 
