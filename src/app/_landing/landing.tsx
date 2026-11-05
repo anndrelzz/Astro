@@ -7,7 +7,6 @@ import {
   Check,
   Clock,
   Diamond,
-  List,
   Monitor,
   Palette,
   Plus,
@@ -328,11 +327,6 @@ const RECURSOS = [
       "Confirmação, lembrete e aviso de cancelamento por e-mail e Telegram.",
   },
   {
-    icone: List,
-    titulo: "Agendamentos por situação",
-    texto: "Confirmados, PIX pendente, no local e concluídos, com busca.",
-  },
-  {
     icone: Clock,
     titulo: "Prazo de cancelamento",
     texto: "Você define até quantas horas antes o cliente pode cancelar.",
@@ -354,29 +348,55 @@ const RECURSOS = [
   },
 ];
 
+// Oito recursos, quatro de cada lado de um celular com uma tela real do
+// cliente (como na referencia de landing de app que o Andre trouxe). No
+// celular e no tablet o aparelho sai e os cartoes ficam em grade.
 function Recursos() {
+  const cartao = (
+    { icone: Icone, titulo, texto }: (typeof RECURSOS)[number],
+    i: number,
+  ) => (
+    <Revelar key={titulo} atraso={(i % 4) * 0.08} className="h-full">
+      <div className="flex h-full items-start gap-3 rounded-3xl border border-landing-line bg-landing-card p-4 transition-colors hover:border-landing-line-strong lg:p-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-landing-blue/18 text-landing-glow">
+          <Icone className="size-5" />
+        </span>
+        <div className="grid gap-0.5">
+          <h3 className="font-bold">{titulo}</h3>
+          <p className="text-sm leading-snug text-landing-muted">{texto}</p>
+        </div>
+      </div>
+    </Revelar>
+  );
   return (
     <Secao
       id="recursos"
       titulo="Tudo o que a agenda da sua estética precisa"
       subtitulo="Agendamento, pagamento e acompanhamento num lugar só."
     >
-      {/* Icone ao lado do titulo (e nao em cima): cartoes mais baixos, e as
-          tres fileiras cabem numa tela. */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {RECURSOS.map(({ icone: Icone, titulo, texto }, i) => (
-          <Revelar key={titulo} atraso={(i % 3) * 0.08} className="h-full">
-            <div className="flex h-full items-start gap-4 rounded-3xl border border-landing-line bg-landing-card p-4 transition-colors hover:border-landing-line-strong">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-landing-blue/18 text-landing-glow">
-                <Icone className="size-5" />
-              </span>
-              <div className="grid gap-1">
-                <h3 className="font-bold">{titulo}</h3>
-                <p className="text-sm text-landing-muted">{texto}</p>
-              </div>
-            </div>
-          </Revelar>
-        ))}
+      <div className="grid items-center gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-6">
+        <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-1 lg:grid-cols-1">
+          {RECURSOS.slice(0, 4).map(cartao)}
+        </div>
+        <Revelar atraso={0.1} className="relative hidden lg:block">
+          <div
+            aria-hidden
+            className="absolute -inset-10 rounded-full bg-[radial-gradient(closest-side,rgba(37,99,235,0.45),transparent)]"
+          />
+          <div className="relative aspect-[600/1298] h-[min(54svh,30rem)] overflow-hidden rounded-[1.6rem] border-4 border-[#27272a] bg-black shadow-[0_30px_70px_-20px_rgba(0,0,0,0.95)]">
+            <Image
+              src="/landing/fluxo/6-detalhes.webp"
+              alt="Tela real do cliente: agendamento reservado, com data, serviço, veículo e valor"
+              width={600}
+              height={1298}
+              sizes="15rem"
+              className="block h-full w-auto"
+            />
+          </div>
+        </Revelar>
+        <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-1 lg:grid-cols-1">
+          {RECURSOS.slice(4).map((r, i) => cartao(r, i + 4))}
+        </div>
       </div>
     </Secao>
   );
