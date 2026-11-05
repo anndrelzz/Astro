@@ -221,6 +221,11 @@ model Usuario {
   /// Quando o cliente provou que abre a caixa desse e-mail (link de
   /// confirmacao ou de redefinir a senha). NULO = ainda nao confirmado.
   emailConfirmadoEm DateTime?
+  /// Limite de tentativas no login (issue #107). Conta as tentativas desde o
+  /// ultimo acerto; na 5a errada, bloqueia ate `bloqueadoAte` (15 minutos).
+  /// Acertar a senha ou redefini-la zera os dois. Ver back/limite-login.ts.
+  tentativasErradas Int       @default(0)
+  bloqueadoAte      DateTime?
   criadoEm          DateTime @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
