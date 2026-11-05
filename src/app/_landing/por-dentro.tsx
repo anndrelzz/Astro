@@ -3,18 +3,21 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 import Image from "next/image";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 
-// "Conheca o Astro por dentro": abas com o print real de cada parte do painel
-// do Admin (estetica de teste com dados de demonstracao, tela 1440x900), em
-// public/landing/telas-admin. O caminho nao pode ter "/admin/": o proxy.ts
-// trata /{slug}/admin/... como area do Admin e manda para o login. O print
-// aparece grande, numa moldura de janela de navegador, para dar para ler os
-// numeros.
+// "Conheca o Astro por dentro": o print real de cada parte do painel do Admin
+// (estetica limpa de demonstracao, 1280x800), em public/landing/telas-admin,
+// numa moldura de janela de navegador. O caminho nao pode ter "/admin/": o
+// proxy.ts trata /{slug}/admin/... como area do Admin e manda para o login.
 //
-// Abas acessiveis pelo teclado (padrao WAI-ARIA de tabs): setas trocam de
-// aba (as de cima e baixo tambem, porque no computador as abas ficam em
-// coluna), Home e End vao para a primeira e a ultima.
+// O print e NAVEGAVEL: sobre os itens do menu lateral DENTRO da imagem ficam
+// botoes invisiveis, e clicar em "Clientes" la dentro abre o print da tela de
+// Clientes, como no Astro de verdade. Funciona porque todos os prints tem a
+// mesma lateral, no mesmo lugar (y = centro do item, em pixels do print de
+// 1600x1000). A faixa embaixo da janela traz o texto da tela aberta.
+//
+// No celular o menu do print fica pequeno demais para o dedo: la aparecem
+// tambem botoes em linha acima da janela (rolam para o lado).
 
 type Aba = {
   id: string;
@@ -23,6 +26,8 @@ type Aba = {
   itens: string[];
   img: string;
   rota: string;
+  /** Centro do item no menu lateral do print (px, imagem de 1600x1000). */
+  y: number;
 };
 
 const ABAS: Aba[] = [
@@ -36,6 +41,7 @@ const ABAS: Aba[] = [
       "Vagas livres no dia",
     ],
     img: "painel",
+    y: 295,
     rota: "admin",
   },
   {
@@ -48,6 +54,7 @@ const ABAS: Aba[] = [
       "Confirmação do PIX com um toque",
     ],
     img: "agendamentos",
+    y: 352,
     rota: "admin/agendamentos",
   },
   {
@@ -60,6 +67,7 @@ const ABAS: Aba[] = [
       "WhatsApp do cliente a um toque",
     ],
     img: "clientes",
+    y: 410,
     rota: "admin/clientes",
   },
   {
@@ -72,6 +80,7 @@ const ABAS: Aba[] = [
       "Grade de horários e capacidade por dia",
     ],
     img: "catalogo",
+    y: 468,
     rota: "admin/catalogo",
   },
   {
@@ -84,6 +93,7 @@ const ABAS: Aba[] = [
       "Clientes que mais gastaram e exportação em CSV",
     ],
     img: "financeiro",
+    y: 583,
     rota: "admin/financeiro",
   },
   {
@@ -96,147 +106,145 @@ const ABAS: Aba[] = [
       "Link próprio para divulgar",
     ],
     img: "identidade",
+    y: 697,
     rota: "admin/identidade",
   },
 ];
 
 export function PorDentro() {
   const [ativa, setAtiva] = useState(0);
-  const botoes = useRef<(HTMLButtonElement | null)[]>([]);
-
-  function teclado(e: KeyboardEvent, i: number) {
-    const ultimo = ABAS.length - 1;
-    const destino =
-      e.key === "ArrowRight" || e.key === "ArrowDown"
-        ? i === ultimo
-          ? 0
-          : i + 1
-        : e.key === "ArrowLeft" || e.key === "ArrowUp"
-          ? i === 0
-            ? ultimo
-            : i - 1
-          : e.key === "Home"
-            ? 0
-            : e.key === "End"
-              ? ultimo
-              : null;
-    if (destino === null) return;
-    e.preventDefault();
-    setAtiva(destino);
-    botoes.current[destino]?.focus();
-  }
-
+  // Ate a primeira troca, um ponto pulsa sobre "Clientes" no print, para
+  // mostrar que o menu dele e clicavel.
+  const [explorou, setExplorou] = useState(false);
   const aba = ABAS[ativa];
 
-  // Abas numa linha so; embaixo, no computador, o texto da aba ativa a
-  // esquerda e o print a direita. O print e limitado pela ALTURA da tela
-  // (largura = altura x 1,6, a proporcao dele), para a secao inteira caber
-  // numa tela sem cortar o painel. No celular: abas, texto e print.
+  function abrir(i: number) {
+    setAtiva(i);
+    setExplorou(true);
+  }
+
+  // O print e limitado pela ALTURA da tela (largura = altura x 1,6, a
+  // proporcao dele), para a secao inteira caber numa tela sem cortar o painel.
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-4">
       <div
-        role="tablist"
         aria-label="Telas do painel"
-        className="flex flex-wrap justify-center gap-2"
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden"
       >
         {ABAS.map((a, i) => (
           <button
             key={a.id}
-            ref={(el) => {
-              botoes.current[i] = el;
-            }}
-            role="tab"
-            id={`aba-${a.id}`}
-            aria-controls={`painel-${a.id}`}
-            aria-selected={i === ativa}
-            tabIndex={i === ativa ? 0 : -1}
-            onClick={() => setAtiva(i)}
-            onKeyDown={(e) => teclado(e, i)}
-            className={`relative min-h-11 cursor-pointer rounded-full border px-4 text-sm font-semibold transition-colors ${
+            type="button"
+            onClick={() => abrir(i)}
+            aria-pressed={i === ativa}
+            className={`min-h-11 shrink-0 cursor-pointer rounded-full border px-4 text-sm font-semibold transition-colors ${
               i === ativa
-                ? "border-transparent text-white"
-                : "border-landing-line-strong text-landing-muted hover:border-landing-glow hover:text-landing-ink"
+                ? "border-transparent bg-landing-blue text-white"
+                : "border-landing-line-strong text-landing-muted"
             }`}
           >
-            {/* O fundo azul "desliza" de uma aba para a outra (layoutId). */}
-            {i === ativa && (
-              <motion.span
-                layoutId="aba-ativa"
-                transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                className="absolute inset-0 rounded-full bg-[linear-gradient(135deg,#2563eb,#1d4ed8)]"
-              />
-            )}
-            <span className="relative">{a.rotulo}</span>
+            {a.rotulo}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-center lg:gap-10">
-        {/* Texto da aba ativa. */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={aba.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            className="grid gap-3 text-center lg:text-left"
-          >
-            <h3 className="text-2xl font-extrabold">{aba.rotulo}</h3>
-            <p className="text-landing-muted">{aba.texto}</p>
-            <ul className="mx-auto grid gap-1.5 text-left text-sm lg:mx-0">
-              {aba.itens.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <Check
-                    className="mt-1 size-4 shrink-0 text-landing-glow"
-                    strokeWidth={3}
-                  />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        </AnimatePresence>
-
-        <div
-          role="tabpanel"
-          id={`painel-${aba.id}`}
-          aria-labelledby={`aba-${aba.id}`}
-          className="min-w-0"
-        >
-          {/* Janela de navegador com o print real. */}
-          <div className="mx-auto w-full overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_80px_-30px_rgba(37,99,235,0.45)] lg:max-w-[calc((100svh-23.5rem)*1.6)]">
-            <div className="flex items-center gap-3 border-b border-landing-line px-4 py-2.5">
-              <span aria-hidden className="flex gap-1.5">
-                <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-                <span className="size-2.5 rounded-full bg-[#febc2e]" />
-                <span className="size-2.5 rounded-full bg-[#28c840]" />
-              </span>
-              <span className="min-w-0 flex-1 truncate rounded-md bg-landing-card px-3 py-1 text-center font-mono text-xs text-landing-muted">
-                …/sua-estetica/{aba.rota}
-              </span>
-            </div>
+      {/* Janela de navegador com o print real. */}
+      <div className="mx-auto w-full lg:max-w-[calc((100svh-22.5rem)*1.6)]">
+        <div className="overflow-hidden rounded-2xl border border-landing-line-strong bg-[#0c0c0e] shadow-[0_30px_80px_-30px_rgba(37,99,235,0.45)]">
+          <div className="flex items-center gap-3 border-b border-landing-line px-4 py-1.5">
+            <span aria-hidden className="flex gap-1.5">
+              <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+              <span className="size-2.5 rounded-full bg-[#febc2e]" />
+              <span className="size-2.5 rounded-full bg-[#28c840]" />
+            </span>
+            <span className="min-w-0 flex-1 truncate rounded-md bg-landing-card px-3 py-1 text-center font-mono text-xs text-landing-muted">
+              …/sua-estetica/{aba.rota}
+            </span>
+          </div>
+          <div className="relative">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={aba.id}
-                initial={{ opacity: 0, scale: 0.985 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
               >
                 <Image
                   src={`/landing/telas-admin/${aba.img}.webp`}
                   alt={`Tela real do painel do Astro: ${aba.rotulo}`}
                   width={1600}
                   height={1000}
-                  sizes="(min-width: 72rem) 56rem, 100vw"
+                  sizes="(min-width: 72rem) 72rem, 100vw"
                   className="block h-auto w-full"
                 />
               </motion.div>
             </AnimatePresence>
+
+            {/* Itens clicaveis por cima do menu lateral do print. */}
+            <nav aria-label="Menu do painel" className="absolute inset-0">
+              {ABAS.map((a, i) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  aria-label={`Abrir ${a.rotulo}`}
+                  aria-current={i === ativa ? "page" : undefined}
+                  onClick={() => abrir(i)}
+                  className="absolute left-[1.25%] w-[19%] cursor-pointer rounded-[0.6rem] outline-none transition-colors hover:bg-white/10 hover:ring-1 hover:ring-white/40 focus-visible:ring-2 focus-visible:ring-landing-glow"
+                  style={{ top: `${(a.y - 27) / 10}%`, height: "5.4%" }}
+                >
+                  {!explorou && a.id === "clientes" && (
+                    <span
+                      aria-hidden
+                      className="absolute top-1/2 right-[10%] flex size-3 -translate-y-1/2"
+                    >
+                      <span className="absolute inline-flex size-full animate-ping rounded-full bg-white/80 motion-reduce:animate-none" />
+                      <span className="relative inline-flex size-3 rounded-full bg-white" />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
       </div>
+
+      {/* Faixa com o texto da tela aberta, embaixo da janela. */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={aba.id}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          aria-live="polite"
+          className="vidro flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 rounded-2xl px-5 py-2.5 text-sm"
+        >
+          <p>
+            <b className="font-extrabold">{aba.rotulo}</b>
+            <span className="text-zinc-300"> · {aba.texto}</span>
+          </p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            {aba.itens.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-1.5 text-zinc-200"
+              >
+                <Check
+                  className="size-3.5 shrink-0 text-landing-glow"
+                  strokeWidth={3}
+                />
+                {item}
+              </li>
+            ))}
+          </ul>
+          {!explorou && (
+            <p className="hidden text-xs text-landing-glow lg:block">
+              Clique no menu do painel para navegar.
+            </p>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
