@@ -2,12 +2,12 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { MessageCircle } from "lucide-react";
-import { authOptions } from "@/lib/auth";
-import { calcularPreco } from "@/lib/precificacao";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ClienteShell } from "../../cliente-shell";
-import { AgendarForm } from "./agendar-form";
+import { authOptions } from "@/back/auth";
+import { calcularPreco } from "@/compartilhado/precificacao";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ClienteShell } from "@/front/cliente/cliente-shell";
+import { AgendarForm } from "@/front/cliente/agendar-form";
 
 // UC03, tela 09 — escolha de data/horario/veiculo. RN04: sem veiculo
 // cadastrado, redireciona para o cadastro e retorna aqui depois.

@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { getTenantPorSlug } from "@/lib/tenant";
-import { withTenant } from "@/lib/tenant-db";
-import { CatalogoAdmin } from "./catalogo-admin";
+import { authOptions } from "@/back/auth";
+import { getTenantPorSlug } from "@/back/tenant";
+import { withTenant } from "@/back/tenant-db";
+import { CatalogoAdmin } from "@/front/admin/catalogo-admin";
 
 // UC08, RF01, RN01 revisada — a tela onde o Admin monta o catalogo da estetica:
 // os tipos de veiculo que ela atende, os servicos, a duracao e o preco de cada

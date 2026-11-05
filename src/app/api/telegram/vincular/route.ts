@@ -1,8 +1,8 @@
 import { randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { withTenant } from "@/lib/tenant-db";
+import { authOptions } from "@/back/auth";
+import { withTenant } from "@/back/tenant-db";
 
 // UC15, RN12 — gera um TOKEN temporario associado a conta do cliente,
 // usado no link t.me/<bot>?start=TOKEN. Invalidado apos a vinculacao.

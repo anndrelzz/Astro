@@ -20,7 +20,7 @@ import {
 import { Manrope } from "next/font/google";
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { ThemeColor } from "@/components/ui/theme-color";
+import { ThemeColor } from "@/front/componentes/theme-color";
 import { Heroi } from "./heroi";
 import { Plano } from "./plano";
 import { PorDentro } from "./por-dentro";

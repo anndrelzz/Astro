@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ClienteShell } from "../cliente-shell";
-import { HistoricoLista } from "./historico-lista";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ClienteShell } from "@/front/cliente/cliente-shell";
+import { HistoricoLista } from "@/front/cliente/historico-lista";
 
 // RF15, UC05 — historico de agendamentos do cliente (tela 13 do mockup).
 // O cancelamento (tela 14) e feito por um modal dentro de HistoricoLista.
@@ -51,6 +51,7 @@ export default async function HistoricoPage({
     duracaoMin: a.servico.duracaoMin,
     servicoNome: a.servico.nome,
     veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+    placa: a.veiculo.placa,
     segmento: a.veiculo.segmento.nome,
     valor: Number(a.valor),
     acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),
@@ -61,11 +62,10 @@ export default async function HistoricoPage({
   return (
     <ClienteShell
       slug={slug}
-      trilha={["Conta", "Agendamentos"]}
+      pontos
       titulo="Meus agendamentos"
     >
       <HistoricoLista
-        slug={slug}
         itens={itens}
         horasLimite={tenant.cancelamentoHorasLimite}
       />

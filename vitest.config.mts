@@ -1,0 +1,83 @@
+import path from "node:path";
+import { loadEnv } from "vite";
+import { defineConfig } from "vitest/config";
+
+// Configuracao dos testes (Vitest).
+//
+// `npm test` roda todos os testes; `npm run test:cobertura` roda os mesmos e
+// gera o relatorio de cobertura em coverage/ (abrir coverage/index.html).
+//
+// Variaveis de ambiente: lidas do .env da raiz, como o `next dev`. Os testes
+// de RLS e das rotas da API (tests/back/rotas) precisam do DATABASE_URL apontando
+// para um banco com as migrations aplicadas, conectado com o role da
+// aplicacao. Eles criam esteticas de teste proprias e as apagam no fim.
+// No CI nao ha .env: as variaveis vem do proprio workflow.
+export default defineConfig(({ mode }) => ({
+  resolve: {
+    // Mesmo atalho do tsconfig.json ("@/*" -> "./src/*").
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+      "server-only": path.resolve(import.meta.dirname, "tests/server-only.ts"),
+    },
+  },
+  test: {
+    env: loadEnv(mode, process.cwd(), ""),
+    // Os testes de RLS criam e apagam duas esteticas inteiras no banco.
+    hookTimeout: 30_000,
+    testTimeout: 15_000,
+    // Um projeto por lado do sistema, cada um com o seu ambiente:
+    // `npm run test:back` roda so o backend e `npm run test:front` so o front,
+    // que roda num navegador simulado (jsdom).
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "back",
+          include: ["tests/back/**/*.test.ts"],
+          environment: "node",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "front",
+          include: ["tests/front/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
+          setupFiles: ["tests/front/preparar.ts"],
+        },
+      },
+    ],
+    coverage: {
+      provider: "v8",
+      // Backend: servidor (src/back), regras puras (src/compartilhado), rotas
+      // da API e o proxy. Front: os componentes de tela (src/front). Ficam de
+      // fora os componentes de servidor assincronos, que buscam dados no banco
+      // antes de desenhar: as paginas (page.tsx, em src/app) e o
+      // cliente-shell. A Testing Library nao renderiza componente assincrono.
+      include: [
+        "src/back/**/*.ts",
+        "src/compartilhado/**/*.ts",
+        "src/app/api/**/*.ts",
+        "src/proxy.ts",
+        "src/front/**/*.tsx",
+      ],
+      exclude: ["src/front/cliente/cliente-shell.tsx"],
+      // Metas do Playbook (requisito de aprovacao): 75% das linhas do backend e
+      // 25% do front. Abaixo disso, `npm run test:cobertura` e o CI falham, e o
+      // PR fica vermelho. O proxy e backend: tem meta propria porque fica fora
+      // das pastas do glob.
+      //
+      // As metas so fazem sentido numa rodada com os dois projetos. Com um so
+      // (`--project front --coverage`), a meta do outro falha, porque os
+      // arquivos dele nao rodaram.
+      thresholds: {
+        "src/{back,compartilhado,app/api}/**": { lines: 75 },
+        "src/proxy.ts": { lines: 75 },
+        "src/front/**": { lines: 25 },
+      },
+      // text: tabela no terminal; html: relatorio navegavel; lcov: formato
+      // lido por ferramentas como o SonarQube Cloud.
+      reporter: ["text", "html", "lcov"],
+    },
+  },
+}));

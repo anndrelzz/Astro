@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { withTenant } from "@/lib/tenant-db";
-import { ModalRota } from "@/components/ui/modal-rota";
-import { NovoVeiculoForm } from "../../../veiculos/novo/novo-veiculo-form";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
+import { ModalRota } from "@/front/componentes/modal-rota";
+import { NovoVeiculoForm } from "@/front/cliente/novo-veiculo-form";
 
 // UC02, tela 08 — versao em modal do cadastro de veiculo.
 //
@@ -30,10 +30,9 @@ export default async function NovoVeiculoModal({
 }) {
   const { slug } = await params;
 
-  // cidade/estado alimentam a faixa da placa desenhada no formulario.
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
-    select: { id: true, cidade: true, estado: true },
+    select: { id: true },
   });
   if (!tenant) notFound();
 
@@ -54,8 +53,6 @@ export default async function NovoVeiculoModal({
     <ModalRota titulo="Cadastrar veículo">
       <NovoVeiculoForm
         emModal
-        cidade={tenant.cidade}
-        estado={tenant.estado}
         segmentos={segmentos}
       />
     </ModalRota>

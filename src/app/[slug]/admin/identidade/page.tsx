@@ -1,9 +1,8 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { AdminHeader } from "../admin-header";
-import { IdentidadeAdmin } from "./identidade-admin";
+import { authOptions } from "@/back/auth";
+import { prisma } from "@/back/prisma";
+import { IdentidadeAdmin } from "@/front/admin/identidade-admin";
 
 // UC12, RF13 — tela propria para a identidade visual, como no mockup do admin.
 // Antes esta secao vivia dentro de /configuracoes.
@@ -25,17 +24,13 @@ export default async function AdminIdentidadePage({
     redirect(`/${slug}`);
   }
 
+  // O titulo fica no componente cliente: o botao "Publicar" ao lado dele
+  // depende do estado da cor escolhida.
   return (
-    <>
-      <AdminHeader
-        trilha="Identidade visual · Marca da estetica"
-        titulo="Identidade visual"
-      />
-      <IdentidadeAdmin
-        logoUrlInicial={tenant.logoUrl}
-        corInicial={tenant.corPrimaria ?? "#2563eb"}
-        tenantNome={tenant.nome}
-      />
-    </>
+    <IdentidadeAdmin
+      logoUrlInicial={tenant.logoUrl}
+      corInicial={tenant.corPrimaria ?? "#2563eb"}
+      tenantNome={tenant.nome}
+    />
   );
 }

@@ -1,9 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { lerJson } from "@/lib/api-helpers";
-import { withTenant } from "@/lib/tenant-db";
+import { authOptions } from "@/back/auth";
+import { lerJson } from "@/back/api-helpers";
+import { withTenant } from "@/back/tenant-db";
 
 // O Admin pode lancar um acrescimo por condicao do veiculo no momento em que
 // confirma o recebimento (avaliacao presencial). O corpo e opcional: sem ele,
@@ -89,6 +89,8 @@ export async function POST(
         status: "CONFIRMADO",
         // `valor` nao e tocado: continua sendo o combinado no agendamento (RN01).
         acrescimoAplicado: acrescimo,
+        // RF12 — o financeiro conta a receita pelo dia do pagamento.
+        pagoEm: new Date(),
       },
     });
 

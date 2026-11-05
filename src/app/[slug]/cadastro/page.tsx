@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { AuthForm } from "../login/auth-form";
+import { prisma } from "@/back/prisma";
+import { AuthForm } from "@/front/login/auth-form";
 
 // Tela 03 — Cadastro. Rota propria (nao um toggle), fiel ao mockup. Mostra a
 // identidade da estetica pelo mesmo motivo do login (RF14).
