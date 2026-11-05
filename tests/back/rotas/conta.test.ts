@@ -1,4 +1,5 @@
-import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { LOGIN_BLOQUEADO, MAX_TENTATIVAS_LOGIN, MINUTOS_BLOQUEIO_LOGIN } from "@/compartilhado/limite-login";
 import { POST as cadastrar } from "@/app/api/auth/cadastro/route";
 import { POST as rodarLembretes } from "@/app/api/cron/lembretes/route";
 import { PATCH as editarPerfil } from "@/app/api/perfil/route";
@@ -151,6 +152,77 @@ describe("login (NextAuth)", () => {
 
     const sessao = await session!({ session: { user: {} }, token } as unknown as Parameters<NonNullable<typeof session>>[0]);
     expect(sessao.user).toMatchObject({ id: e.admin.id, tenantId: e.tenant.id, role: "ADMIN" });
+  });
+});
+
+// Issue #107: sem limite, dava para tentar senhas sem parar. Depois de 5
+// tentativas sem acertar, o login fica bloqueado por 15 minutos.
+describe("login — limite de tentativas", () => {
+  type Credenciais = { email: string; password: string; tenantSlug: string };
+  const provedor = authOptions.providers[0] as unknown as {
+    options: { authorize: (c: Partial<Credenciais> | undefined, req: unknown) => Promise<unknown> };
+  };
+  const entrarComSenha = (password: string) =>
+    provedor.options.authorize({ email: e.outroCliente.email, password, tenantSlug: e.tenant.slug }, {});
+  const errar = (vezes: number) =>
+    Array.from({ length: vezes }).reduce<Promise<unknown>>(
+      (anterior) => anterior.then(() => entrarComSenha("Errada123")),
+      Promise.resolve()
+    );
+  const alterarConta = (data: { tentativasErradas?: number; bloqueadoAte?: Date | null }) =>
+    withTenant(e.tenant.id, (tx) => tx.usuario.update({ where: { id: e.outroCliente.id }, data }));
+
+  beforeEach(async () => {
+    await alterarConta({ tentativasErradas: 0, bloqueadoAte: null });
+  });
+
+  test("ate a 4a senha errada, a senha certa ainda entra", async () => {
+    await errar(4);
+    expect(await entrarComSenha(SENHA)).toMatchObject({ id: e.outroCliente.id });
+  });
+
+  test("depois da 5a senha errada, nem a senha certa entra: avisa que esta bloqueado", async () => {
+    await errar(5);
+    await expect(entrarComSenha(SENHA)).rejects.toThrow(LOGIN_BLOQUEADO);
+  });
+
+  test("o bloqueio dura 15 minutos", async () => {
+    const antes = Date.now();
+    await errar(5);
+    const bloqueadoAte = (await usuario(e.outroCliente.id))!.bloqueadoAte!.getTime();
+    const quinzeMin = MINUTOS_BLOQUEIO_LOGIN * 60 * 1000;
+    expect(bloqueadoAte).toBeGreaterThanOrEqual(antes + quinzeMin - 5000);
+    expect(bloqueadoAte).toBeLessThanOrEqual(Date.now() + quinzeMin + 5000);
+  });
+
+  test("passado o bloqueio, a senha certa volta a entrar e zera a contagem", async () => {
+    await alterarConta({ tentativasErradas: MAX_TENTATIVAS_LOGIN, bloqueadoAte: new Date(Date.now() - 1000) });
+
+    expect(await entrarComSenha(SENHA)).toMatchObject({ id: e.outroCliente.id });
+    const depois = await usuario(e.outroCliente.id);
+    expect(depois).toMatchObject({ tentativasErradas: 0, bloqueadoAte: null });
+  });
+
+  test("acertar a senha zera a contagem: erros antigos nao somam com os novos", async () => {
+    await errar(4);
+    await entrarComSenha(SENHA);
+    await errar(4);
+    expect(await entrarComSenha(SENHA)).toMatchObject({ id: e.outroCliente.id });
+  });
+
+  test("tentativas ao mesmo tempo nao furam o limite", async () => {
+    const resultados = await Promise.allSettled(Array.from({ length: 12 }, () => entrarComSenha("Errada123")));
+
+    // So as 5 primeiras chegam a conferir a senha; as outras ja saem bloqueadas.
+    expect(resultados.filter((r) => r.status === "rejected")).toHaveLength(12 - MAX_TENTATIVAS_LOGIN);
+    await expect(entrarComSenha(SENHA)).rejects.toThrow(LOGIN_BLOQUEADO);
+  });
+
+  test("bloquear uma conta nao afeta outra conta da mesma estetica", async () => {
+    await errar(5);
+    expect(
+      await provedor.options.authorize({ email: e.cliente.email, password: SENHA, tenantSlug: e.tenant.slug }, {})
+    ).toMatchObject({ id: e.cliente.id });
   });
 });
 
