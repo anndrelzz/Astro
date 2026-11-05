@@ -44,17 +44,26 @@ function Ondas({
   sentido,
   paradoNoCelular,
   claro,
+  rapido,
 }: {
   caminhos: string[];
   sentido: "esquerda" | "direita";
   paradoNoCelular: boolean;
   claro: boolean;
+  rapido: boolean;
 }) {
+  // As classes ficam escritas por inteiro: o Tailwind so gera a animacao que
+  // encontra literalmente no codigo.
+  const animacao = rapido
+    ? sentido === "esquerda"
+      ? "animate-[ondas-esquerda_6s_linear_infinite]"
+      : "animate-[ondas-direita_9s_linear_infinite]"
+    : sentido === "esquerda"
+      ? "animate-[ondas-esquerda_16s_linear_infinite]"
+      : "animate-[ondas-direita_24s_linear_infinite]";
   return (
     <svg
-      className={`absolute inset-y-0 left-0 h-full w-[200%] will-change-transform ${
-        sentido === "esquerda" ? "animate-[ondas-esquerda_16s_linear_infinite]" : "animate-[ondas-direita_24s_linear_infinite]"
-      } motion-reduce:animate-none ${paradoNoCelular ? "max-lg:animate-none" : ""}`}
+      className={`absolute inset-y-0 left-0 h-full w-[200%] will-change-transform ${animacao} motion-reduce:animate-none ${paradoNoCelular ? "max-lg:animate-none" : ""}`}
       viewBox={`0 0 ${2 * LARGURA} ${ALTURA}`}
       preserveAspectRatio="none"
     >
@@ -75,9 +84,12 @@ function Ondas({
 export function FundoOndas({
   paradoNoCelular = false,
   claro = false,
+  rapido = false,
 }: {
   paradoNoCelular?: boolean;
   claro?: boolean;
+  /** Ondas mais ligeiras (landing): a pagina de vendas pede mais movimento. */
+  rapido?: boolean;
 }) {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -86,8 +98,8 @@ export function FundoOndas({
 
       {/* Luz em ondas, vista so atraves dos pontos */}
       <div className="pontos-luz absolute inset-0 opacity-75">
-        <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" paradoNoCelular={paradoNoCelular} claro={claro} />
-        <Ondas caminhos={PARA_DIREITA} sentido="direita" paradoNoCelular={paradoNoCelular} claro={claro} />
+        <Ondas caminhos={PARA_ESQUERDA} sentido="esquerda" paradoNoCelular={paradoNoCelular} claro={claro} rapido={rapido} />
+        <Ondas caminhos={PARA_DIREITA} sentido="direita" paradoNoCelular={paradoNoCelular} claro={claro} rapido={rapido} />
       </div>
     </div>
   );
