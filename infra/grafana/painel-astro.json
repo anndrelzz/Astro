@@ -180,7 +180,7 @@
     {
       "type": "stat",
       "title": "Tempo de resposta (p95)",
-      "description": "95% dos pedidos responderam em até este tempo. O RNF02 pede a lista de horários em menos de 300 ms.",
+      "description": "95% dos pedidos responderam em até este tempo. O RNF02 pede a lista de horários em menos de 300 ms. O valor é estimado por faixas de tempo (arredonda para o teto da faixa): use a lista de pedidos lentos para ver o tempo exato.",
       "gridPos": {
         "x": 12,
         "y": 0,
@@ -246,7 +246,7 @@
     {
       "type": "stat",
       "title": "Horários (/api/slots) p95",
-      "description": "Tempo da rota que monta a lista de horários livres. Meta do RNF02: abaixo de 300 ms.",
+      "description": "Tempo da rota que monta a lista de horários livres. Meta do RNF02: abaixo de 300 ms. O valor é estimado por faixas de tempo (arredonda para o teto da faixa): use a lista de pedidos lentos para ver o tempo exato.",
       "gridPos": {
         "x": 18,
         "y": 0,
@@ -378,7 +378,7 @@
     {
       "type": "timeseries",
       "title": "Tempo de resposta (p95) por rota",
-      "description": "95% dos pedidos de cada rota responderam em até este tempo.",
+      "description": "95% dos pedidos de cada rota responderam em até este tempo. O valor é estimado por faixas de tempo (arredonda para o teto da faixa): use a lista de pedidos lentos para ver o tempo exato.",
       "gridPos": {
         "x": 12,
         "y": 5,
