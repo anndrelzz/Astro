@@ -95,6 +95,10 @@ model Tenant {
   cancelamentoHorasLimite Int      @default(2) // RF18 — antecedencia minima para cancelamento pelo cliente
   capacidadeSimultanea    Int      @default(1) // RN06 — configurada pelo Admin, numero de atendimentos ao mesmo tempo
   intervaloMinutos        Int      @default(60) // RF02 — granularidade dos horarios oferecidos
+  /// Autocadastro (06/11): resumo (SHA-256 com segredo) da conexao que criou a
+  /// estetica pela tela /start, para o limite de cadastros por hora. Nunca o
+  /// IP em si (LGPD). NULO = criada pelo script do terminal.
+  cadastroIpHash          String?
   criadoEm                DateTime @default(now())
 
   usuarios     Usuario[]
@@ -108,6 +112,7 @@ model Tenant {
   logo         LogoTenant?
   tokensEmail  TokenEmail[]
 
+  @@index([cadastroIpHash, criadoEm])
   @@map("tenant")
 }
 
