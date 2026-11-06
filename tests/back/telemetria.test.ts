@@ -1,5 +1,11 @@
-import { describe, expect, test } from "vitest";
-import { ligarTelemetria, limparAtributos, telemetriaLigada } from "@/back/telemetria";
+import { metrics, trace } from "@opentelemetry/api";
+import type { ReadableSpan, SpanExporter } from "@opentelemetry/sdk-trace-node";
+import { afterEach, describe, expect, test, vi } from "vitest";
+
+// ExportResultCode.SUCCESS do OpenTelemetry (o enum vem de um pacote que o
+// Astro nao usa diretamente).
+const SUCESSO = { code: 0 };
+import { ExportadorSemSegredos, ligarTelemetria, limparAtributos, telemetriaLigada } from "@/back/telemetria";
 
 // Observabilidade (Playbook, nucleo comum): o Astro manda os rastros de cada
 // pagina e rota para o Grafana Cloud por OpenTelemetry. Duas regras:
@@ -38,9 +44,80 @@ describe("telemetriaLigada", () => {
 });
 
 describe("ligarTelemetria", () => {
+  afterEach(() => {
+    // Desfaz o registro global, para nenhum outro teste mandar rastros.
+    trace.disable();
+    metrics.disable();
+  });
+
   test("sem a chave do Grafana, nao liga nada (computador do dev, testes, CI)", () => {
     expect(ligarTelemetria({})).toBe(false);
     expect(ligarTelemetria({ OTEL_EXPORTER_OTLP_ENDPOINT: "https://exemplo" })).toBe(false);
+    expect(trace.getTracerProvider().getTracer("astro").startSpan("x").isRecording()).toBe(false);
+  });
+
+  test("com a chave, registra quem grava os rastros e as metricas", () => {
+    const ligou = ligarTelemetria({
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:9",
+      OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic teste",
+      TELEMETRIA_AMBIENTE: "teste",
+    });
+
+    expect(ligou).toBe(true);
+    // Antes de ligar, o rastro e de mentira (nao grava nada); depois, grava.
+    const rastro = trace.getTracer("astro").startSpan("teste");
+    expect(rastro.isRecording()).toBe(true);
+    rastro.end();
+  });
+});
+
+describe("ExportadorSemSegredos", () => {
+  function rastro(nome: string, atributos: Record<string, unknown>) {
+    return { name: nome, attributes: atributos } as unknown as ReadableSpan;
+  }
+
+  function destinoFalso() {
+    const recebidos: ReadableSpan[] = [];
+    const destino: SpanExporter = {
+      export: (rastros, aoTerminar) => {
+        recebidos.push(...rastros);
+        aoTerminar(SUCESSO);
+      },
+      shutdown: vi.fn(async () => {}),
+      forceFlush: vi.fn(async () => {}),
+    };
+    return { destino, recebidos };
+  }
+
+  test("o destino recebe os rastros ja sem os tokens, no nome e nos atributos", () => {
+    const { destino, recebidos } = destinoFalso();
+    const aoTerminar = vi.fn();
+
+    new ExportadorSemSegredos(destino).export(
+      [rastro("GET /demo/redefinir-senha?token=segredo", { "http.target": "/demo/redefinir-senha?token=segredo" })],
+      aoTerminar
+    );
+
+    expect(recebidos).toHaveLength(1);
+    expect(recebidos[0].name).toBe("GET /demo/redefinir-senha");
+    expect(recebidos[0].attributes).toEqual({ "http.target": "/demo/redefinir-senha" });
+    expect(aoTerminar).toHaveBeenCalledWith(SUCESSO);
+  });
+
+  test("desligar e esvaziar a fila passam para o destino", async () => {
+    const { destino } = destinoFalso();
+    const exportador = new ExportadorSemSegredos(destino);
+
+    await exportador.forceFlush();
+    await exportador.shutdown();
+
+    expect(destino.forceFlush).toHaveBeenCalledOnce();
+    expect(destino.shutdown).toHaveBeenCalledOnce();
+  });
+
+  test("destino sem forceFlush nao quebra", async () => {
+    const exportador = new ExportadorSemSegredos({ export: vi.fn(), shutdown: vi.fn(async () => {}) });
+    await expect(exportador.forceFlush()).resolves.toBeUndefined();
   });
 });
 
