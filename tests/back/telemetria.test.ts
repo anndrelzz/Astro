@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { limparAtributos, telemetriaLigada } from "@/back/telemetria";
+import { ligarTelemetria, limparAtributos, telemetriaLigada } from "@/back/telemetria";
 
 // Observabilidade (Playbook, nucleo comum): o Astro manda os rastros de cada
 // pagina e rota para o Grafana Cloud por OpenTelemetry. Duas regras:
@@ -34,6 +34,13 @@ describe("telemetriaLigada", () => {
         OTEL_SDK_DISABLED: "true",
       })
     ).toBe(false);
+  });
+});
+
+describe("ligarTelemetria", () => {
+  test("sem a chave do Grafana, nao liga nada (computador do dev, testes, CI)", () => {
+    expect(ligarTelemetria({})).toBe(false);
+    expect(ligarTelemetria({ OTEL_EXPORTER_OTLP_ENDPOINT: "https://exemplo" })).toBe(false);
   });
 });
 
