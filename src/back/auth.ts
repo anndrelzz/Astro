@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
+import { segundosDeSessao } from "@/back/sessao";
 import { registrarAcerto, registrarErro, reservarTentativa } from "@/back/limite-login";
 import { LOGIN_BLOQUEADO } from "@/compartilhado/limite-login";
 
@@ -35,7 +36,9 @@ declare module "next-auth" {
 }
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
+  // Issue #113 — 7 dias sem usar o site (ou SESSAO_DIAS). Ver back/sessao.ts.
+  session: { strategy: "jwt", maxAge: segundosDeSessao(process.env.SESSAO_DIAS) },
+  jwt: { maxAge: segundosDeSessao(process.env.SESSAO_DIAS) },
   providers: [
     CredentialsProvider({
       name: "Credentials",
