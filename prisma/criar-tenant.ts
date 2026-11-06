@@ -2,7 +2,9 @@ import "dotenv/config";
 import { createInterface, type Interface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { z } from "zod";
-import { PrismaClient, Prisma } from "../src/generated/prisma/client";
+import { PrismaClient } from "../src/generated/prisma/client";
+import { criarEstetica, EnderecoEmUso } from "../src/back/criar-estetica";
+import { problemaNoEndereco, MENSAGEM_DO_PROBLEMA } from "../src/compartilhado/endereco-estetica";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
@@ -110,6 +112,14 @@ async function main() {
   }
   const { nome, slug, email } = entrada.data;
 
+  // Mesmas regras do autocadastro (tela /start): endereco reservado pelo
+  // Astro nao pode, nem pelo terminal.
+  const problema = problemaNoEndereco(slug);
+  if (problema) {
+    console.error(MENSAGEM_DO_PROBLEMA[problema]);
+    process.exit(1);
+  }
+
   // rl so existe no caminho nao-TTY (pipe): sem terminal para mascarar, senha
   // e confirmacao saem da mesma interface, lida linha a linha pelo iterador.
   const rl = stdin.isTTY ? null : createInterface({ input: stdin, output: stdout, terminal: false });
@@ -145,55 +155,24 @@ async function main() {
   const senhaHash = await bcrypt.hash(senha, 10);
 
   try {
-    const tenant = await prisma.$transaction(async (tx) => {
-      const tenant = await tx.tenant.create({ data: { nome, slug } });
-
-      // RLS (migration 20260723_rls) exige app.tenant_id na sessao para
-      // escrever em usuario. Dentro de $transaction todas as queries usam a
-      // MESMA conexao, entao SET de sessao (nao SET LOCAL) e seguro aqui -
-      // e, diferente do script antigo, tenant e admin sao atomicos: se o
-      // segundo passo falhar, o primeiro tambem desfaz.
-      await tx.$executeRawUnsafe(
-        `SELECT set_config('app.tenant_id', $1, false)`,
-        tenant.id
-      );
-
-      await tx.usuario.create({
-        data: {
-          tenantId: tenant.id,
-          nome: `Admin ${nome}`,
-          email,
-          senhaHash,
-          role: "ADMIN",
-        },
-      });
-
-      // Ponto de partida dos tipos de veiculo (RN01 revisada). Sem nenhum, o
-      // Admin cairia numa tela de Catalogo vazia e nao conseguiria cadastrar
-      // servico — preco depende de tipo. Ele renomeia e remove o que nao
-      // atende; e mais rapido ajustar cinco do que criar do zero.
-      await tx.segmento.createMany({
-        data: ["Hatch", "Sedan", "SUV", "Pickup", "Van"].map((nome, ordem) => ({
-          tenantId: tenant.id,
-          nome,
-          ordem,
-        })),
-      });
-
-      return tenant;
+    // A mesma criacao do autocadastro (src/back/criar-estetica.ts): estetica,
+    // Admin e os tipos de veiculo iniciais, numa transacao so.
+    const { tenant } = await criarEstetica(prisma, {
+      nomeEstetica: nome,
+      slug,
+      nomeAdmin: `Admin ${nome}`,
+      email,
+      senhaHash,
     });
 
     console.log(`\nEstetica "${tenant.nome}" criada em /${tenant.slug}`);
     console.log(`Login do admin: ${email}`);
     console.log(
-      `Proximo passo: ajustar os tipos de veiculo e cadastrar os servicos em /${tenant.slug}/admin/catalogo`
+      `Proximo passo: ajustar os tipos de veiculo, a grade de horarios e os servicos em /${tenant.slug}/admin`
     );
   } catch (e) {
-    // O adapter de driver (@prisma/adapter-pg) nao preenche e.meta.target
-    // com os nomes das colunas como o Prisma padrao - so da pra saber que
-    // foi uma violacao de unicidade, nao qual campo exatamente.
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      console.error("Ja existe uma estetica com esse slug ou um admin com esse e-mail.");
+    if (e instanceof EnderecoEmUso) {
+      console.error("Ja existe uma estetica com esse slug.");
       process.exit(1);
     }
     throw e;

@@ -97,11 +97,15 @@ describe("POST /api/esteticas", () => {
   });
 
   test("endereco ja usado por outra estetica: 409, sem criar nada", async () => {
-    const res = await cadastrarEstetica(cadastro({ endereco: existente.tenant.slug }));
+    const primeiro = cadastro();
+    const { endereco } = await primeiro.clone().json();
+    expect((await cadastrarEstetica(primeiro)).status).toBe(201);
+
+    const res = await cadastrarEstetica(cadastro({ endereco, nomeEstetica: "Outra estética" }));
 
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({ campo: "endereco" });
-    expect(await prisma.tenant.count({ where: { slug: existente.tenant.slug } })).toBe(1);
+    expect(await buscar(endereco)).toMatchObject({ nome: "Estética do João" });
   });
 
   test("endereco proibido ou invalido: 400 no campo do endereco", async () => {

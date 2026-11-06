@@ -11,6 +11,8 @@ export const LIMITES = {
   // Nome completo brasileiro raramente passa de 70. Vale no cadastro e no
   // perfil — se fossem diferentes, quem cadastrou nao conseguiria salvar o perfil.
   nomePessoa: 100,
+  // Nome da estetica no autocadastro: vira titulo do site e do painel.
+  nomeEstetica: 80,
   // Maximo que o padrao de e-mail permite.
   email: 254,
   // O bcrypt so considera os 72 primeiros bytes e descarta o resto em
