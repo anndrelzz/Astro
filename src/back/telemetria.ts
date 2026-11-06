@@ -60,7 +60,7 @@ export function limparAtributos(atributos: Record<string, unknown>): void {
 // Fica entre o Next.js e o envio: limpa cada rastro antes de ele sair do
 // servidor. O rastro ja terminou quando chega aqui, entao mexer nos atributos
 // nao muda nada no pedido.
-class ExportadorSemSegredos implements SpanExporter {
+export class ExportadorSemSegredos implements SpanExporter {
   constructor(private readonly destino: SpanExporter) {}
 
   export(rastros: ReadableSpan[], aoTerminar: Parameters<SpanExporter["export"]>[1]): void {
