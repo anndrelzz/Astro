@@ -3,7 +3,9 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   ENDERECOS_PROIBIDOS,
+  enderecoEnquantoDigita,
   MAX_LETRAS_ENDERECO,
+  MENSAGEM_DO_PROBLEMA,
   MIN_LETRAS_ENDERECO,
   normalizarEndereco,
   problemaNoEndereco,
@@ -39,6 +41,25 @@ describe("normalizarEndereco", () => {
   test("hifen repetido vira um so, e hifen nas pontas sai", () => {
     expect(normalizarEndereco("joão--car-")).toBe("joao-car");
     expect(normalizarEndereco("-joao")).toBe("joao");
+  });
+});
+
+describe("enderecoEnquantoDigita", () => {
+  test("arruma enquanto o dono digita, mas deixa o hifen do fim para a proxima palavra", () => {
+    expect(enderecoEnquantoDigita("Estética João-")).toBe("esteticajoao-");
+    expect(enderecoEnquantoDigita("joao--")).toBe("joao-");
+  });
+
+  test("hifen no comeco sai e corta no tamanho maximo", () => {
+    expect(enderecoEnquantoDigita("-joao")).toBe("joao");
+    expect(enderecoEnquantoDigita("a".repeat(60))).toHaveLength(MAX_LETRAS_ENDERECO);
+  });
+});
+
+describe("MENSAGEM_DO_PROBLEMA", () => {
+  test("aparece na tela, entao vem com acento", () => {
+    expect(MENSAGEM_DO_PROBLEMA["em-uso"]).toBe("Esse endereço já é de outra estética. Escolha outro");
+    expect(MENSAGEM_DO_PROBLEMA.proibido).toBe("Esse endereço é reservado pelo Astro. Escolha outro");
   });
 });
 
