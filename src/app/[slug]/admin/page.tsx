@@ -8,6 +8,7 @@ import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { nomeDoCliente } from "@/compartilhado/contato";
 import { AgendaHoje } from "@/front/admin/agenda-hoje";
+import { AvisoGradeVazia } from "@/front/admin/aviso-grade-vazia";
 import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "@/front/admin/cartao-faturamento";
 import { EsperandoVoce } from "@/front/admin/esperando-voce";
 
@@ -124,7 +125,12 @@ export default async function AdminDashboardPage({
       },
     });
 
+    // Estetica recem-criada pelo autocadastro nasce sem grade (decisao de
+    // 06/11): o Dashboard avisa ate o dono configurar.
+    const diasNaGrade = await tx.horarioFuncionamento.count({ where: { tenantId: tenant.id } });
+
     return {
+      diasNaGrade,
       hoje,
       mes,
       mesPassado,
@@ -230,6 +236,12 @@ export default async function AdminDashboardPage({
           {dataHoje}
         </span>
       </div>
+
+      {dados.diasNaGrade === 0 && (
+        <div className="mb-6">
+          <AvisoGradeVazia slug={slug} />
+        </div>
+      )}
 
       {/* Esquerda: faturamento, indicadores e PIX para confirmar.
           Direita: a agenda de hoje em linha do tempo. */}
