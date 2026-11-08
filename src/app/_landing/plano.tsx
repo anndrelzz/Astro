@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 // Cartao do plano unico, com a troca entre cobranca mensal e anual. O anual
@@ -118,9 +119,11 @@ export function Plano() {
             </p>
           </div>
 
-          <a href="#duvidas" className="landing-btn landing-btn-primary w-full">
+          {/* Leva ao autocadastro (tela /start). A cobranca do plano e
+              combinada depois, por PIX, fora do sistema. */}
+          <Link href="/start" className="landing-btn landing-btn-primary w-full">
             Assinar o Astro
-          </a>
+          </Link>
         </div>
 
         <ul className="grid content-center gap-3 md:border-l md:border-landing-line md:pl-10">

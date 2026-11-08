@@ -64,6 +64,19 @@ export function normalizarEndereco(texto: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * O mesmo, enquanto o dono digita no campo: o hifen do fim fica, porque pode
+ * vir mais uma palavra depois ("joao-" a caminho de "joao-car"). O servidor
+ * normaliza de novo com normalizarEndereco, que tira esse hifen.
+ */
+export function enderecoEnquantoDigita(texto: string): string {
+  return semAcento(texto)
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+/, "")
+    .slice(0, MAX_LETRAS_ENDERECO);
+}
+
 /** Sugestao a partir do nome, sem hifen: "Estética do João" vira "esteticadojoao". */
 export function sugerirEndereco(nomeDaEstetica: string): string {
   return normalizarEndereco(nomeDaEstetica.replace(/-/g, "")).slice(0, MAX_LETRAS_ENDERECO);
@@ -78,10 +91,11 @@ export function problemaNoEndereco(endereco: string): ProblemaNoEndereco | null 
   return null;
 }
 
+// Aparecem na tela /start, embaixo do campo: por isso com acento.
 export const MENSAGEM_DO_PROBLEMA: Record<ProblemaNoEndereco | "em-uso", string> = {
-  curto: `Use pelo menos ${MIN_LETRAS_ENDERECO} letras ou numeros`,
-  longo: `Use no maximo ${MAX_LETRAS_ENDERECO} letras ou numeros`,
-  invalido: "Use so letras minusculas, numeros e hifen",
-  proibido: "Esse endereco e reservado pelo Astro. Escolha outro",
-  "em-uso": "Esse endereco ja e de outra estetica. Escolha outro",
+  curto: `Use pelo menos ${MIN_LETRAS_ENDERECO} letras ou números`,
+  longo: `Use no máximo ${MAX_LETRAS_ENDERECO} letras ou números`,
+  invalido: "Use só letras minúsculas, números e hífen",
+  proibido: "Esse endereço é reservado pelo Astro. Escolha outro",
+  "em-uso": "Esse endereço já é de outra estética. Escolha outro",
 };
