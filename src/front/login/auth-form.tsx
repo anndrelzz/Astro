@@ -56,6 +56,8 @@ export function AuthForm({
   const [telefone, setTelefone] = useState("");
   const [senha, setSenha] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
+  // Campo isca contra robo (so no cadastro): a pessoa nao ve, entao fica vazio.
+  const [site, setSite] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   // Erro que a API apontou num campo do cadastro: aparece embaixo dele.
@@ -137,6 +139,7 @@ export function AuthForm({
           email,
           telefone,
           senha,
+          site,
         }),
       });
       if (!resposta.ok) {
@@ -359,6 +362,24 @@ export function AuthForm({
                     </div>
                   )}
                 </div>
+
+                {!eLogin && (
+                  // Isca para robo: fora da tela, fora do Tab e fora do leitor
+                  // de tela (o mesmo campo do /start).
+                  <div aria-hidden className="absolute -left-[10000px] h-px w-px overflow-hidden">
+                    <label>
+                      Não preencha
+                      <input
+                        type="text"
+                        name="site"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={site}
+                        onChange={(e) => setSite(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                )}
 
                 {!eLogin && (
                   <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-snug text-astro-muted lg:text-sm lg:leading-normal">

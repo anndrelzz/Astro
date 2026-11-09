@@ -186,12 +186,30 @@ describe("AuthForm — cadastro", () => {
       email: "maria@teste.com",
       telefone: "47999990000",
       senha: "Senha123",
+      // Campo isca contra robo: a pessoa nao ve, entao vai vazio.
+      site: "",
     });
     expect(signIn).toHaveBeenCalled();
     await act(async () => {
       vi.advanceTimersByTime(2300);
     });
     expect(roteador.push).toHaveBeenCalledWith("/demo");
+  });
+
+  // OWASP A04: o mesmo campo isca do autocadastro (/start). Fica fora da tela,
+  // fora do Tab e fora do leitor de tela; so um robo o preenche.
+  test("tem o campo isca escondido, que a pessoa nao alcanca", () => {
+    const { container } = render(<AuthForm modo="cadastro" estetica={ESTETICA} />);
+    const isca = container.querySelector<HTMLInputElement>('input[name="site"]');
+
+    expect(isca).not.toBeNull();
+    expect(isca!.tabIndex).toBe(-1);
+    expect(isca!.closest("[aria-hidden]")).not.toBeNull();
+  });
+
+  test("o login nao tem o campo isca", () => {
+    const { container } = render(<AuthForm modo="login" estetica={ESTETICA} />);
+    expect(container.querySelector('input[name="site"]')).toBeNull();
   });
 
   test("se o servidor recusar, mostra o motivo e nao tenta entrar", async () => {
