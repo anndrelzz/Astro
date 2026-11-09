@@ -58,7 +58,8 @@ function agendamentoNoBanco(dataHora: Date, status: StatusAgendamento = "PENDENT
         veiculoId: e.veiculo.id,
         servicoId: e.servico.id,
         dataHora,
-        formaPagamento: "LOCAL",
+        // PIX pendente so existe para quem escolheu PIX.
+        formaPagamento: status === "PIX_PENDENTE" ? "PIX" : "LOCAL",
         status,
         valor: 80,
       },
@@ -131,10 +132,15 @@ describe("POST /api/agendamentos", () => {
     entrarComo(e.cliente);
     const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(4, { formaPagamento: "PIX" })));
     expect(resposta.status).toBe(201);
-    expect(await resposta.json()).toMatchObject({
+    const json = await resposta.json();
+    expect(json).toMatchObject({
       status: "PIX_PENDENTE",
       pixChaveCopiaCola: e.tenant.pixChaveCopiaCola,
     });
+    // O PIX ainda nao foi conferido: o aviso e de horario reservado, nao de
+    // agendamento confirmado.
+    const gravado = await buscar(json.id);
+    expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["RESERVA_PIX"]);
   });
 
   test("horario ja ocupado responde 409 (capacidade de 1 carro)", async () => {
@@ -402,6 +408,31 @@ describe("POST /api/agendamentos/[id]/confirmar-pagamento", () => {
     expect(Number(gravado!.acrescimoAplicado)).toBe(24);
     // RN01: o valor combinado nao muda; o acrescimo fica em separado.
     expect(Number(gravado!.valor)).toBe(80);
+  });
+
+  test("confirmar o PIX avisa o cliente: pagamento confirmado, depois da resposta", async () => {
+    const ag = await agendamentoNoBanco(daqui(48), "PIX_PENDENTE");
+    entrarComo(e.admin);
+    vi.mocked(enviarEmail).mockClear();
+
+    expect((await chamar(ag.id)).status).toBe(200);
+    expect((await buscar(ag.id))!.notificacoes.map((n) => n.tipo)).toEqual(["PAGAMENTO_CONFIRMADO"]);
+    expect(enviarEmail).not.toHaveBeenCalled();
+    await depoisDaResposta();
+    expect(enviarEmail).toHaveBeenCalledWith(
+      e.cliente.email,
+      "Pagamento confirmado",
+      expect.any(String),
+      expect.stringContaining("<!doctype html>")
+    );
+  });
+
+  test("confirmar o pagamento no local nao manda aviso: o cliente esta na estetica", async () => {
+    const ag = await agendamentoNoBanco(daqui(48));
+    entrarComo(e.admin);
+
+    expect((await chamar(ag.id)).status).toBe(200);
+    expect((await buscar(ag.id))!.notificacoes).toEqual([]);
   });
 
   test("acrescimo maior que o valor do servico responde 400", async () => {
