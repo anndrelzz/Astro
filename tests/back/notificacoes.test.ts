@@ -48,6 +48,7 @@ function noBanco(
     canal,
     tipo,
     agendamento: {
+      id: `${id}-ag`,
       dataHora: DATA_HORA,
       valor: 120,
       formaPagamento: "LOCAL",
@@ -172,6 +173,8 @@ describe("enviarNotificacoes", () => {
     ["LEMBRETE_24H", "Lembrete: seu agendamento e amanha", "amanha"],
     ["LEMBRETE_2H", "Lembrete: seu agendamento e em 2 horas", "em 2 horas"],
     ["CONFIRMACAO_CANCELAMENTO", "Agendamento cancelado", "foi cancelado"],
+    ["RESERVA_PIX", "Horario reservado: aguardando a confirmacao do PIX", "/demo/pagamento/n1-ag"],
+    ["PAGAMENTO_CONFIRMADO", "Pagamento confirmado", "esta garantido"],
   ])("%s tem assunto e texto proprios", async (tipo, assunto, trecho) => {
     await enviarNotificacoes([noBanco("n1", "EMAIL", tipo)]);
     expect(email.mock.calls[0][1]).toBe(assunto);
