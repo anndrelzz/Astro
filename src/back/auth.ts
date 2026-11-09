@@ -3,6 +3,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/back/prisma";
+import { registrarFalha } from "@/back/log-de-erro";
 import { withTenant } from "@/back/tenant-db";
 import { segundosDeSessao } from "@/back/sessao";
 import { registrarAcerto, registrarErro, reservarTentativa } from "@/back/limite-login";
@@ -101,14 +102,15 @@ export const authOptions: NextAuthOptions = {
       },
       // O NextAuth repassa a mensagem de qualquer erro lancado aqui para a
       // tela e para o endereco do erro. So os codigos conhecidos passam; uma
-      // falha inesperada (banco fora do ar, por exemplo) vai para o log e sai
+      // falha inesperada (banco fora do ar, por exemplo) vai para o log (e para o
+      // Grafana) e sai
       // como LOGIN_INDISPONIVEL, sem a consulta nem os nomes das tabelas.
       async authorize(credentials) {
         try {
           return await conferirCredenciais(credentials);
         } catch (erro) {
           if (erro instanceof Error && erro.message === LOGIN_BLOQUEADO) throw erro;
-          console.error("[login] falha inesperada ao conferir as credenciais", erro);
+          registrarFalha("[login] falha inesperada ao conferir as credenciais", erro);
           throw new Error(LOGIN_INDISPONIVEL);
         }
       },

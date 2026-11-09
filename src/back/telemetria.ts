@@ -1,7 +1,7 @@
 // Observabilidade (Playbook, nucleo comum; orientador: Grafana) — o Astro
 // manda para o Grafana Cloud, por OpenTelemetry, um rastro de cada pagina e
-// rota da API (o Next.js ja mede isso sozinho; aqui so ligamos o envio) e as
-// metricas que o codigo registrar. O Grafana monta os graficos de pedidos,
+// rota da API (o Next.js ja mede isso sozinho; aqui so ligamos o envio), as
+// metricas que o codigo registrar e os logs de erro (back/log-de-erro.ts). O Grafana monta os graficos de pedidos,
 // erros e tempo de resposta a partir dos rastros.
 //
 // O endereco e a chave vem das variaveis padrao do OpenTelemetry
@@ -15,9 +15,12 @@
 // (nome, e-mail, placa) e anotado nos rastros.
 
 import { metrics } from "@opentelemetry/api";
+import { logs } from "@opentelemetry/api-logs";
+import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-proto";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { resourceFromAttributes } from "@opentelemetry/resources";
+import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs";
 import { MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import {
   BatchSpanProcessor,
@@ -100,6 +103,15 @@ export function ligarTelemetria(env: Ambiente): boolean {
     spanProcessors: [new BatchSpanProcessor(new ExportadorSemSegredos(new OTLPTraceExporter()))],
   });
   rastros.register();
+
+  // Logs de erro (back/log-de-erro.ts): vao para o Loki. O log escrito dentro
+  // de um pedido leva o id do rastro, e o Grafana liga um ao outro.
+  logs.setGlobalLoggerProvider(
+    new LoggerProvider({
+      resource: recurso,
+      processors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter() })],
+    })
+  );
 
   metrics.setGlobalMeterProvider(
     new MeterProvider({
