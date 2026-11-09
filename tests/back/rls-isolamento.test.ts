@@ -52,9 +52,15 @@ let tenantB: Fixture;
 // nao pelo texto: a mensagem vem traduzida conforme o locale do servidor
 // ("a nova linha viola a politica de seguranca..." em pt-BR), o que tornaria o
 // teste dependente da configuracao regional do banco.
+// 42501 = a linha viola a policy de RLS. Desde o Prisma 7.10, o erro do
+// PostgreSQL vem em meta.driverAdapterError.cause (o mesmo caminho que o
+// back/slots.ts le); antes vinha em erro.cause. Aceita os dois.
 function violaPolicyRls(erro: unknown) {
-  const causa = (erro as { cause?: { code?: string } }).cause;
-  return causa?.code === "42501";
+  const { cause, meta } = erro as {
+    cause?: { code?: string };
+    meta?: { driverAdapterError?: { cause?: { code?: string } } };
+  };
+  return (meta?.driverAdapterError?.cause?.code ?? cause?.code) === "42501";
 }
 
 async function criarTenantCompleto(sufixo: string, linkToken: string | null) {
