@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { capturarLogs } from "./capturar-logs";
 
 // RF08, RF09, RN13 — envio de e-mail (Resend) e de Telegram. Nada sai de
 // verdade: o Resend e o fetch sao substituidos por funcoes falsas, e as
@@ -93,6 +94,36 @@ describe("enviarEmail", () => {
       modo: "resend",
       erro: "dominio nao verificado",
     });
+  });
+});
+
+// A falha de envio nao aparece em tela nenhuma; o log do Grafana e o unico
+// lugar onde ela fica visivel (ver back/log-de-erro.ts).
+describe("falhas de envio vao para o log do Grafana", () => {
+  test("erro do Resend", async () => {
+    const capturados = capturarLogs();
+    enviarResend.mockResolvedValue({ error: { name: "validation_error", message: "dominio nao verificado" } });
+    const { enviarEmail } = await carregarEmail("re_teste");
+
+    await enviarEmail("cliente@teste.com", "Assunto", "Texto");
+
+    expect(capturados.corpos()).toEqual(["[email:ERRO]: dominio nao verificado"]);
+    capturados.parar();
+  });
+
+  test("recusa da API do Telegram", async () => {
+    const capturados = capturarLogs();
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "token-teste");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ json: async () => ({ ok: false, description: "Bad Request: chat not found" }) })
+    );
+    const { enviarTelegram } = await import("@/back/notificacoes/telegram");
+
+    await enviarTelegram("123", "Texto");
+
+    expect(capturados.corpos()).toEqual(["[telegram:ERRO]: Bad Request: chat not found"]);
+    capturados.parar();
   });
 });
 
