@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withTelegramTokenLookup, withTenant } from "@/back/tenant-db";
+import { registrarFalha } from "@/back/log-de-erro";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
 import { escapar } from "@/back/notificacoes/modelo-email";
 
@@ -15,8 +16,9 @@ import { escapar } from "@/back/notificacoes/modelo-email";
 export async function POST(request: Request) {
   const esperado = process.env.TELEGRAM_WEBHOOK_SECRET;
   if (!esperado) {
-    console.error(
-      "[telegram/webhook] TELEGRAM_WEBHOOK_SECRET nao configurado - rota recusada por seguranca"
+    registrarFalha(
+      "[telegram/webhook]",
+      new Error("TELEGRAM_WEBHOOK_SECRET nao configurado - rota recusada por seguranca")
     );
     return NextResponse.json(
       { error: "Webhook nao configurado neste ambiente" },

@@ -3,6 +3,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
 import { enviarEmail } from "@/back/notificacoes/email";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
+import { capturarLogs } from "./capturar-logs";
 
 // Fluxo de notificacoes (secao 3.4 do RFC): registra uma linha por canal
 // dentro da transacao do chamador e envia depois do commit, gravando ENVIADA
@@ -215,6 +216,29 @@ describe("enviarNotificacoes", () => {
     await enviarNotificacoes([noBanco("n2", "TELEGRAM", "LEMBRETE_2H", null)]);
     expect(telegram).not.toHaveBeenCalled();
     expect(statusGravado("n2")).toMatchObject({ status: "FALHA" });
+  });
+
+  // Falha de envio nao aparece em tela nenhuma: o cliente so descobre quando
+  // o lembrete nao chega. Por isso ela vai para o log do Grafana.
+  test("erro lancado pelo envio vai para o log do Grafana", async () => {
+    const capturados = capturarLogs();
+    email.mockRejectedValue(new Error("rede fora do ar"));
+
+    await enviarNotificacoes([noBanco("n1", "EMAIL")]);
+
+    expect(capturados.corpos()).toEqual(["[email:ERRO]: rede fora do ar"]);
+    capturados.parar();
+  });
+
+  test("falha ao montar ou gravar a notificacao tambem vai para o log, com o id", async () => {
+    const capturados = capturarLogs();
+    notificacoesNoBanco.set("n9", { id: "n9", canal: "EMAIL", tipo: "LEMBRETE_24H", agendamento: null });
+
+    await expect(enviarNotificacoes([{ tenantId: "tenant-1", notificacaoId: "n9" }])).resolves.toBeUndefined();
+
+    expect(capturados.corpos()).toHaveLength(1);
+    expect(capturados.corpos()[0]).toMatch(/^\[notificacao:ERRO\] n9: /);
+    capturados.parar();
   });
 
   test("notificacao que sumiu do banco e ignorada", async () => {
