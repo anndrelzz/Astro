@@ -90,7 +90,7 @@ describe("registrarFalha", () => {
 
   beforeEach(() => {
     exportador = new InMemoryLogRecordExporter();
-    logs.setGlobalLoggerProvider(new LoggerProvider({ processors: [new SimpleLogRecordProcessor(exportador)] }));
+    logs.setGlobalLoggerProvider(new LoggerProvider({ processors: [new SimpleLogRecordProcessor({ exporter: exportador })] }));
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
