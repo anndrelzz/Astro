@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
+import { MAX_CADASTROS_CLIENTE_POR_HORA, resumoDaConexao } from "@/back/autocadastro";
 import { prisma } from "@/back/prisma";
 import { criarLinkDeConfirmacao, enviarLinkDeConfirmacao } from "@/back/confirmacao-email";
 import { withTenant } from "@/back/tenant-db";
@@ -36,6 +37,13 @@ export async function POST(request: Request) {
   if (body === null) {
     return NextResponse.json({ error: "Corpo invalido" }, { status: 400 });
   }
+  // OWASP A04 — campo escondido da tela (o mesmo do /start): pessoa nao ve,
+  // robo preenche. Responde como se tivesse dado certo, para o robo nao
+  // aprender a contornar.
+  if (typeof body === "object" && "site" in body && body.site) {
+    return NextResponse.json({ ok: true }, { status: 201 });
+  }
+
   const parsed = cadastroSchema.safeParse(body);
   if (!parsed.success) {
     return respostaDadosInvalidos(parsed.error);
@@ -48,13 +56,25 @@ export async function POST(request: Request) {
   }
 
   const senhaHash = await bcrypt.hash(senha, 10);
+  const cadastroIpHash = resumoDaConexao(request);
+  const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000);
 
   const resultado = await withTenant(tenant.id, async (tx) => {
+    // OWASP A04 — no maximo MAX_CADASTROS_CLIENTE_POR_HORA contas por hora da
+    // mesma conexao nesta estetica: um robo nao enche a estetica de contas
+    // falsas.
+    const recentes = await tx.usuario.count({
+      where: { tenantId: tenant.id, cadastroIpHash, criadoEm: { gt: umaHoraAtras } },
+    });
+    if (recentes >= MAX_CADASTROS_CLIENTE_POR_HORA) {
+      return { error: "Muitos cadastros feitos desta conexao. Tente de novo em uma hora.", status: 429 } as const;
+    }
+
     const existente = await tx.usuario.findUnique({
       where: { tenantId_email: { tenantId: tenant.id, email } },
     });
     if (existente) {
-      return { error: "Ja existe uma conta com esse e-mail nesta estetica" } as const;
+      return { error: "Ja existe uma conta com esse e-mail nesta estetica", status: 409 } as const;
     }
 
     const usuario = await tx.usuario.create({
@@ -65,6 +85,7 @@ export async function POST(request: Request) {
         telefone,
         senhaHash,
         role: "CLIENTE",
+        cadastroIpHash,
       },
     });
     // A conta nasce sem o e-mail confirmado: os avisos por e-mail so saem
@@ -74,7 +95,7 @@ export async function POST(request: Request) {
   });
 
   if ("error" in resultado) {
-    return NextResponse.json({ error: resultado.error }, { status: 409 });
+    return NextResponse.json({ error: resultado.error }, { status: resultado.status });
   }
   if (resultado.link) {
     await enviarLinkDeConfirmacao(resultado.usuario, tenant, resultado.link);
