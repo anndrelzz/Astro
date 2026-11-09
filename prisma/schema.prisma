@@ -45,6 +45,8 @@ enum TipoNotificacao {
   LEMBRETE_24H
   LEMBRETE_2H
   CONFIRMACAO_CANCELAMENTO
+  RESERVA_PIX
+  PAGAMENTO_CONFIRMADO
 }
 
 enum StatusNotificacao {

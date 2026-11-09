@@ -2,9 +2,11 @@ import "server-only";
 import type { TipoNotificacao } from "@/generated/prisma/enums";
 import { DOMINIO } from "@/compartilhado/dominio";
 import {
+  AVISO_DO_PIX,
   dataDoEmail,
   escapar,
   linhaDoPrazo,
+  linkDoCodigoPix,
   linkDoWhatsApp,
   reais,
   TITULOS,
@@ -25,6 +27,8 @@ const ICONE: Record<TipoNotificacao, string> = {
   LEMBRETE_24H: "⏰",
   LEMBRETE_2H: "⏰",
   CONFIRMACAO_CANCELAMENTO: "❌",
+  RESERVA_PIX: "⏳",
+  PAGAMENTO_CONFIRMADO: "✅",
 };
 
 export function montarTelegram(d: DadosDoEmail): { texto: string; botoes: BotaoTelegram[] } {
@@ -43,12 +47,15 @@ export function montarTelegram(d: DadosDoEmail): { texto: string; botoes: BotaoT
     `🚗 ${escapar(carro)}`,
     `💳 ${escapar(`${reais(d.valor)} · ${pagamento}`)}`,
   ];
+  if (d.tipo === "RESERVA_PIX") linhas.push("", escapar(AVISO_DO_PIX));
   if (prazo) linhas.push("", `<i>${escapar(prazo)}</i>`);
 
   const botoes: BotaoTelegram[] = [
     cancelado
       ? { texto: "Agendar outro horário", url: `${SITE}/${d.estetica.slug}` }
-      : { texto: "Ver meus agendamentos", url: `${SITE}/${d.estetica.slug}/historico` },
+      : d.tipo === "RESERVA_PIX"
+        ? { texto: "Ver código PIX", url: linkDoCodigoPix(d) }
+        : { texto: "Ver meus agendamentos", url: `${SITE}/${d.estetica.slug}/historico` },
   ];
   if (d.estetica.whatsapp) {
     const mensagem = cancelado

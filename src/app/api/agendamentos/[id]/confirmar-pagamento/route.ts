@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { authOptions } from "@/back/auth";
 import { lerJson } from "@/back/api-helpers";
+import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
 import { withTenant } from "@/back/tenant-db";
 
 // O Admin pode lancar um acrescimo por condicao do veiculo no momento em que
@@ -94,12 +95,21 @@ export async function POST(
       },
     });
 
-    return { ok: true, acrescimoAplicado: acrescimo } as const;
+    // RF08 — no PIX, o cliente esta esperando a estetica conferir: avisa que
+    // o pagamento foi confirmado. No pagamento no local, o cliente esta na
+    // estetica e nao precisa de aviso.
+    const notificacoes =
+      agendamento.formaPagamento === "PIX" ? await registrarNotificacao(tx, id, "PAGAMENTO_CONFIRMADO") : [];
+
+    return { ok: true, acrescimoAplicado: acrescimo, notificacoes } as const;
   });
 
   if ("error" in resultado) {
     return NextResponse.json({ error: resultado.error }, { status: resultado.status });
   }
 
-  return NextResponse.json(resultado);
+  const { notificacoes, ...resposta } = resultado;
+  // Enviada depois do commit, fora da transacao (ver back/notificacoes).
+  after(() => enviarNotificacoes(notificacoes));
+  return NextResponse.json(resposta);
 }
