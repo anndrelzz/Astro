@@ -6,6 +6,7 @@ import {
   MINUTOS_BLOQUEIO_LOGIN,
 } from "@/compartilhado/limite-login";
 import { POST as cadastrar } from "@/app/api/auth/cadastro/route";
+import { MAX_CADASTROS_CLIENTE_POR_HORA } from "@/back/autocadastro";
 import { POST as rodarLembretes } from "@/app/api/cron/lembretes/route";
 import { PATCH as editarPerfil } from "@/app/api/perfil/route";
 import { POST as vincularTelegram } from "@/app/api/telegram/vincular/route";
@@ -103,6 +104,53 @@ describe("POST /api/auth/cadastro", () => {
     expect(criado).toMatchObject({ role: "CLIENTE", telefone: "47988881234", nome: "Maria Souza" });
     expect(criado!.senhaHash).not.toBe("Senha123");
     expect(criado!.senhaHash).toMatch(/^\$2[aby]\$10\$/);
+  });
+
+  // OWASP A04: sem limite, um robo criava contas falsas sem parar numa
+  // estetica. O mesmo cuidado do autocadastro: campo isca e limite por conexao.
+  const deConexao = (ip: string, corpo: unknown) =>
+    new Request("http://localhost/api/auth/cadastro", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
+      body: JSON.stringify(corpo),
+    });
+  const contaExiste = async (email: string) =>
+    (await withTenant(e.tenant.id, (tx) =>
+      tx.usuario.count({ where: { tenantId: e.tenant.id, email } })
+    )) > 0;
+
+  test("campo isca preenchido: responde como se tivesse dado certo, mas nao cria a conta", async () => {
+    const resposta = await cadastrar(
+      pedido("POST", "/api/auth/cadastro", conta({ email: "robo@teste.local", site: "http://spam.example" }))
+    );
+    expect(resposta.status).toBe(201);
+    expect(await contaExiste("robo@teste.local")).toBe(false);
+  });
+
+  test(`no maximo ${MAX_CADASTROS_CLIENTE_POR_HORA} contas por hora da mesma conexao na estetica; outra conexao continua`, async () => {
+    for (let i = 0; i < MAX_CADASTROS_CLIENTE_POR_HORA; i++) {
+      const ok = await cadastrar(deConexao("198.51.100.7", conta({ email: `lote-${i}@teste.local` })));
+      expect(ok.status).toBe(201);
+    }
+
+    const bloqueado = await cadastrar(deConexao("198.51.100.7", conta({ email: "lote-extra@teste.local" })));
+    expect(bloqueado.status).toBe(429);
+    expect(await bloqueado.json()).toEqual({
+      error: "Muitos cadastros feitos desta conexao. Tente de novo em uma hora.",
+    });
+    expect(await contaExiste("lote-extra@teste.local")).toBe(false);
+
+    const outra = await cadastrar(deConexao("203.0.113.9", conta({ email: "outra-conexao@teste.local" })));
+    expect(outra.status).toBe(201);
+  });
+
+  test("guarda so o resumo da conexao, nunca o IP (LGPD)", async () => {
+    await cadastrar(deConexao("192.0.2.44", conta({ email: "resumo@teste.local" })));
+    const criada = await withTenant(e.tenant.id, (tx) =>
+      tx.usuario.findUnique({ where: { tenantId_email: { tenantId: e.tenant.id, email: "resumo@teste.local" } } })
+    );
+    expect(criada!.cadastroIpHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(criada)).not.toContain("192.0.2.44");
   });
 
   test("e-mail ja cadastrado na estetica responde 409", async () => {
