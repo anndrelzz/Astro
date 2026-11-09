@@ -6,6 +6,7 @@ import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { enviarEmail } from "@/back/notificacoes/email";
 import { montarEmailHtml, type DadosDoEmail } from "@/back/notificacoes/modelo-email";
+import { registrarFalha } from "@/back/log-de-erro";
 import { montarTelegram } from "@/back/notificacoes/modelo-telegram";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
 
@@ -146,7 +147,7 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
         enviado = (await enviarTelegram(usuario.telegramChatId, mensagem, { botoes })).enviado;
       }
     } catch (erro) {
-      console.error(`[${notificacao.canal.toLowerCase()}:ERRO]`, erro);
+      registrarFalha(`[${notificacao.canal.toLowerCase()}:ERRO]`, erro);
     }
 
     await withTenant(tenantId, (tx) =>
@@ -162,7 +163,7 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
   } catch (erro) {
     // O agendamento ja esta salvo; uma falha aqui so deixa o aviso PENDENTE,
     // e o reenvio do cron o pega depois.
-    console.error("[notificacao:ERRO]", notificacaoId, erro);
+    registrarFalha(`[notificacao:ERRO] ${notificacaoId}`, erro);
   }
 }
 

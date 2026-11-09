@@ -1,4 +1,5 @@
 import "server-only";
+import { registrarFalha } from "@/back/log-de-erro";
 import type { BotaoTelegram } from "@/back/notificacoes/modelo-telegram";
 
 // RF08, RF09, RN13 — Telegram e acionado apenas se o cliente tiver
@@ -32,7 +33,7 @@ export async function enviarTelegram(chatId: string, texto: string, { botoes = [
   const json = await resposta.json();
 
   if (!json.ok) {
-    console.error("[telegram:ERRO]", json.description);
+    registrarFalha("[telegram:ERRO]", new Error(json.description));
     return { enviado: false, modo: "bot" as const, erro: json.description as string };
   }
   return { enviado: true, modo: "bot" as const };
