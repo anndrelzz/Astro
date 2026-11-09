@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { capturarLogs } from "./capturar-logs";
 
 // RF08, RF09, RN13 — envio de e-mail (Resend) e de Telegram. Nada sai de
 // verdade: o Resend e o fetch sao substituidos por funcoes falsas, e as
@@ -59,6 +60,31 @@ describe("enviarEmail", () => {
     );
   });
 
+  test("sai do dominio do Astro, e nao do endereco de teste do Resend", async () => {
+    // O onboarding@resend.dev so entrega ao dono da conta Resend; os clientes
+    // nunca recebiam. O useastro.app.br e o dominio verificado no Resend.
+    enviarResend.mockResolvedValue({ error: null });
+    const { enviarEmail } = await carregarEmail("re_teste");
+
+    await enviarEmail("cliente@teste.com", "Assunto", "Texto");
+
+    expect(enviarResend).toHaveBeenCalledWith(
+      expect.objectContaining({ from: "Astro <nao-responda@useastro.app.br>" })
+    );
+  });
+
+  test("com HTML, envia as duas versoes: a bonita e a de texto puro", async () => {
+    // O texto puro fica para quem le em programa sem HTML ou bloqueia imagens.
+    enviarResend.mockResolvedValue({ error: null });
+    const { enviarEmail } = await carregarEmail("re_teste");
+
+    await enviarEmail("cliente@teste.com", "Assunto", "Texto", "<p>Bonito</p>");
+
+    expect(enviarResend).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Texto", html: "<p>Bonito</p>" })
+    );
+  });
+
   test("erro do Resend volta como envio que falhou, sem derrubar o fluxo", async () => {
     enviarResend.mockResolvedValue({ error: { message: "dominio nao verificado" } });
     const { enviarEmail } = await carregarEmail("re_teste");
@@ -68,6 +94,36 @@ describe("enviarEmail", () => {
       modo: "resend",
       erro: "dominio nao verificado",
     });
+  });
+});
+
+// A falha de envio nao aparece em tela nenhuma; o log do Grafana e o unico
+// lugar onde ela fica visivel (ver back/log-de-erro.ts).
+describe("falhas de envio vao para o log do Grafana", () => {
+  test("erro do Resend", async () => {
+    const capturados = capturarLogs();
+    enviarResend.mockResolvedValue({ error: { name: "validation_error", message: "dominio nao verificado" } });
+    const { enviarEmail } = await carregarEmail("re_teste");
+
+    await enviarEmail("cliente@teste.com", "Assunto", "Texto");
+
+    expect(capturados.corpos()).toEqual(["[email:ERRO]: dominio nao verificado"]);
+    capturados.parar();
+  });
+
+  test("recusa da API do Telegram", async () => {
+    const capturados = capturarLogs();
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "token-teste");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ json: async () => ({ ok: false, description: "Bad Request: chat not found" }) })
+    );
+    const { enviarTelegram } = await import("@/back/notificacoes/telegram");
+
+    await enviarTelegram("123", "Texto");
+
+    expect(capturados.corpos()).toEqual(["[telegram:ERRO]: Bad Request: chat not found"]);
+    capturados.parar();
   });
 });
 
@@ -91,7 +147,24 @@ describe("enviarTelegram", () => {
     expect(await enviarTelegram("123", "Texto")).toEqual({ enviado: true, modo: "bot" });
     const [url, opcoes] = chamada.mock.calls[0];
     expect(url).toBe("https://api.telegram.org/bottoken-teste/sendMessage");
-    expect(JSON.parse(opcoes.body)).toEqual({ chat_id: "123", text: "Texto" });
+    expect(JSON.parse(opcoes.body)).toMatchObject({ chat_id: "123", text: "Texto" });
+  });
+
+  test("com formatacao, manda em HTML, sem previa de link e com os botoes", async () => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "token-teste");
+    const chamada = vi.fn().mockResolvedValue({ json: async () => ({ ok: true }) });
+    vi.stubGlobal("fetch", chamada);
+    const { enviarTelegram } = await import("@/back/notificacoes/telegram");
+
+    await enviarTelegram("123", "<b>Oi</b>", { botoes: [{ texto: "Abrir", url: "https://useastro.app.br/demo" }] });
+
+    expect(JSON.parse(chamada.mock.calls[0][1].body)).toEqual({
+      chat_id: "123",
+      text: "<b>Oi</b>",
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
+      reply_markup: { inline_keyboard: [[{ text: "Abrir", url: "https://useastro.app.br/demo" }]] },
+    });
   });
 
   test("recusa da API volta como envio que falhou", async () => {

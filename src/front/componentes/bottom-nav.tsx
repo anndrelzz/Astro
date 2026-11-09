@@ -69,7 +69,10 @@ const DESLIZE_MS = 450;
 // ficam sem ela.
 //
 // lg:hidden — no desktop quem navega e a barra lateral (ClienteShell).
-export function BarraCliente({ slug }: { slug: string }) {
+//
+// `avisoPerfil` acende um ponto vermelho no Perfil quando ha algo para o
+// cliente ver la (hoje, o e-mail ainda nao confirmado; ver back/aviso-perfil).
+export function BarraCliente({ slug, avisoPerfil = false }: { slug: string; avisoPerfil?: boolean }) {
   const pathname = usePathname();
   const itens = itensCliente(slug);
   const daRota = itens.findIndex((item) => item.href === pathname);
@@ -170,8 +173,15 @@ export function BarraCliente({ slug }: { slug: string }) {
                         : "text-zinc-400 delay-[120ms] duration-0"
                     }`}
                   >
-                    <span key={vez} className={`block motion-reduce:animate-none ${pisca}`}>
+                    <span key={vez} className={`relative block motion-reduce:animate-none ${pisca}`}>
                       <Icone aria-hidden className="h-[18px] w-[18px]" />
+                      {avisoPerfil && item.href.endsWith("/perfil") && (
+                        <span
+                          data-aviso
+                          aria-hidden
+                          className="absolute -top-0.5 -right-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"
+                        />
+                      )}
                     </span>
                   </span>
                   <span
@@ -180,6 +190,7 @@ export function BarraCliente({ slug }: { slug: string }) {
                     }`}
                   >
                     {item.label}
+                    {avisoPerfil && item.href.endsWith("/perfil") && <span className="sr-only"> (tem um aviso)</span>}
                   </span>
                 </Link>
               </li>

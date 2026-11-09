@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { enderecoDaEstetica } from "@/compartilhado/dominio";
 import { ConfirmarSaida } from "@/front/componentes/confirmar-saida";
 import {
   ArrowUpRight,
@@ -14,6 +15,7 @@ import {
   Palette,
   Settings,
   Sparkles,
+  Users,
   Wallet,
 } from "lucide-react";
 
@@ -83,6 +85,7 @@ export function AdminSidebar({
       icone: CalendarDays,
       contador: pixPendentes,
     },
+    { href: `${base}/clientes`, label: "Clientes", icone: Users },
     { href: `${base}/catalogo`, label: "Catálogo", icone: Sparkles },
     { href: `${base}/horarios`, label: "Grade de horários", icone: Clock },
     { href: `${base}/financeiro`, label: "Financeiro", icone: Wallet },
@@ -137,7 +140,7 @@ export function AdminSidebar({
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-sm font-semibold">{tenantNome}</p>
             <p className="truncate font-mono text-[0.65rem] text-white/70">
-              astro.app/{slug}
+              {enderecoDaEstetica(slug)}
             </p>
           </div>
         </div>
@@ -208,6 +211,7 @@ export function AdminMobileNav({
   const itens: Item[] = [
     { href: base, label: "Dashboard", icone: LayoutGrid, exato: true },
     { href: `${base}/agendamentos`, label: "Agendamentos", icone: CalendarDays, contador: pixPendentes },
+    { href: `${base}/clientes`, label: "Clientes", icone: Users },
     { href: `${base}/catalogo`, label: "Catálogo", icone: Sparkles },
     { href: `${base}/horarios`, label: "Grade", icone: Clock },
     { href: `${base}/financeiro`, label: "Financeiro", icone: Wallet },

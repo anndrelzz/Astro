@@ -18,7 +18,8 @@ import { withTelegramTokenLookup, withTenant } from "@/back/tenant-db";
 // As 8 tabelas com RLS. A secao 6.1 do RFC cita 5 (usuario, agendamento,
 // servico, veiculo, notificacao); a implementacao cobre tambem
 // horario_funcionamento, e desde 20260929_segmentos_editaveis mais duas:
-// segmento e preco_servico, que sao o catalogo de cada estetica.
+// segmento e preco_servico, que sao o catalogo de cada estetica. Desde
+// 20261104_token_email, tambem token_email (links de senha e de confirmacao).
 const TABELAS_COM_RLS = [
   "usuario",
   "veiculo",
@@ -28,6 +29,7 @@ const TABELAS_COM_RLS = [
   "notificacao",
   "segmento",
   "preco_servico",
+  "token_email",
 ] as const;
 
 const PREFIXO = "__test__rls";
@@ -204,7 +206,7 @@ describe("nivel 0 — pre-condicoes do banco", () => {
     assert.equal(role.rolbypassrls, false, `role "${role.current_user}" tem BYPASSRLS: RLS seria ignorado`);
   });
 
-  test("RLS esta ENABLED e FORCED nas 8 tabelas sensiveis", async () => {
+  test("RLS esta ENABLED e FORCED nas tabelas sensiveis", async () => {
     const lista = TABELAS_COM_RLS.map((t) => `'${t}'`).join(", ");
     const linhas = await prisma.$queryRawUnsafe<
       { relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }[]

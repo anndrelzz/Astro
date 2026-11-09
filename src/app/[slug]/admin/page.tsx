@@ -2,10 +2,13 @@ import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { CalendarDays, Car, Clock, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { authOptions } from "@/back/auth";
+import { filtroDoPeriodo, resumoDoPeriodo } from "@/compartilhado/financeiro";
 import { FUSO, chaveDia, fimDoDia, horaMinuto, inicioDoDia, instanteNoFuso, minutosNoFuso, partesNoFuso } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
+import { nomeDoCliente } from "@/compartilhado/contato";
 import { AgendaHoje } from "@/front/admin/agenda-hoje";
+import { AvisoGradeVazia } from "@/front/admin/aviso-grade-vazia";
 import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "@/front/admin/cartao-faturamento";
 import { EsperandoVoce } from "@/front/admin/esperando-voce";
 
@@ -17,11 +20,6 @@ import { EsperandoVoce } from "@/front/admin/esperando-voce";
 // Os indicadores saem dos dados que ja existem. O mockup mostra tambem nota de
 // avaliacao e endereco da estetica: nenhum dos dois existe no modelo de dados,
 // entao nao entram como numero inventado.
-
-const STATUS_PAGO = ["CONFIRMADO", "CONCLUIDO"] as const;
-// O que ainda nao entrou no caixa: PIX esperando confirmacao e pagamento no
-// local (cobrado na hora do servico).
-const STATUS_A_RECEBER = ["PIX_PENDENTE", "PENDENTE_PAGAMENTO"] as const;
 
 export default async function AdminDashboardPage({
   params,
@@ -46,6 +44,9 @@ export default async function AdminDashboardPage({
   const relogio = partesNoFuso(agora);
 
   const inicioMes = instanteNoFuso(relogio.ano, relogio.mes, 1);
+  // Ultimo instante do mes: "a receber" e "agendamentos no mes" olham o mes
+  // inteiro, inclusive o que ja esta marcado para os proximos dias.
+  const fimMes = new Date(instanteNoFuso(relogio.ano, relogio.mes + 1, 1).getTime() - 1);
   // "7 dias" = hoje e os 6 dias anteriores.
   const inicioSemana = inicioDoDia(agora, -6);
   const inicioMesPassado = instanteNoFuso(relogio.ano, relogio.mes - 1, 1);
@@ -66,7 +67,7 @@ export default async function AdminDashboardPage({
         where: {
           tenantId: tenant.id,
           status: naoCancelado,
-          dataHora: { gte: inicioMes, lte: fimDoDia(agora) },
+          dataHora: { gte: inicioMes, lte: fimMes },
         },
       }),
       tx.agendamento.count({
@@ -78,42 +79,26 @@ export default async function AdminDashboardPage({
       }),
     ]);
 
-    // RF12 — receita conta apenas pagamento confirmado. Soma tambem o acrescimo
-    // lancado na avaliacao presencial, como o financeiro: e o que entrou no caixa.
-    // Para o cartao de faturamento, cada periodo (hoje, 7 dias, mes) tem o
-    // recebido, o que falta receber e quantos atendimentos teve.
+    // RF12 — receita conta apenas pagamento confirmado, pelo dia em que foi
+    // pago (regime de caixa, ver compartilhado/financeiro.ts), com o acrescimo
+    // lancado na avaliacao presencial: e o que entrou no caixa. Para o cartao
+    // de faturamento, cada periodo (hoje, 7 dias, mes) tem o recebido, o que
+    // falta receber e quantos atendimentos teve. As mesmas regras do
+    // Financeiro, sobre uma busca so.
     const fimHoje = fimDoDia(agora);
-    const resumo = async (inicio: Date) => {
-      const periodo = { gte: inicio, lte: fimHoje };
-      const [pago, pendente, qtd, qtdPago] = await Promise.all([
-        tx.agendamento.aggregate({
-          _sum: { valor: true, acrescimoAplicado: true },
-          where: { tenantId: tenant.id, status: { in: [...STATUS_PAGO] }, dataHora: periodo },
-        }),
-        tx.agendamento.aggregate({
-          _sum: { valor: true },
-          where: { tenantId: tenant.id, status: { in: [...STATUS_A_RECEBER] }, dataHora: periodo },
-        }),
-        tx.agendamento.count({
-          where: { tenantId: tenant.id, status: naoCancelado, dataHora: periodo },
-        }),
-        tx.agendamento.count({
-          where: { tenantId: tenant.id, status: { in: [...STATUS_PAGO] }, dataHora: periodo },
-        }),
-      ]);
-      return {
-        recebido: Number(pago._sum.valor ?? 0) + Number(pago._sum.acrescimoAplicado ?? 0),
-        aReceber: Number(pendente._sum.valor ?? 0),
-        atendimentos: qtd,
-        pagos: qtdPago,
-      };
-    };
-    const [resumoHoje, resumoSemana, resumoMes, pixPendentes] = await Promise.all([
-      resumo(inicioDoDia(agora)),
-      resumo(inicioSemana),
-      resumo(inicioMes),
+    const desde = inicioSemana < inicioMes ? inicioSemana : inicioMes;
+    const [movimento, pixPendentes] = await Promise.all([
+      tx.agendamento.findMany({
+        where: filtroDoPeriodo(tenant.id, desde, fimMes),
+        select: { status: true, dataHora: true, pagoEm: true, valor: true, acrescimoAplicado: true },
+      }),
       tx.agendamento.count({ where: { tenantId: tenant.id, status: "PIX_PENDENTE" } }),
     ]);
+    const resumo = (inicio: Date, fimAReceber: Date) =>
+      resumoDoPeriodo(movimento, { inicio, fimRecebido: fimHoje, fimAReceber });
+    const resumoHoje = resumo(inicioDoDia(agora), fimHoje);
+    const resumoSemana = resumo(inicioSemana, fimHoje);
+    const resumoMes = resumo(inicioMes, fimMes);
 
     const agenda = await tx.agendamento.findMany({
       where: {
@@ -140,7 +125,12 @@ export default async function AdminDashboardPage({
       },
     });
 
+    // Estetica recem-criada pelo autocadastro nasce sem grade (decisao de
+    // 06/11): o Dashboard avisa ate o dono configurar.
+    const diasNaGrade = await tx.horarioFuncionamento.count({ where: { tenantId: tenant.id } });
+
     return {
+      diasNaGrade,
       hoje,
       mes,
       mesPassado,
@@ -190,7 +180,7 @@ export default async function AdminDashboardPage({
       id: a.id,
       inicioMin,
       fimMin: inicioMin + a.servico.duracaoMin,
-      cliente: a.usuario.nome,
+      cliente: nomeDoCliente(a),
       detalhe: `${a.servico.nome} · ${a.veiculo.modelo}`,
       status: a.status,
     };
@@ -212,7 +202,7 @@ export default async function AdminDashboardPage({
           : dia === amanhaChave
             ? "amanhã"
             : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
-      cliente: a.usuario.nome,
+      cliente: nomeDoCliente(a),
       detalhe: `${a.servico.nome} · ${a.veiculo.modelo} · ${a.veiculo.placa} · ${formatarReal(Number(a.valor))}`,
     };
   });
@@ -246,6 +236,12 @@ export default async function AdminDashboardPage({
           {dataHoje}
         </span>
       </div>
+
+      {dados.diasNaGrade === 0 && (
+        <div className="mb-6">
+          <AvisoGradeVazia slug={slug} />
+        </div>
+      )}
 
       {/* Esquerda: faturamento, indicadores e PIX para confirmar.
           Direita: a agenda de hoje em linha do tempo. */}

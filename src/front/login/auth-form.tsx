@@ -12,13 +12,14 @@ import { FundoOndas } from "@/front/componentes/fundo-ondas";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { SuccessScreen } from "@/front/componentes/success-screen";
 import { callbackUrlSeguro } from "@/compartilhado/callback-url";
+import { LOGIN_BLOQUEADO, LOGIN_INDISPONIVEL, MINUTOS_BLOQUEIO_LOGIN } from "@/compartilhado/limite-login";
 import { PainelMarca, type Estetica } from "@/front/login/painel-marca";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
 
 // Regras de senha exibidas ao usuario no cadastro. Precisam bater exatamente
 // com o que /api/auth/cadastro valida — texto que promete uma regra e servidor
 // que aceita outra e pior do que nao ter texto nenhum.
-const REGRAS_SENHA = [
+export const REGRAS_SENHA = [
   { rotulo: "8 caracteres", ok: (s: string) => s.length >= 8 },
   { rotulo: "1 número", ok: (s: string) => /\d/.test(s) },
   { rotulo: "1 letra maiúscula", ok: (s: string) => /[A-Z]/.test(s) },
@@ -57,6 +58,8 @@ export function AuthForm({
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Erro que a API apontou num campo do cadastro: aparece embaixo dele.
+  const [erroCampo, setErroCampo] = useState<{ campo: CampoDoCadastro; mensagem: string } | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   // So habilita o submit apos a hidratacao: evita que um toque antes do JS
@@ -84,6 +87,17 @@ export function AuthForm({
     : "";
   const outraRota = eLogin ? `/${slug}/cadastro${qs}` : `/${slug}/login${qs}`;
 
+  // Mexeu no campo errado: o aviso dele ja nao vale.
+  function alterar(campo: CampoDoCadastro, definir: (valor: string) => void) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      definir(e.target.value);
+      setErroCampo((atual) => (atual?.campo === campo ? null : atual));
+    };
+  }
+
+  const erroDo = (campo: CampoDoCadastro) =>
+    erroCampo?.campo === campo ? erroCampo.mensagem : undefined;
+
   async function autenticar() {
     const resultado = await signIn("credentials", {
       email,
@@ -92,7 +106,16 @@ export function AuthForm({
       redirect: false,
     });
     if (resultado?.error) {
-      setErro("E-mail ou senha inválidos.");
+      // Issue #107: depois de 5 tentativas sem acertar, o login bloqueia por
+      // um tempo. A mensagem diz quanto esperar e qual e a saida.
+      // Falha do servidor (LOGIN_INDISPONIVEL) nao e culpa da senha.
+      setErro(
+        resultado.error === LOGIN_BLOQUEADO
+          ? `Muitas tentativas sem acertar a senha. Tente de novo em ${MINUTOS_BLOQUEIO_LOGIN} minutos ou use o Esqueci minha senha.`
+          : resultado.error === LOGIN_INDISPONIVEL
+            ? "Não foi possível entrar agora. Tente de novo em instantes."
+            : "E-mail ou senha inválidos."
+      );
       return false;
     }
     return true;
@@ -101,6 +124,7 @@ export function AuthForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
+    setErroCampo(null);
     setCarregando(true);
 
     if (!eLogin) {
@@ -117,7 +141,13 @@ export function AuthForm({
       });
       if (!resposta.ok) {
         const json = await resposta.json().catch(() => null);
-        setErro(json?.error ?? "Não foi possível criar a conta.");
+        // Campo que nao esta na tela (o slug da estetica, por exemplo) fica
+        // no aviso do topo.
+        if (json?.error && CAMPOS_DO_CADASTRO.includes(json.campo)) {
+          setErroCampo({ campo: json.campo, mensagem: json.error });
+        } else {
+          setErro(json?.error ?? "Não foi possível criar a conta.");
+        }
         setCarregando(false);
         return;
       }
@@ -218,7 +248,8 @@ export function AuthForm({
                     placeholder="Seu nome"
                     maxLength={LIMITES.nomePessoa}
                     value={nome}
-                    onChange={(e) => setNome(e.target.value)}
+                    onChange={alterar("nome", setNome)}
+                    erro={erroDo("nome")}
                     required
                   />
                 )}
@@ -241,7 +272,8 @@ export function AuthForm({
                     placeholder="voce@email.com"
                     maxLength={LIMITES.email}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={alterar("email", setEmail)}
+                    erro={erroDo("email")}
                     required
                   />
 
@@ -254,7 +286,8 @@ export function AuthForm({
                       type="tel"
                       placeholder="(00) 00000-0000"
                       value={telefone}
-                      onChange={(e) => setTelefone(e.target.value)}
+                      onChange={alterar("telefone", setTelefone)}
+                      erro={erroDo("telefone")}
                       required
                     />
                   )}
@@ -274,7 +307,8 @@ export function AuthForm({
                     maxLength={eLogin ? undefined : LIMITES.senha}
                     minLength={eLogin ? undefined : 8}
                     value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
+                    onChange={alterar("senha", setSenha)}
+                    erro={erroDo("senha")}
                     required
                     direita={
                       <button
@@ -293,6 +327,18 @@ export function AuthForm({
                       </button>
                     }
                   />
+
+                  {/* RFC 6.2: quem esqueceu a senha pede um link por e-mail. */}
+                  {eLogin && (
+                    <div className="mt-1.5 flex justify-end">
+                      <Link
+                        href={`/${slug}/esqueci-senha`}
+                        className="text-xs text-astro-muted underline-offset-2 transition hover:text-white hover:underline"
+                      >
+                        Esqueci minha senha
+                      </Link>
+                    </div>
+                  )}
 
                   {/* Medidor de forca: uma barra por regra atendida, com as
                       mesmas regras que o servidor exige. */}
@@ -380,34 +426,52 @@ export function AuthForm({
   );
 }
 
+// Campos do cadastro que a API pode apontar (o `campo` da resposta 400).
+const CAMPOS_DO_CADASTRO = ["nome", "email", "telefone", "senha"] as const;
+type CampoDoCadastro = (typeof CAMPOS_DO_CADASTRO)[number];
+
 // Campo do login e do cadastro: rotulo visivel, icone a esquerda e formato
-// de pilula, sobre o lado escuro do cartao.
-function CampoAuth({
+// de pilula, sobre o lado escuro do cartao. Com `erro`, a borda fica vermelha
+// e a mensagem aparece embaixo, ligada ao input (o leitor de tela le junto).
+export function CampoAuth({
   id,
   rotulo,
   icone,
   direita,
+  erro,
   ...props
 }: ComponentProps<"input"> & {
   id: string;
   rotulo: string;
   icone: ReactNode;
   direita?: ReactNode;
+  erro?: string;
 }) {
   return (
     <div>
       <label htmlFor={id} className="mb-0.5 block text-sm text-slate-300 lg:mb-1.5">
         {rotulo}
       </label>
-      <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] py-1 pr-1.5 pl-4 transition focus-within:border-astro-blue-bright/70 focus-within:bg-white/[0.08]">
+      <div
+        className={`flex items-center gap-3 rounded-full border bg-white/[0.05] py-1 pr-1.5 pl-4 transition focus-within:bg-white/[0.08] ${
+          erro ? "border-red-400/70" : "border-white/10 focus-within:border-astro-blue-bright/70"
+        }`}
+      >
         <span className="text-astro-muted">{icone}</span>
         <input
           id={id}
           {...props}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erro ? `${id}-erro` : undefined}
           className="min-w-0 flex-1 bg-transparent py-2 text-sm lg:py-2.5 text-white placeholder:text-white/30 focus:outline-none"
         />
         {direita}
       </div>
+      {erro && (
+        <p id={`${id}-erro`} className="mt-1 px-4 text-xs font-medium text-red-300">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

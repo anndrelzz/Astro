@@ -3,6 +3,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
 import { enviarEmail } from "@/back/notificacoes/email";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
+import { capturarLogs } from "./capturar-logs";
 
 // Fluxo de notificacoes (secao 3.4 do RFC): registra uma linha por canal
 // dentro da transacao do chamador e envia depois do commit, gravando ENVIADA
@@ -48,9 +49,20 @@ function noBanco(
     canal,
     tipo,
     agendamento: {
+      id: `${id}-ag`,
       dataHora: DATA_HORA,
-      usuario: { email: "cliente@teste.com", telegramChatId },
+      valor: 120,
+      formaPagamento: "LOCAL",
+      usuario: { nome: "Maria Souza", email: "cliente@teste.com", telegramChatId },
       servico: { nome: "Lavagem completa" },
+      veiculo: { marca: "Honda", modelo: "Civic", placa: "HND1234" },
+      tenant: {
+        nome: "Estetica Demo",
+        slug: "demo",
+        logoUrl: null,
+        whatsapp: "47999990000",
+        cancelamentoHorasLimite: 2,
+      },
     },
   });
   return { tenantId: "tenant-1", notificacaoId: id };
@@ -67,11 +79,11 @@ beforeEach(() => {
 });
 
 describe("registrarNotificacao", () => {
-  function transacaoFalsa(telegramChatId: string | null, existe = true) {
+  function transacaoFalsa(telegramChatId: string | null, existe = true, coringa = false, emailConfirmado = true) {
     const criadas: { data: Record<string, unknown> }[] = [];
     const tx = {
       agendamento: {
-        findUnique: async () => (existe ? { tenantId: "tenant-1", usuario: { telegramChatId } } : null),
+        findUnique: async () => (existe ? { tenantId: "tenant-1", usuario: { telegramChatId, coringa, emailConfirmadoEm: emailConfirmado ? new Date() : null } } : null),
       },
       notificacao: {
         create: async (args: { data: Record<string, unknown> }) => {
@@ -105,6 +117,30 @@ describe("registrarNotificacao", () => {
     expect(criadas.map((c) => c.data.canal)).toEqual(["EMAIL", "TELEGRAM"]);
   });
 
+  test("e-mail nao confirmado: so o Telegram recebe o aviso", async () => {
+    // Decisao de 04/11: e-mail digitado errado mandaria os dados do
+    // agendamento para um estranho (LGPD).
+    const { tx, criadas } = transacaoFalsa("chat-42", true, false, false);
+    const pendentes = await registrarNotificacao(tx, "ag-1", "CONFIRMACAO_AGENDAMENTO");
+
+    expect(pendentes).toHaveLength(1);
+    expect(criadas.map((c) => c.data.canal)).toEqual(["TELEGRAM"]);
+  });
+
+  test("e-mail nao confirmado e sem Telegram: nao registra nada", async () => {
+    const { tx, criadas } = transacaoFalsa(null, true, false, false);
+    expect(await registrarNotificacao(tx, "ag-1", "LEMBRETE_24H")).toEqual([]);
+    expect(criadas).toHaveLength(0);
+  });
+
+  test("agendamento do coringa (feito pelo Admin) nao registra nada", async () => {
+    // O coringa nao tem e-mail nem Telegram de verdade: quem chamou no
+    // WhatsApp combina tudo direto com a estetica.
+    const { tx, criadas } = transacaoFalsa("chat-42", true, true);
+    expect(await registrarNotificacao(tx, "ag-1", "LEMBRETE_24H")).toEqual([]);
+    expect(criadas).toHaveLength(0);
+  });
+
   test("agendamento que nao existe nao registra nada", async () => {
     const { tx, criadas } = transacaoFalsa(null, false);
     expect(await registrarNotificacao(tx, "ag-x", "CONFIRMACAO_AGENDAMENTO")).toEqual([]);
@@ -125,19 +161,35 @@ describe("enviarNotificacoes", () => {
     expect(telegram).not.toHaveBeenCalled();
   });
 
+  test("o e-mail tambem sai em HTML, com a estetica e o veiculo do agendamento", async () => {
+    await enviarNotificacoes([noBanco("n1", "EMAIL")]);
+
+    const html = email.mock.calls[0][3];
+    expect(html).toContain("Estetica Demo");
+    expect(html).toContain("Honda Civic · HND1234");
+    expect(html).toContain("https://useastro.app.br/demo/historico");
+  });
+
   test.each([
     ["LEMBRETE_24H", "Lembrete: seu agendamento e amanha", "amanha"],
     ["LEMBRETE_2H", "Lembrete: seu agendamento e em 2 horas", "em 2 horas"],
     ["CONFIRMACAO_CANCELAMENTO", "Agendamento cancelado", "foi cancelado"],
+    ["RESERVA_PIX", "Horario reservado: aguardando a confirmacao do PIX", "/demo/pagamento/n1-ag"],
+    ["PAGAMENTO_CONFIRMADO", "Pagamento confirmado", "esta garantido"],
   ])("%s tem assunto e texto proprios", async (tipo, assunto, trecho) => {
     await enviarNotificacoes([noBanco("n1", "EMAIL", tipo)]);
     expect(email.mock.calls[0][1]).toBe(assunto);
     expect(email.mock.calls[0][2]).toContain(trecho);
   });
 
-  test("a linha do Telegram vai para o chat do cliente, com o mesmo texto", async () => {
-    await enviarNotificacoes([noBanco("n1", "EMAIL"), noBanco("n2", "TELEGRAM")]);
-    expect(telegram).toHaveBeenCalledWith("chat-42", email.mock.calls[0][2]);
+  test("a linha do Telegram vai para o chat do cliente, formatada e com os botoes", async () => {
+    await enviarNotificacoes([noBanco("n2", "TELEGRAM")]);
+
+    const [chat, texto, opcoes] = telegram.mock.calls[0];
+    expect(chat).toBe("chat-42");
+    expect(texto).toContain("<b>Agendamento confirmado</b>");
+    expect(texto).toContain("Honda Civic · HND1234");
+    expect(opcoes?.botoes?.[0].url).toBe("https://useastro.app.br/demo/historico");
   });
 
   test("envio que deu certo grava ENVIADA, com a data, e conta a tentativa", async () => {
@@ -167,6 +219,29 @@ describe("enviarNotificacoes", () => {
     await enviarNotificacoes([noBanco("n2", "TELEGRAM", "LEMBRETE_2H", null)]);
     expect(telegram).not.toHaveBeenCalled();
     expect(statusGravado("n2")).toMatchObject({ status: "FALHA" });
+  });
+
+  // Falha de envio nao aparece em tela nenhuma: o cliente so descobre quando
+  // o lembrete nao chega. Por isso ela vai para o log do Grafana.
+  test("erro lancado pelo envio vai para o log do Grafana", async () => {
+    const capturados = capturarLogs();
+    email.mockRejectedValue(new Error("rede fora do ar"));
+
+    await enviarNotificacoes([noBanco("n1", "EMAIL")]);
+
+    expect(capturados.corpos()).toEqual(["[email:ERRO]: rede fora do ar"]);
+    capturados.parar();
+  });
+
+  test("falha ao montar ou gravar a notificacao tambem vai para o log, com o id", async () => {
+    const capturados = capturarLogs();
+    notificacoesNoBanco.set("n9", { id: "n9", canal: "EMAIL", tipo: "LEMBRETE_24H", agendamento: null });
+
+    await expect(enviarNotificacoes([{ tenantId: "tenant-1", notificacaoId: "n9" }])).resolves.toBeUndefined();
+
+    expect(capturados.corpos()).toHaveLength(1);
+    expect(capturados.corpos()[0]).toMatch(/^\[notificacao:ERRO\] n9: /);
+    capturados.parar();
   });
 
   test("notificacao que sumiu do banco e ignorada", async () => {

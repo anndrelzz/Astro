@@ -5,6 +5,8 @@ import { FUSO, chaveDia, fimDoDia, inicioDoDia, instanteNoFuso, minutosNoFuso, p
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { AgendamentosLista, type DiaSemana, type ItemAgendamento } from "@/front/admin/agendamentos-lista";
+import { NovoAgendamentoAdmin } from "@/front/admin/novo-agendamento-admin";
+import { nomeDoCliente } from "@/compartilhado/contato";
 
 // RF11, UC10 — agenda do painel administrativo, em linha do tempo.
 //
@@ -50,8 +52,8 @@ export default async function AdminAgendamentosPage({
   const recuo = (partesNoFuso(diaEscolhido).diaSemana + 6) % 7;
   const segunda = inicioDoDia(diaEscolhido, -recuo);
 
-  const { agendamentos, horarios } = await withTenant(tenant.id, async (tx) => {
-    const [agendamentos, horarios] = await Promise.all([
+  const { agendamentos, horarios, servicos, segmentos, carrosDoCoringa } = await withTenant(tenant.id, async (tx) => {
+    const [agendamentos, horarios, servicos, segmentos, carrosDoCoringa] = await Promise.all([
       tx.agendamento.findMany({
         where: {
           tenantId: tenant.id,
@@ -61,8 +63,20 @@ export default async function AdminAgendamentosPage({
         orderBy: { dataHora: "asc" },
       }),
       tx.horarioFuncionamento.findMany({ where: { tenantId: tenant.id } }),
+      // Para o "Novo agendamento" pelo coringa: o que esta a venda...
+      tx.servico.findMany({
+        where: { tenantId: tenant.id, ativo: true },
+        include: { precos: true },
+        orderBy: { nome: "asc" },
+      }),
+      tx.segmento.findMany({ where: { tenantId: tenant.id, ativo: true }, orderBy: { ordem: "asc" } }),
+      // ...e os carros que o coringa ja agendou, com o ultimo contato de cada um.
+      tx.veiculo.findMany({
+        where: { tenantId: tenant.id, ativo: true, placa: { not: "" }, usuario: { coringa: true } },
+        include: { agendamentos: { orderBy: { dataHora: "desc" }, take: 1 } },
+      }),
     ]);
-    return { agendamentos, horarios };
+    return { agendamentos, horarios, servicos, segmentos, carrosDoCoringa };
   });
 
   const dias: DiaSemana[] = Array.from({ length: 7 }, (_, i) => {
@@ -88,10 +102,12 @@ export default async function AdminAgendamentosPage({
       fimMin: inicioMin + a.servico.duracaoMin,
       fimISO: new Date(a.dataHora.getTime() + a.servico.duracaoMin * 60000).toISOString(),
       duracaoMin: a.servico.duracaoMin,
-      clienteNome: a.usuario.nome,
-      clienteTelefone: a.usuario.telefone ?? "",
-      clienteEmail: a.usuario.email,
-      veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
+      // Pelo coringa, o contato e quem chamou no WhatsApp, e nao ha e-mail.
+      clienteNome: nomeDoCliente(a),
+      clienteTelefone: a.contatoTelefone ?? a.usuario.telefone ?? "",
+      clienteEmail: a.usuario.coringa ? "" : a.usuario.email,
+      peloAdmin: a.usuario.coringa,
+      veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`.trim(),
       veiculoAno: a.veiculo.ano,
       placa: a.veiculo.placa,
       servicoNome: a.servico.nome,
@@ -114,6 +130,28 @@ export default async function AdminAgendamentosPage({
       capacidade={tenant.capacidadeSimultanea}
       itens={itens}
       acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}
+      novoAgendamento={
+        <NovoAgendamentoAdmin
+          tenantId={tenant.id}
+          hoje={chaveDia(agora)}
+          servicos={servicos.map((sv) => ({
+            id: sv.id,
+            nome: sv.nome,
+            duracaoMin: sv.duracaoMin,
+            precos: Object.fromEntries(sv.precos.map((p) => [p.segmentoId, Number(p.valor)])),
+          }))}
+          segmentos={segmentos.map((sg) => ({ id: sg.id, nome: sg.nome }))}
+          veiculosDoCoringa={carrosDoCoringa.map((v) => ({
+            id: v.id,
+            placa: v.placa,
+            marca: v.marca,
+            modelo: v.modelo,
+            segmentoId: v.segmentoId,
+            contatoNome: v.agendamentos[0]?.contatoNome ?? "",
+            contatoTelefone: v.agendamentos[0]?.contatoTelefone ?? "",
+          }))}
+        />
+      }
     />
   );
 }

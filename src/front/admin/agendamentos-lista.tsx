@@ -49,6 +49,9 @@ export type ItemAgendamento = {
   // Acrescimo lancado pelo Admin na avaliacao presencial. Nulo = sem acrescimo.
   acrescimoAplicado: number | null;
   status: StatusAgendamento;
+  // Feito pelo Admin pelo coringa: o nome e o telefone sao de quem chamou no
+  // WhatsApp, e nao ha e-mail.
+  peloAdmin: boolean;
 };
 
 type Filtro = "todos" | StatusAgendamento;
@@ -159,6 +162,7 @@ export function AgendamentosLista({
   capacidade,
   itens,
   acrescimoCondicaoPercent,
+  novoAgendamento,
 }: {
   slug: string;
   dias: DiaSemana[];
@@ -173,6 +177,8 @@ export function AgendamentosLista({
   // Politica de acrescimo da estetica. Nulo = nao cobra acrescimo, e o botao
   // de lancar nem aparece.
   acrescimoCondicaoPercent: number | null;
+  // Botao "Novo agendamento" (agendar pelo coringa), montado pela pagina.
+  novoAgendamento?: React.ReactNode;
 }) {
   const router = useRouter();
   const agoraMs = new Date(agoraISO).getTime();
@@ -276,7 +282,10 @@ export function AgendamentosLista({
 
   return (
     <div className="grid gap-5">
-      <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">Agendamentos</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">Agendamentos</h1>
+        {novoAgendamento}
+      </div>
 
       {/* Filtro por situacao (do dia escolhido) */}
       <div role="group" aria-label="Situação" className="flex flex-wrap items-center gap-1.5">
@@ -674,15 +683,25 @@ function Cartao({
                 {formatarDuracao(item.duracaoMin)}
               </small>
             </h3>
-            <p className="mt-0.5 truncate text-sm font-semibold text-slate-200">{item.clienteNome}</p>
+            <p className="mt-0.5 flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-200">
+              <span className="truncate">{item.clienteNome}</span>
+              {item.peloAdmin && (
+                <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[0.6rem] font-semibold text-slate-200">
+                  Agendado pelo Admin
+                </span>
+              )}
+            </p>
           </div>
 
           <p className="flex min-w-0 items-center gap-2 text-xs text-slate-200 md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1">
             <Car className="h-3.5 w-3.5 shrink-0 text-astro-muted" />
             <span className="truncate">{item.veiculo}</span>
-            <span className="shrink-0 rounded border border-zinc-300 border-t-[3px] border-t-blue-700 bg-white px-1.5 font-mono text-[0.65rem] font-bold tracking-wider text-zinc-900">
-              {item.placa}
-            </span>
+            {/* Carro do coringa pode vir sem placa. */}
+            {item.placa && (
+              <span className="shrink-0 rounded border border-zinc-300 border-t-[3px] border-t-blue-700 bg-white px-1.5 font-mono text-[0.65rem] font-bold tracking-wider text-zinc-900">
+                {item.placa}
+              </span>
+            )}
           </p>
 
           <div className="flex items-center gap-2 md:col-start-2 md:row-start-1 md:flex-col md:items-end xl:col-start-3 xl:items-center">
@@ -746,8 +765,11 @@ function Cartao({
           <div className="mt-3 grid gap-3 border-t border-admin-border pt-3 text-sm md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
             <dl className="grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
               <Detalhe rotulo="Telefone" valor={formatarTelefone(item.clienteTelefone) || "sem telefone"} />
-              <Detalhe rotulo="E-mail" valor={item.clienteEmail} />
-              <Detalhe rotulo="Veículo" valor={`${item.veiculo} ${item.veiculoAno} · ${item.placa}`} />
+              {item.clienteEmail && <Detalhe rotulo="E-mail" valor={item.clienteEmail} />}
+              <Detalhe
+                rotulo="Veículo"
+                valor={[item.veiculo, item.veiculoAno || null, item.placa || null].filter(Boolean).join(" · ")}
+              />
               <Detalhe rotulo="Horário" valor={`${hhmm(item.inicioMin)} às ${hhmm(item.fimMin)}`} />
             </dl>
             <div className="flex flex-wrap gap-2">

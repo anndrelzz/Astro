@@ -19,11 +19,14 @@ export function ClienteSidebar({
   usuarioNome,
   usuarioEmail,
   suporteWhatsapp,
+  avisoPerfil = false,
 }: {
   slug: string;
   usuarioNome: string;
   usuarioEmail: string;
   suporteWhatsapp: string | null;
+  /** O mesmo ponto vermelho do Perfil da barra do celular. */
+  avisoPerfil?: boolean;
 }) {
   const pathname = usePathname();
   const itens = itensCliente(slug);
@@ -83,8 +86,15 @@ export function ClienteSidebar({
                   }
                 >
                   <Icone className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {ativo && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  <span className="flex-1 truncate">
+                    {item.label}
+                    {avisoPerfil && item.href.endsWith("/perfil") && <span className="sr-only"> (tem um aviso)</span>}
+                  </span>
+                  {avisoPerfil && item.href.endsWith("/perfil") ? (
+                    <span data-aviso aria-hidden className="h-2 w-2 rounded-full bg-red-500" />
+                  ) : (
+                    ativo && <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                  )}
                 </Link>
               </li>
             );

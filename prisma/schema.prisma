@@ -45,6 +45,8 @@ enum TipoNotificacao {
   LEMBRETE_24H
   LEMBRETE_2H
   CONFIRMACAO_CANCELAMENTO
+  RESERVA_PIX
+  PAGAMENTO_CONFIRMADO
 }
 
 enum StatusNotificacao {
@@ -95,6 +97,10 @@ model Tenant {
   cancelamentoHorasLimite Int      @default(2) // RF18 — antecedencia minima para cancelamento pelo cliente
   capacidadeSimultanea    Int      @default(1) // RN06 — configurada pelo Admin, numero de atendimentos ao mesmo tempo
   intervaloMinutos        Int      @default(60) // RF02 — granularidade dos horarios oferecidos
+  /// Autocadastro (06/11): resumo (SHA-256 com segredo) da conexao que criou a
+  /// estetica pela tela /start, para o limite de cadastros por hora. Nunca o
+  /// IP em si (LGPD). NULO = criada pelo script do terminal.
+  cadastroIpHash          String?
   criadoEm                DateTime @default(now())
 
   usuarios     Usuario[]
@@ -106,7 +112,9 @@ model Tenant {
   horarios     HorarioFuncionamento[]
   notificacoes Notificacao[]
   logo         LogoTenant?
+  tokensEmail  TokenEmail[]
 
+  @@index([cadastroIpHash, criadoEm])
   @@map("tenant")
 }
 
@@ -212,11 +220,25 @@ model Usuario {
   role              Role     @default(CLIENTE)
   telegramChatId    String? // RNF11 — uso exclusivo para notificacoes
   telegramLinkToken String?
+  /// Cliente interno da estetica, pelo qual o Admin agenda quem chamou no
+  /// WhatsApp ou no Instagram (decisao do orientador, 30/10). Um por estetica,
+  /// sem e-mail real e com senha aleatoria: ninguem entra com ele, e os
+  /// agendamentos dele nao geram notificacao.
+  coringa           Boolean  @default(false)
+  /// Quando o cliente provou que abre a caixa desse e-mail (link de
+  /// confirmacao ou de redefinir a senha). NULO = ainda nao confirmado.
+  emailConfirmadoEm DateTime?
+  /// Limite de tentativas no login (issue #107). Conta as tentativas desde o
+  /// ultimo acerto; na 5a errada, bloqueia ate `bloqueadoAte` (15 minutos).
+  /// Acertar a senha ou redefini-la zera os dois. Ver back/limite-login.ts.
+  tentativasErradas Int       @default(0)
+  bloqueadoAte      DateTime?
   criadoEm          DateTime @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   veiculos     Veiculo[]
   agendamentos Agendamento[]
+  tokensEmail  TokenEmail[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -296,6 +318,16 @@ model Agendamento {
   /// historico mostra "R$ 120,00 + R$ 36,00" para os dois lados e o financeiro
   /// consegue dizer quanto da receita veio de acrescimo.
   acrescimoAplicado Decimal? @db.Decimal(10, 2)
+  /// Quando o Admin confirmou o pagamento (RF12). O financeiro conta a receita
+  /// por esta data, e nao pelo dia do servico: um PIX pago hoje para a semana
+  /// que vem e dinheiro que ja entrou na conta da estetica (regime de caixa).
+  /// NULO = ainda nao pago. Os pagos antes desta coluna existir receberam o
+  /// dia do servico (migration 20261103_agendamento_pago_em).
+  pagoEm         DateTime?
+  /// Quem chamou no WhatsApp, quando o Admin agenda pelo coringa. NULO nos
+  /// agendamentos feitos pelo proprio cliente, que ja tem nome e telefone.
+  contatoNome     String?
+  contatoTelefone String?
   criadoEm       DateTime          @default(now())
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
@@ -327,4 +359,33 @@ model Notificacao {
   @@index([agendamentoId])
   @@index([tenantId])
   @@map("notificacao")
+}
+
+enum TipoTokenEmail {
+  REDEFINIR_SENHA
+  CONFIRMAR_EMAIL
+}
+
+/// Link enviado por e-mail (RFC 6.2: redefinir a senha; e a confirmacao do
+/// e-mail). O token do link so existe no e-mail: aqui fica o sha256 dele,
+/// para quem ler o banco nao conseguir usar os links abertos.
+model TokenEmail {
+  id        String         @id @default(uuid())
+  tenantId  String
+  usuarioId String
+  tipo      TipoTokenEmail
+  tokenHash String         @unique
+  expiraEm  DateTime
+  /// Preenchido no uso: o link vale uma vez so.
+  usadoEm   DateTime?
+  criadoEm  DateTime       @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  // Cascade: link de uma conta apagada nao serve para nada, e sem isso a
+  // conta com link aberto nao podia ser apagada (review do #103).
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([usuarioId, tipo])
+  @@map("token_email")
 }

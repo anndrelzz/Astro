@@ -19,12 +19,17 @@ export const ANTECEDENCIA_MINIMA_MIN = 30;
 // entra na lista. Como a confirmacao (POST /api/agendamentos) reconfere a vaga
 // por esta mesma funcao, ela tambem recusa esses horarios. `agora` so existe
 // para os testes fixarem o relogio.
+//
+// `antecedenciaMin` troca o minimo de antecedencia: o Admin agenda pelo
+// coringa ate em cima da hora (decisao de 04/11), com 0. Horario que ja
+// passou continua fora para todo mundo.
 export async function calcularSlotsDisponiveis(
   tx: Prisma.TransactionClient,
   tenant: Tenant,
   servico: Servico,
   data: Date,
-  agora: Date = new Date()
+  agora: Date = new Date(),
+  { antecedenciaMin = ANTECEDENCIA_MINIMA_MIN }: { antecedenciaMin?: number } = {}
 ) {
   const { diaSemana } = partesNoFuso(data);
 
@@ -35,8 +40,7 @@ export async function calcularSlotsDisponiveis(
 
   const inicioDia = inicioDoDia(data);
   const fimDia = fimDoDia(data);
-  const primeiroInicioPermitido =
-    agora.getTime() + ANTECEDENCIA_MINIMA_MIN * 60_000;
+  const primeiroInicioPermitido = agora.getTime() + antecedenciaMin * 60_000;
 
   const agendamentosDoDia = await tx.agendamento.findMany({
     where: {
@@ -45,6 +49,11 @@ export async function calcularSlotsDisponiveis(
       status: { not: "CANCELADO" },
     },
     include: { servico: true },
+  });
+
+  const intervalos = agendamentosDoDia.map((agendamento) => {
+    const inicio = minutosNoFuso(agendamento.dataHora);
+    return { inicio, fim: inicio + agendamento.servico.duracaoMin };
   });
 
   const slots: string[] = [];
@@ -62,13 +71,7 @@ export async function calcularSlotsDisponiveis(
       continue;
     }
 
-    const ocupados = agendamentosDoDia.filter((agendamento) => {
-      const aInicio = minutosNoFuso(agendamento.dataHora);
-      const aFim = aInicio + agendamento.servico.duracaoMin;
-      return aInicio < fimMin && aFim > inicioMin; // sobreposicao de intervalos
-    }).length;
-
-    if (ocupados < tenant.capacidadeSimultanea) {
+    if (picoDeCarros(intervalos, inicioMin, fimMin) < tenant.capacidadeSimultanea) {
       const horas = String(Math.floor(inicioMin / 60)).padStart(2, "0");
       const minutos = String(inicioMin % 60).padStart(2, "0");
       slots.push(`${horas}:${minutos}`);
@@ -76,6 +79,28 @@ export async function calcularSlotsDisponiveis(
   }
 
   return slots;
+}
+
+type Intervalo = { inicio: number; fim: number };
+
+// Issue #117 — a capacidade e de carros AO MESMO TEMPO. Dois agendamentos que
+// encostam no horario, mas um depois do outro, nunca somam dois carros.
+//
+// Devolve o maior numero de carros juntos em algum momento de [inicioMin, fimMin).
+// A lotacao so sobe quando um carro chega, entao basta olhar o inicio do horario
+// e o inicio de cada agendamento que cai dentro dele.
+function picoDeCarros(intervalos: Intervalo[], inicioMin: number, fimMin: number): number {
+  const momentos = [inicioMin];
+  for (const { inicio } of intervalos) {
+    if (inicio > inicioMin && inicio < fimMin) momentos.push(inicio);
+  }
+
+  let pico = 0;
+  for (const momento of momentos) {
+    const juntos = intervalos.filter(({ inicio, fim }) => inicio <= momento && fim > momento).length;
+    pico = Math.max(pico, juntos);
+  }
+  return pico;
 }
 
 // RN06 — sem esta trava, duas confirmacoes para o mesmo dia podem ler a mesma

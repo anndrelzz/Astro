@@ -22,13 +22,13 @@ O Astro resolve esse problema oferecendo uma plataforma completa onde cada esté
 |---|---|
 | **Dono da Estética (Admin)** | Empreendedor com pouco tempo para administração. Acessa o painel para configurar serviços, horários, visualizar financeiro e personalizar a identidade visual. Nível técnico básico a intermediário. |
 | **Cliente Final** | Proprietário de veículo que acessa o site público da estética para visualizar serviços, preços e realizar agendamentos. Principal canal de acesso: smartphone. |
-| **Desenvolvedor SaaS** | Responsável pela manutenção e evolução da plataforma. Acesso total à infraestrutura, banco de dados e deploys. Provisiona novas estéticas manualmente. |
+| **Desenvolvedor SaaS** | Responsável pela manutenção e evolução da plataforma. Acesso total à infraestrutura, banco de dados e deploys. As estéticas se cadastram sozinhas em `/start`. |
 
 ---
 
 ## Funcionalidades Principais
 
-- Provisionamento de estéticas com URL própria (`astro.app/[slug-da-estetica]`), slug único e imutável
+- Autocadastro de estéticas em `useastro.app.br/start`, com URL própria (`useastro.app.br/[slug-da-estetica]`), slug sugerido a partir do nome, editável no cadastro, único e imutável depois
 - Agendamento online com seleção de segmento de veículo, serviço, data e horário
 - Precificação automática por segmento de veículo (hatch, sedan, SUV, pickup, van) — sem intervenção manual
 - Pagamento via **PIX Copia e Cola** configurado pelo Admin, com **confirmação manual no painel** após verificação no banco — ou pagamento no local como alternativa
@@ -53,7 +53,8 @@ Excluído conscientemente para viabilizar a entrega no prazo do TCC — não com
 - Emissão de documentos fiscais (NF-e/NFS-e)
 - Gestão de estoque e produtos
 - Múltiplos funcionários por estética (login individual, comissões, agenda por profissional)
-- Cobrança e assinatura automática dos tenants (billing do SaaS) — provisionamento é manual, feito pelo desenvolvedor
+- Cobrança e assinatura automática dos tenants (billing do SaaS) — o plano é cobrado por PIX, fora do sistema
+- Exclusão e suspensão de estéticas pelo sistema (quem parou de pagar ou saiu da plataforma) — hoje feitas direto no banco pelo desenvolvedor
 - Módulo de fidelidade e promoções
 - Internacionalização (i18n)
 - API pública para terceiros / integração com calendários externos

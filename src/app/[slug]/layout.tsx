@@ -1,6 +1,10 @@
 import { BarraCliente } from "@/front/componentes/bottom-nav";
 import { ModalSlot } from "@/front/componentes/modal-slot";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/back/auth";
+import { temAvisoNoPerfil } from "@/back/aviso-perfil";
 import { getTenantPorSlug } from "@/back/tenant";
+import { cssDaCorDaEstetica } from "@/compartilhado/cor-da-estetica";
 
 // Layout de /[slug] que existe por tres motivos: abrir o slot paralelo
 // @modal, usado pelas rotas interceptadas (o cadastro de veiculo), e aplicar
@@ -28,6 +32,8 @@ export default async function SlugLayout({
   const { slug } = await params;
   const tenant = await getTenantPorSlug(slug);
   const cor = tenant?.corPrimaria ?? "#2563eb";
+  // Ponto vermelho no Perfil da barra do celular (ver back/aviso-perfil.ts).
+  const avisoPerfil = await temAvisoNoPerfil(await getServerSession(authOptions), tenant?.id);
 
   return (
     <div
@@ -44,8 +50,12 @@ export default async function SlugLayout({
         } as React.CSSProperties
       }
     >
+      {/* A mesma cor na pagina inteira, para os pop-ups desenhados direto no
+          <body> (fora desta caixa) tambem a receberem. Ver
+          compartilhado/cor-da-estetica.ts. */}
+      <style>{cssDaCorDaEstetica(tenant?.corPrimaria)}</style>
       {children}
-      <BarraCliente slug={slug} />
+      <BarraCliente slug={slug} avisoPerfil={avisoPerfil} />
       <ModalSlot>{modal}</ModalSlot>
     </div>
   );

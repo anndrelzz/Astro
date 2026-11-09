@@ -1,7 +1,17 @@
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/back/auth";
-import { foiRecebido, janela, lerPeriodo, totalCobrado } from "@/compartilhado/financeiro";
+import {
+  dataDoRecebimento,
+  filtroDoPeriodo,
+  janela,
+  lerPeriodo,
+  pendenteNoPeriodo,
+  receitaPorOrigem,
+  recebidoNoPeriodo,
+  totalCobrado,
+} from "@/compartilhado/financeiro";
+import { nomeDoCliente } from "@/compartilhado/contato";
 import { FUSO, chaveDia, inicioDoDia } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
@@ -40,18 +50,16 @@ export default async function AdminFinanceiroPage({
 
   const atual = await withTenant(tenant.id, (tx) =>
     tx.agendamento.findMany({
-      where: {
-        tenantId: tenant.id,
-        status: { not: "CANCELADO" },
-        dataHora: { gte: inicio, lte: fim },
-      },
+      // Atendido OU pago no periodo (regime de caixa, ver compartilhado/financeiro.ts).
+      where: filtroDoPeriodo(tenant.id, inicio, fim),
       include: { servico: true, usuario: true, veiculo: true },
       orderBy: { dataHora: "asc" },
     })
   );
 
-  const recebidos = atual.filter((a) => foiRecebido(a.status));
-  const pendentes = atual.filter((a) => !foiRecebido(a.status));
+  // Recebido conta pelo dia do pagamento; a receber, pelo dia do servico.
+  const recebidos = atual.filter((a) => recebidoNoPeriodo(a, { inicio, fim }));
+  const pendentes = atual.filter((a) => pendenteNoPeriodo(a, { inicio, fim }));
 
   const receitaTotal = recebidos.reduce((s, a) => s + totalCobrado(a), 0);
   const recebidoPix = recebidos.filter((a) => a.formaPagamento === "PIX").reduce((s, a) => s + totalCobrado(a), 0);
@@ -63,11 +71,13 @@ export default async function AdminFinanceiroPage({
   for (let i = 0, d = inicio; d <= fim; i++, d = inicioDoDia(inicio, i)) {
     porDia.set(chaveDia(d), { recebido: 0, pendente: 0 });
   }
-  for (const a of atual) {
+  for (const a of recebidos) {
+    const alvo = porDia.get(chaveDia(dataDoRecebimento(a)));
+    if (alvo) alvo.recebido += totalCobrado(a);
+  }
+  for (const a of pendentes) {
     const alvo = porDia.get(chaveDia(a.dataHora));
-    if (!alvo) continue;
-    if (foiRecebido(a.status)) alvo.recebido += totalCobrado(a);
-    else alvo.pendente += Number(a.valor);
+    if (alvo) alvo.pendente += Number(a.valor);
   }
 
   const porServico = new Map<string, { nome: string; receita: number; qtd: number }>();
@@ -78,8 +88,10 @@ export default async function AdminFinanceiroPage({
     porServico.set(a.servicoId, item);
   }
 
+  // O coringa fica fora do ranking: os agendados pelo Admin aparecem juntos
+  // no bloco "Origem", e nao como um cliente so que gastou muito.
   const porCliente = new Map<string, { nome: string; receita: number; visitas: number }>();
-  for (const a of recebidos) {
+  for (const a of recebidos.filter((r) => !r.usuario.coringa)) {
     const item = porCliente.get(a.usuarioId) ?? { nome: a.usuario.nome, receita: 0, visitas: 0 };
     item.receita += totalCobrado(a);
     item.visitas += 1;
@@ -94,7 +106,7 @@ export default async function AdminFinanceiroPage({
     .map((a) => ({
       id: a.id,
       dia: a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: FUSO }),
-      cliente: a.usuario.nome,
+      cliente: nomeDoCliente(a),
       veiculo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
       placa: a.veiculo.placa,
       valor: Number(a.valor),
@@ -109,7 +121,7 @@ export default async function AdminFinanceiroPage({
       chaveDia(a.dataHora) === hojeChave
         ? "Hoje"
         : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
-    cliente: a.usuario.nome,
+    cliente: nomeDoCliente(a),
     servico: a.servico.nome,
     forma: a.formaPagamento,
     valor: Number(a.valor),
@@ -131,6 +143,7 @@ export default async function AdminFinanceiroPage({
       porCliente={[...porCliente.values()].sort((a, b) => b.receita - a.receita).slice(0, 5)}
       aReceberLista={aReceberLista}
       acrescimos={acrescimos}
+      origem={receitaPorOrigem(recebidos)}
     />
   );
 }

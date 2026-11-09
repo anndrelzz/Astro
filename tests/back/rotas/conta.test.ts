@@ -1,4 +1,10 @@
-import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  LOGIN_BLOQUEADO,
+  LOGIN_INDISPONIVEL,
+  MAX_TENTATIVAS_LOGIN,
+  MINUTOS_BLOQUEIO_LOGIN,
+} from "@/compartilhado/limite-login";
 import { POST as cadastrar } from "@/app/api/auth/cadastro/route";
 import { POST as rodarLembretes } from "@/app/api/cron/lembretes/route";
 import { PATCH as editarPerfil } from "@/app/api/perfil/route";
@@ -12,11 +18,16 @@ import { prisma } from "@/back/prisma";
 import { getTenantPorSlug } from "@/back/tenant";
 import { withTenant } from "@/back/tenant-db";
 import { criarEstetica, entrarComo, pedido, removerEstetica, SENHA, type Estetica } from "./ajudantes";
+import { capturarLogs } from "../capturar-logs";
 
 // UC01, UC15, RN02, RN03, RN12 — conta do cliente: cadastro, login, perfil e
 // vinculo com o Telegram. Tambem a rota chamada pelo agendador de lembretes.
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
+// O cadastro manda o link de confirmacao: sem isto, sairia e-mail de verdade.
+vi.mock("@/back/notificacoes/email", () => ({
+  enviarEmail: vi.fn(async () => ({ enviado: true, modo: "log" })),
+}));
 vi.mock("@/back/notificacoes/telegram", () => ({
   enviarTelegram: vi.fn(async () => ({ enviado: true, modo: "log" })),
 }));
@@ -62,16 +73,17 @@ describe("POST /api/auth/cadastro", () => {
     expect((await cadastrar(pedido("POST", "/api/auth/cadastro", "x"))).status).toBe(400);
   });
 
+  // O `campo` deixa a tela mostrar a mensagem embaixo do campo certo.
   test.each([
-    [{ senha: "senha123" }, "Senha deve conter ao menos 1 letra maiuscula"],
-    [{ senha: "SenhaSemNumero" }, "Senha deve conter ao menos 1 numero"],
-    [{ senha: "Se1" }, "Senha deve ter ao menos 8 caracteres"],
-    [{ telefone: "1234" }, "Telefone invalido - informe DDD + numero (10 ou 11 digitos)"],
-    [{ email: "maria@" }, "E-mail invalido"],
-  ])("dado invalido %o responde 400 com a mensagem certa", async (extra, mensagem) => {
+    [{ senha: "senha123" }, "Senha deve conter ao menos 1 letra maiuscula", "senha"],
+    [{ senha: "SenhaSemNumero" }, "Senha deve conter ao menos 1 numero", "senha"],
+    [{ senha: "Se1" }, "Senha deve ter ao menos 8 caracteres", "senha"],
+    [{ telefone: "1234" }, "Telefone invalido - informe DDD + numero (10 ou 11 digitos)", "telefone"],
+    [{ email: "maria@" }, "E-mail invalido", "email"],
+  ])("dado invalido %o responde 400 com a mensagem e o campo", async (extra, mensagem, campo) => {
     const resposta = await cadastrar(pedido("POST", "/api/auth/cadastro", conta(extra)));
     expect(resposta.status).toBe(400);
-    expect(await resposta.json()).toEqual({ error: mensagem });
+    expect(await resposta.json()).toMatchObject({ error: mensagem, campo });
   });
 
   test("estetica que nao existe responde 404", async () => {
@@ -133,6 +145,25 @@ describe("login (NextAuth)", () => {
     expect(await entrar(undefined)).toBeNull();
   });
 
+  // O NextAuth repassa a mensagem do erro lancado no authorize para a tela e
+  // para o endereco do erro. Uma falha do banco nao pode chegar la com a
+  // consulta e os nomes das tabelas: sai so um codigo, e o detalhe fica no log.
+  test("falha inesperada no banco devolve so o codigo LOGIN_INDISPONIVEL, sem a mensagem do Prisma", async () => {
+    const falha = new Error("Invalid `prisma.tenant.findUnique()` invocation: Can't reach database server at db:5432");
+    const busca = vi.spyOn(prisma.tenant, "findUnique").mockRejectedValueOnce(falha);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const erro = await entrar({ email: e.cliente.email, password: SENHA, tenantSlug: e.tenant.slug }).catch(
+      (err: Error) => err
+    );
+
+    expect(erro).toBeInstanceOf(Error);
+    expect((erro as Error).message).toBe(LOGIN_INDISPONIVEL);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("login"), falha);
+    busca.mockRestore();
+    log.mockRestore();
+  });
+
   test("o token e a sessao carregam o id, a estetica e o papel (RFC 6.2)", async () => {
     const { jwt, session } = authOptions.callbacks!;
     const token = await jwt!({
@@ -146,6 +177,77 @@ describe("login (NextAuth)", () => {
 
     const sessao = await session!({ session: { user: {} }, token } as unknown as Parameters<NonNullable<typeof session>>[0]);
     expect(sessao.user).toMatchObject({ id: e.admin.id, tenantId: e.tenant.id, role: "ADMIN" });
+  });
+});
+
+// Issue #107: sem limite, dava para tentar senhas sem parar. Depois de 5
+// tentativas sem acertar, o login fica bloqueado por 15 minutos.
+describe("login — limite de tentativas", () => {
+  type Credenciais = { email: string; password: string; tenantSlug: string };
+  const provedor = authOptions.providers[0] as unknown as {
+    options: { authorize: (c: Partial<Credenciais> | undefined, req: unknown) => Promise<unknown> };
+  };
+  const entrarComSenha = (password: string) =>
+    provedor.options.authorize({ email: e.outroCliente.email, password, tenantSlug: e.tenant.slug }, {});
+  const errar = (vezes: number) =>
+    Array.from({ length: vezes }).reduce<Promise<unknown>>(
+      (anterior) => anterior.then(() => entrarComSenha("Errada123")),
+      Promise.resolve()
+    );
+  const alterarConta = (data: { tentativasErradas?: number; bloqueadoAte?: Date | null }) =>
+    withTenant(e.tenant.id, (tx) => tx.usuario.update({ where: { id: e.outroCliente.id }, data }));
+
+  beforeEach(async () => {
+    await alterarConta({ tentativasErradas: 0, bloqueadoAte: null });
+  });
+
+  test("ate a 4a senha errada, a senha certa ainda entra", async () => {
+    await errar(4);
+    expect(await entrarComSenha(SENHA)).toMatchObject({ id: e.outroCliente.id });
+  });
+
+  test("depois da 5a senha errada, nem a senha certa entra: avisa que esta bloqueado", async () => {
+    await errar(5);
+    await expect(entrarComSenha(SENHA)).rejects.toThrow(LOGIN_BLOQUEADO);
+  });
+
+  test("o bloqueio dura 15 minutos", async () => {
+    const antes = Date.now();
+    await errar(5);
+    const bloqueadoAte = (await usuario(e.outroCliente.id))!.bloqueadoAte!.getTime();
+    const quinzeMin = MINUTOS_BLOQUEIO_LOGIN * 60 * 1000;
+    expect(bloqueadoAte).toBeGreaterThanOrEqual(antes + quinzeMin - 5000);
+    expect(bloqueadoAte).toBeLessThanOrEqual(Date.now() + quinzeMin + 5000);
+  });
+
+  test("passado o bloqueio, a senha certa volta a entrar e zera a contagem", async () => {
+    await alterarConta({ tentativasErradas: MAX_TENTATIVAS_LOGIN, bloqueadoAte: new Date(Date.now() - 1000) });
+
+    expect(await entrarComSenha(SENHA)).toMatchObject({ id: e.outroCliente.id });
+    const depois = await usuario(e.outroCliente.id);
+    expect(depois).toMatchObject({ tentativasErradas: 0, bloqueadoAte: null });
+  });
+
+  test("acertar a senha zera a contagem: erros antigos nao somam com os novos", async () => {
+    await errar(4);
+    await entrarComSenha(SENHA);
+    await errar(4);
+    expect(await entrarComSenha(SENHA)).toMatchObject({ id: e.outroCliente.id });
+  });
+
+  test("tentativas ao mesmo tempo nao furam o limite", async () => {
+    const resultados = await Promise.allSettled(Array.from({ length: 12 }, () => entrarComSenha("Errada123")));
+
+    // So as 5 primeiras chegam a conferir a senha; as outras ja saem bloqueadas.
+    expect(resultados.filter((r) => r.status === "rejected")).toHaveLength(12 - MAX_TENTATIVAS_LOGIN);
+    await expect(entrarComSenha(SENHA)).rejects.toThrow(LOGIN_BLOQUEADO);
+  });
+
+  test("bloquear uma conta nao afeta outra conta da mesma estetica", async () => {
+    await errar(5);
+    expect(
+      await provedor.options.authorize({ email: e.cliente.email, password: SENHA, tenantSlug: e.tenant.slug }, {})
+    ).toMatchObject({ id: e.cliente.id });
   });
 });
 
@@ -166,7 +268,17 @@ describe("PATCH /api/perfil", () => {
     entrarComo(e.outroCliente);
     expect((await editarPerfil(pedido("PATCH", "/api/perfil", "x"))).status).toBe(400);
     const resposta = await editarPerfil(pedido("PATCH", "/api/perfil", { nome: " ", telefone: "4799999999" }));
-    expect(await resposta.json()).toEqual({ error: "Informe o nome completo" });
+    expect(await resposta.json()).toMatchObject({ error: "Informe o nome completo", campo: "nome" });
+  });
+
+  test("telefone invalido aponta o campo telefone", async () => {
+    entrarComo(e.outroCliente);
+    const resposta = await editarPerfil(pedido("PATCH", "/api/perfil", { nome: "Joao", telefone: "123" }));
+    expect(resposta.status).toBe(400);
+    expect(await resposta.json()).toMatchObject({
+      error: "Telefone invalido - informe DDD + numero (10 ou 11 digitos)",
+      campo: "telefone",
+    });
   });
 
   test("atualiza nome e telefone do proprio cliente", async () => {
@@ -213,9 +325,15 @@ describe("vinculo com o Telegram", () => {
     await vincularTelegram();
     const token = (await usuario(e.cliente.id))!.telegramLinkToken;
 
+    const capturados = capturarLogs();
     const resposta = await doTelegram({ message: { text: `/start ${token}`, chat: { id: 111 } } });
     expect(resposta.status).toBe(503);
     expect(await usuario(e.cliente.id)).toMatchObject({ telegramLinkToken: token });
+    // Servidor mal configurado: aparece no log do Grafana, nao so no terminal.
+    expect(capturados.corpos()).toEqual([
+      "[telegram/webhook]: TELEGRAM_WEBHOOK_SECRET nao configurado - rota recusada por seguranca",
+    ]);
+    capturados.parar();
     erro.mockRestore();
   });
 
@@ -240,7 +358,9 @@ describe("vinculo com o Telegram", () => {
     const resposta = await doTelegram({ message: { text: `/start ${token}`, chat: { id: 987654 } } });
     expect(await resposta.json()).toEqual({ ok: true });
     expect(await usuario(e.cliente.id)).toMatchObject({ telegramChatId: "987654", telegramLinkToken: null });
-    expect(enviarTelegram).toHaveBeenCalledWith("987654", "Conta vinculada com sucesso!");
+    expect(enviarTelegram).toHaveBeenCalledWith("987654", expect.stringContaining("<b>Telegram vinculado!</b>"));
+    // A mensagem diz de qual estetica vem os avisos.
+    expect(vi.mocked(enviarTelegram).mock.calls.at(-1)![1]).toContain(e.tenant.nome);
   });
 
   test("mensagens que nao sao um /start valido sao ignoradas sem erro", async () => {
@@ -274,9 +394,15 @@ describe("POST /api/cron/lembretes", () => {
   test("sem CRON_SECRET no servidor, recusa tudo com 503", async () => {
     vi.stubEnv("CRON_SECRET", "");
     const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const capturados = capturarLogs();
     expect((await chamar("qualquer")).status).toBe(503);
     expect(verificarEEnviarLembretes).not.toHaveBeenCalled();
     expect(reenviarNotificacoes).not.toHaveBeenCalled();
+    // Sem o segredo, nenhum lembrete sai: tem que aparecer no Grafana.
+    expect(capturados.corpos()).toEqual([
+      "[cron/lembretes]: CRON_SECRET nao configurado - rota recusada por seguranca",
+    ]);
+    capturados.parar();
     erro.mockRestore();
   });
 

@@ -120,6 +120,53 @@ describe("calcularSlotsDisponiveis", () => {
     ]);
   });
 
+  // Issue #117 — a capacidade vale para carros AO MESMO TEMPO, nao para
+  // agendamentos que encostam no horario. Dois agendamentos em sequencia
+  // nunca somam dois carros juntos.
+  describe("capacidade conta o pico de carros ao mesmo tempo", () => {
+    const grade = { horaInicioMin: 8 * 60, horaFimMin: 12 * 60 };
+
+    test("dois agendamentos em sequencia nao lotam o horario que encosta nos dois", async () => {
+      const { tx } = bancoFalso(grade, [
+        { dataHora: as("08:00"), servico: { duracaoMin: 120 } },
+        { dataHora: as("10:00"), servico: { duracaoMin: 120 } },
+      ]);
+      // 09:00-11:00: das 09h as 10h ficam A e o novo; das 10h as 11h, B e o novo.
+      // Nunca passam de 2. Todo horario de 2h continua livre.
+      expect(await calcularSlotsDisponiveis(tx, tenant(2), servico(120), DIA, VESPERA)).toEqual([
+        "08:00",
+        "09:00",
+        "10:00",
+      ]);
+    });
+
+    test("dois agendamentos que se cruzam lotam so onde estao juntos", async () => {
+      const { tx } = bancoFalso(grade, [
+        { dataHora: as("08:00"), servico: { duracaoMin: 120 } },
+        { dataHora: as("09:00"), servico: { duracaoMin: 120 } },
+      ]);
+      // A e B juntos das 09h as 10h: qualquer horario que passe por ali lota.
+      expect(await calcularSlotsDisponiveis(tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
+        "08:00",
+        "10:00",
+        "11:00",
+      ]);
+    });
+
+    test("pico que comeca no meio do horario tambem lota", async () => {
+      const { tx } = bancoFalso(grade, [
+        { dataHora: as("08:00"), servico: { duracaoMin: 60 } },
+        { dataHora: as("09:30"), servico: { duracaoMin: 60 } },
+        { dataHora: as("09:30"), servico: { duracaoMin: 60 } },
+      ]);
+      // 09:00-10:00 comeca com 0 carros, mas as 09:30 ja ha 2.
+      expect(await calcularSlotsDisponiveis(tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
+        "08:00",
+        "11:00",
+      ]);
+    });
+  });
+
   test("consulta a grade do dia da semana de Brasilia e ignora cancelados", async () => {
     // 01:00 UTC de sexta ainda e quinta (22:00) em Brasilia.
     const { tx, consultas } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 9 * 60 });

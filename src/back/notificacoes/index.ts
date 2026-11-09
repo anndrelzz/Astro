@@ -1,10 +1,14 @@
 import "server-only";
 import type { CanalNotificacao, TipoNotificacao } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
+import { DOMINIO } from "@/compartilhado/dominio";
 import { FUSO } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { enviarEmail } from "@/back/notificacoes/email";
+import { montarEmailHtml, type DadosDoEmail } from "@/back/notificacoes/modelo-email";
+import { registrarFalha } from "@/back/log-de-erro";
+import { montarTelegram } from "@/back/notificacoes/modelo-telegram";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
 
 const ASSUNTOS: Record<TipoNotificacao, string> = {
@@ -12,6 +16,8 @@ const ASSUNTOS: Record<TipoNotificacao, string> = {
   LEMBRETE_24H: "Lembrete: seu agendamento e amanha",
   LEMBRETE_2H: "Lembrete: seu agendamento e em 2 horas",
   CONFIRMACAO_CANCELAMENTO: "Agendamento cancelado",
+  RESERVA_PIX: "Horario reservado: aguardando a confirmacao do PIX",
+  PAGAMENTO_CONFIRMADO: "Pagamento confirmado",
 };
 
 // Quantas vezes um aviso que falhou e tentado, contando a primeira.
@@ -24,7 +30,8 @@ export const PENDENTE_ESQUECIDA_MS = 5 * 60 * 1000;
 function montarMensagem(
   tipo: TipoNotificacao,
   servicoNome: string,
-  dataHora: Date
+  dataHora: Date,
+  linkDoPix: string
 ) {
   // Sem timeZone, o texto sairia no fuso do servidor (UTC na nuvem): o cliente
   // agendado para 10:00 leria 13:00 no e-mail.
@@ -42,11 +49,18 @@ function montarMensagem(
       return `Lembrete: voce tem ${servicoNome} agendado em 2 horas, as ${dataFormatada}.`;
     case "CONFIRMACAO_CANCELAMENTO":
       return `Seu agendamento de ${servicoNome} em ${dataFormatada} foi cancelado.`;
+    // Sai ao gerar o PIX, antes de o cliente pagar e de a estetica conferir:
+    // o texto vale antes e depois do pagamento.
+    case "RESERVA_PIX":
+      return `Seu horario de ${servicoNome} em ${dataFormatada} esta reservado. Assim que a estetica confirmar o recebimento do PIX, voce recebe outra mensagem. Ainda nao pagou? O codigo PIX esta em ${linkDoPix}`;
+    case "PAGAMENTO_CONFIRMADO":
+      return `O pagamento do seu ${servicoNome} em ${dataFormatada} foi confirmado. Seu horario esta garantido.`;
   }
 }
 
 // Fluxo de Notificacoes (secao 3.4 do RFC) — fila com registro de tentativas e
-// reenvio. E-mail sempre (RN13); Telegram apenas se vinculado.
+// reenvio. E-mail para quem confirmou o endereco (RN13 revisada em 04/11; antes,
+// e-mail sempre); Telegram apenas se vinculado.
 //
 // Em dois passos, porque o envio NAO pode acontecer dentro da transacao que
 // grava o agendamento. La dentro, um Telegram fora do ar desfazia o
@@ -73,13 +87,22 @@ export async function registrarNotificacao(
 ): Promise<NotificacaoPendente[]> {
   const agendamento = await tx.agendamento.findUnique({
     where: { id: agendamentoId },
-    select: { tenantId: true, usuario: { select: { telegramChatId: true } } },
+    select: {
+      tenantId: true,
+      usuario: { select: { telegramChatId: true, coringa: true, emailConfirmadoEm: true } },
+    },
   });
-  if (!agendamento) return [];
+  // Agendamento feito pelo Admin pelo coringa: nao ha e-mail nem Telegram de
+  // verdade para avisar, e quem chamou no WhatsApp combina direto com a
+  // estetica. Vale para a confirmacao, os lembretes e o cancelamento.
+  if (!agendamento || agendamento.usuario.coringa) return [];
 
-  const canais: CanalNotificacao[] = agendamento.usuario.telegramChatId
-    ? ["EMAIL", "TELEGRAM"]
-    : ["EMAIL"];
+  // E-mail so para quem confirmou que abre a caixa (decisao de 04/11): um
+  // e-mail digitado errado mandaria os dados do agendamento para um estranho.
+  // O Telegram ja e vinculado pelo proprio cliente, entao continua valendo.
+  const canais: CanalNotificacao[] = [];
+  if (agendamento.usuario.emailConfirmadoEm) canais.push("EMAIL");
+  if (agendamento.usuario.telegramChatId) canais.push("TELEGRAM");
 
   const pendentes: NotificacaoPendente[] = [];
   for (const canal of canais) {
@@ -100,25 +123,43 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
     const notificacao = await withTenant(tenantId, (tx) =>
       tx.notificacao.findUnique({
         where: { id: notificacaoId },
-        include: { agendamento: { include: { usuario: true, servico: true } } },
+        include: {
+          agendamento: { include: { usuario: true, servico: true, veiculo: true, tenant: true } },
+        },
       })
     );
     if (!notificacao) return;
 
-    const { usuario, servico, dataHora } = notificacao.agendamento;
-    const texto = montarMensagem(notificacao.tipo, servico.nome, dataHora);
+    const { id: agendamentoId, usuario, servico, veiculo, tenant, dataHora } = notificacao.agendamento;
+    const linkDoPix = `https://${DOMINIO}/${tenant.slug}/pagamento/${agendamentoId}`;
+    const texto = montarMensagem(notificacao.tipo, servico.nome, dataHora, linkDoPix);
+
+    // Os mesmos dados montam o e-mail e a mensagem do bot.
+    const dados: DadosDoEmail = {
+      tipo: notificacao.tipo,
+      agendamentoId,
+      clienteNome: usuario.nome,
+      estetica: tenant,
+      servicoNome: servico.nome,
+      veiculo,
+      dataHora,
+      valor: Number(notificacao.agendamento.valor),
+      formaPagamento: notificacao.agendamento.formaPagamento,
+      agora: new Date(),
+    };
 
     let enviado = false;
     try {
       if (notificacao.canal === "EMAIL") {
-        enviado = (await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto)).enviado;
+        enviado = (await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto, montarEmailHtml(dados))).enviado;
       } else if (usuario.telegramChatId) {
         // Se o cliente desvinculou o Telegram depois do registro, nao ha para
         // onde mandar: fica FALHA, e o reenvio tambem nao acha o chat.
-        enviado = (await enviarTelegram(usuario.telegramChatId, texto)).enviado;
+        const { texto: mensagem, botoes } = montarTelegram(dados);
+        enviado = (await enviarTelegram(usuario.telegramChatId, mensagem, { botoes })).enviado;
       }
     } catch (erro) {
-      console.error(`[${notificacao.canal.toLowerCase()}:ERRO]`, erro);
+      registrarFalha(`[${notificacao.canal.toLowerCase()}:ERRO]`, erro);
     }
 
     await withTenant(tenantId, (tx) =>
@@ -134,7 +175,7 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
   } catch (erro) {
     // O agendamento ja esta salvo; uma falha aqui so deixa o aviso PENDENTE,
     // e o reenvio do cron o pega depois.
-    console.error("[notificacao:ERRO]", notificacaoId, erro);
+    registrarFalha(`[notificacao:ERRO] ${notificacaoId}`, erro);
   }
 }
 

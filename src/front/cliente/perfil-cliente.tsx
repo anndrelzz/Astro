@@ -51,6 +51,8 @@ export function PerfilCliente({
   totalAgendamentos,
   veiculos,
   telegramVinculado,
+  emailConfirmado = true,
+  statusEmail,
 }: {
   slug: string;
   nome: string;
@@ -59,6 +61,10 @@ export function PerfilCliente({
   totalAgendamentos: number;
   veiculos: Veiculo[];
   telegramVinculado: boolean;
+  /** Sem confirmar, os avisos dos agendamentos nao saem por e-mail. */
+  emailConfirmado?: boolean;
+  /** Resultado do link de confirmacao, quando o cliente volta dele. */
+  statusEmail?: "confirmado" | "link-invalido";
 }) {
   const [editando, setEditando] = useState(false);
   const [removendo, setRemovendo] = useState<Veiculo | null>(null);
@@ -157,6 +163,8 @@ export function PerfilCliente({
         </div>
 
         <div className="space-y-5 lg:space-y-6">
+        <AvisoEmail email={email} confirmado={emailConfirmado} status={statusEmail} />
+
         {/* Dados do cliente */}
         <section>
           <div className="flex items-center justify-between px-1">
@@ -492,12 +500,37 @@ function ModalEditar({
     telefone: telefone ? formatarTelefone(telefone) : "",
   });
   const [erro, setErro] = useState<string | null>(null);
+  // Erro que a API apontou no nome ou no telefone: aparece embaixo dele.
+  const [erroCampo, setErroCampo] = useState<{ campo: "nome" | "telefone"; mensagem: string } | null>(null);
   const [salvando, setSalvando] = useState(false);
   const inicial = iniciais(nome);
+
+  function alterar(campo: "nome" | "telefone", valor: string) {
+    setForm((a) => ({ ...a, [campo]: valor }));
+    setErroCampo((atual) => (atual?.campo === campo ? null : atual));
+  }
+
+  // Liga o campo a mensagem de erro dele (o leitor de tela le as duas juntas).
+  function marcacao(campo: "nome" | "telefone") {
+    return erroCampo?.campo === campo
+      ? { "aria-invalid": true, "aria-describedby": `perfil-erro-${campo}` }
+      : {};
+  }
+
+  function erroDo(campo: "nome" | "telefone") {
+    return (
+      erroCampo?.campo === campo && (
+        <p id={`perfil-erro-${campo}`} className="text-xs font-medium text-red-600">
+          {erroCampo.mensagem}
+        </p>
+      )
+    );
+  }
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
+    setErroCampo(null);
     setSalvando(true);
     const resposta = await fetch("/api/perfil", {
       method: "PATCH",
@@ -507,6 +540,10 @@ function ModalEditar({
     setSalvando(false);
     if (!resposta.ok) {
       const json = await resposta.json().catch(() => null);
+      if (json?.error && (json.campo === "nome" || json.campo === "telefone")) {
+        setErroCampo({ campo: json.campo, mensagem: json.error });
+        return;
+      }
       setErro(json?.error ?? "Não foi possível salvar.");
       return;
     }
@@ -514,8 +551,9 @@ function ModalEditar({
     router.refresh();
   }
 
+  // A borda fica vermelha quando o input de dentro esta marcado com erro.
   const campoCls =
-    "flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3";
+    "flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 has-[[aria-invalid=true]]:border-red-500";
   const inputCls =
     "w-full bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none";
 
@@ -571,13 +609,13 @@ function ModalEditar({
                 className={inputCls}
                 value={form.nome}
                 maxLength={LIMITES.nomePessoa}
-                onChange={(e) =>
-                  setForm((a) => ({ ...a, nome: e.target.value }))
-                }
+                onChange={(e) => alterar("nome", e.target.value)}
                 required
+                {...marcacao("nome")}
               />
               <Pencil className="h-4 w-4 text-astro-blue" />
             </div>
+            {erroDo("nome")}
           </div>
 
           <div className="space-y-1.5">
@@ -602,13 +640,13 @@ function ModalEditar({
                 inputMode="tel"
                 placeholder="(00) 00000-0000"
                 value={form.telefone}
-                onChange={(e) =>
-                  setForm((a) => ({ ...a, telefone: e.target.value }))
-                }
+                onChange={(e) => alterar("telefone", e.target.value)}
                 required
+                {...marcacao("telefone")}
               />
               <Pencil className="h-4 w-4 text-astro-blue" />
             </div>
+            {erroDo("telefone")}
           </div>
 
           {/* Empilhados no celular; lado a lado no desktop, como no mockup. */}
@@ -632,5 +670,65 @@ function ModalEditar({
       </div>
     </div>,
     document.body,
+  );
+}
+
+
+// Confirmacao do e-mail (decisao de 04/11): enquanto o cliente nao confirma,
+// os avisos dos agendamentos nao saem por e-mail. O aviso fica no topo do
+// Perfil, com o reenvio do link. Voltando do link, mostra o resultado.
+function AvisoEmail({
+  email,
+  confirmado,
+  status,
+}: {
+  email: string;
+  confirmado: boolean;
+  status?: "confirmado" | "link-invalido";
+}) {
+  const [reenvio, setReenvio] = useState<{ ok: boolean; mensagem: string } | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  if (status === "confirmado") {
+    return (
+      <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+        E-mail confirmado! Agora os avisos dos agendamentos chegam por lá.
+      </p>
+    );
+  }
+  if (confirmado) return null;
+
+  async function reenviar() {
+    setEnviando(true);
+    const resposta = await fetch("/api/perfil/reenviar-confirmacao", { method: "POST" });
+    const json = await resposta.json().catch(() => null);
+    setEnviando(false);
+    setReenvio(
+      resposta.ok
+        ? { ok: true, mensagem: `Enviamos um novo link para ${email}. Olhe também a caixa de spam.` }
+        : { ok: false, mensagem: json?.error ?? "Não foi possível reenviar agora." }
+    );
+  }
+
+  return (
+    <section role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+      <p className="text-sm font-bold text-amber-900">Confirme seu e-mail</p>
+      <p className="mt-1 text-sm text-amber-800">
+        {status === "link-invalido"
+          ? "Esse link de confirmação expirou ou já foi usado. Peça um novo abaixo."
+          : `Enviamos um link para ${email}. Enquanto você não confirmar, os avisos dos agendamentos não chegam por e-mail.`}
+      </p>
+      {reenvio && (
+        <p className={`mt-2 text-sm font-medium ${reenvio.ok ? "text-emerald-700" : "text-red-600"}`}>{reenvio.mensagem}</p>
+      )}
+      <button
+        type="button"
+        onClick={reenviar}
+        disabled={enviando}
+        className="mt-3 rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+      >
+        {enviando ? "Enviando..." : "Reenviar e-mail de confirmação"}
+      </button>
+    </section>
   );
 }

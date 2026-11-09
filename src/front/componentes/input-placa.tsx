@@ -11,12 +11,21 @@ const letraPlaca = Barlow_Condensed({ subsets: ["latin"], weight: "600" });
 export function InputPlaca({
   valor,
   aoMudar,
+  invalido = false,
+  descritoPor,
 }: {
   valor: string;
   aoMudar: (valor: string) => void;
+  // Placa recusada pela API: anel vermelho e a mensagem ligada ao campo.
+  invalido?: boolean;
+  descritoPor?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border-[5px] border-zinc-900 bg-white shadow-sm transition focus-within:ring-4 focus-within:ring-astro-blue/30">
+    <div
+      className={`overflow-hidden rounded-xl border-[5px] border-zinc-900 bg-white shadow-sm transition focus-within:ring-4 ${
+        invalido ? "ring-4 ring-red-500/40 focus-within:ring-red-500/40" : "focus-within:ring-astro-blue/30"
+      }`}
+    >
       <div className="relative flex h-7 items-center justify-center bg-[#1C3FAA]">
         <span
           className={`${letraPlaca.className} text-lg leading-none tracking-[0.12em] text-white`}
@@ -35,6 +44,8 @@ export function InputPlaca({
         placeholder="ABC1D23"
         required
         aria-label="Placa do veículo"
+        aria-invalid={invalido || undefined}
+        aria-describedby={descritoPor}
         data-placa
         className={`${letraPlaca.className} block h-14 w-full bg-transparent px-4 text-center text-[2.6rem] uppercase leading-none tracking-[0.06em] text-zinc-900 placeholder:text-zinc-900/20 focus:outline-none`}
       />
