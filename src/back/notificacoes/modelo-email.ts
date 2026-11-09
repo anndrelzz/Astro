@@ -13,6 +13,8 @@ import { FUSO } from "@/compartilhado/fuso";
 
 export type DadosDoEmail = {
   tipo: TipoNotificacao;
+  /** Monta o link da tela do codigo PIX (RESERVA_PIX). */
+  agendamentoId: string;
   clienteNome: string;
   estetica: {
     nome: string;
@@ -32,6 +34,9 @@ export type DadosDoEmail = {
 };
 
 const SITE = `https://${DOMINIO}`;
+
+/** O que o cliente espera depois de gerar o PIX; o bot mostra o mesmo texto. */
+export const AVISO_DO_PIX = "Assim que a estética confirmar o recebimento do PIX, você recebe outra mensagem.";
 const HORA_EM_MS = 60 * 60 * 1000;
 
 const COR = {
@@ -49,6 +54,8 @@ export const TITULOS: Record<TipoNotificacao, { titulo: string; selo: string; co
   LEMBRETE_24H: { titulo: "Seu agendamento é amanhã", selo: "24h", corDoSelo: COR.azul },
   LEMBRETE_2H: { titulo: "Seu agendamento é daqui a 2 horas", selo: "2h", corDoSelo: COR.azul },
   CONFIRMACAO_CANCELAMENTO: { titulo: "Agendamento cancelado", selo: "&#10005;", corDoSelo: "#ef4444" },
+  RESERVA_PIX: { titulo: "Horário reservado: aguardando a confirmação do PIX", selo: "PIX", corDoSelo: COR.azul },
+  PAGAMENTO_CONFIRMADO: { titulo: "Pagamento confirmado", selo: "&#10003;", corDoSelo: "#10b981" },
 };
 
 const CHAMADAS: Record<TipoNotificacao, string> = {
@@ -56,7 +63,15 @@ const CHAMADAS: Record<TipoNotificacao, string> = {
   LEMBRETE_24H: "Passando para lembrar do seu horário de amanhã.",
   LEMBRETE_2H: "Seu horário é daqui a pouco.",
   CONFIRMACAO_CANCELAMENTO: "Seu agendamento foi cancelado. Se quiser, escolha outro horário.",
+  // Sai ao gerar o PIX: vale para quem ainda vai pagar e para quem ja pagou.
+  RESERVA_PIX: `Seu horário está reservado. ${AVISO_DO_PIX}`,
+  PAGAMENTO_CONFIRMADO: "Seu horário está garantido. Te esperamos!",
 };
+
+/** A tela com o codigo PIX copia e cola do agendamento. */
+export function linkDoCodigoPix(d: DadosDoEmail): string {
+  return `${SITE}/${d.estetica.slug}/pagamento/${d.agendamentoId}`;
+}
 
 export function escapar(texto: string): string {
   return texto
@@ -138,10 +153,13 @@ export function montarEmailHtml(d: DadosDoEmail): string {
     linhaDoDetalhe("Valor", `<strong>${escapar(`${reais(d.valor)} · ${pagamento}`)}</strong>`, false),
   ].join("");
 
+  const reservaPix = d.tipo === "RESERVA_PIX";
   const botoes = [
     cancelado
       ? botao(`${SITE}/${d.estetica.slug}`, "Agendar outro horário", true)
-      : botao(`${SITE}/${d.estetica.slug}/historico`, "Ver meus agendamentos", true),
+      : reservaPix
+        ? botao(linkDoCodigoPix(d), "Ver código PIX", true)
+        : botao(`${SITE}/${d.estetica.slug}/historico`, "Ver meus agendamentos", true),
   ];
   if (d.estetica.whatsapp) {
     const mensagem = cancelado
@@ -177,6 +195,7 @@ export function montarEmailHtml(d: DadosDoEmail): string {
 </td></tr>
 </table>
 
+${reservaPix ? `<div style="margin-top:16px;font-size:14px;color:${COR.suave};">Ainda não pagou? O código PIX está no botão abaixo.</div>` : ""}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">${botoes.join("")}</table>
 ${prazo ? `<div style="margin-top:16px;font-size:12px;line-height:1.6;color:${COR.rotulo};">${escapar(prazo)}</div>` : ""}
 </td></tr>`,

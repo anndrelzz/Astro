@@ -13,6 +13,7 @@ const AGORA = new Date("2026-11-10T13:00:00Z");
 function dados(extra: Partial<DadosDoEmail> = {}): DadosDoEmail {
   return {
     tipo: "CONFIRMACAO_AGENDAMENTO",
+    agendamentoId: "ag-1",
     clienteNome: "Maria Souza",
     estetica: { nome: "Estetica Demo", slug: "demo", logoUrl: null, whatsapp: "47999990000", cancelamentoHorasLimite: 2 },
     servicoNome: "Polimento tecnico",
@@ -67,6 +68,21 @@ describe("montarTelegram", () => {
   test("sem WhatsApp da estetica, so o botao dos agendamentos", () => {
     const { botoes } = montarTelegram(dados({ estetica: { ...dados().estetica, whatsapp: null } }));
     expect(botoes).toHaveLength(1);
+  });
+
+  test("ao gerar o PIX: horario reservado, aguardando a estetica, com o botao do codigo", () => {
+    const { texto, botoes } = montarTelegram(dados({ tipo: "RESERVA_PIX" }));
+
+    expect(texto).toContain("⏳ <b>Horário reservado: aguardando a confirmação do PIX</b>");
+    expect(texto).toContain("Assim que a estética confirmar o recebimento do PIX, você recebe outra mensagem.");
+    expect(botoes[0]).toEqual({ texto: "Ver código PIX", url: "https://useastro.app.br/demo/pagamento/ag-1" });
+  });
+
+  test("Admin confirmou o PIX: pagamento confirmado", () => {
+    const { texto, botoes } = montarTelegram(dados({ tipo: "PAGAMENTO_CONFIRMADO" }));
+
+    expect(texto).toContain("✅ <b>Pagamento confirmado</b>");
+    expect(botoes[0].url).toBe("https://useastro.app.br/demo/historico");
   });
 
   test("texto digitado pela estetica nao vira HTML do Telegram", () => {

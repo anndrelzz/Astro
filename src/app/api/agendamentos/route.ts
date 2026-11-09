@@ -117,8 +117,14 @@ export async function POST(request: Request) {
     });
 
     // RF08, Gatilho 1 (secao 3.4) — registrada aqui, enviada so depois do
-    // commit (ver back/notificacoes).
-    const notificacoes = await registrarNotificacao(tx, agendamento.id, "CONFIRMACAO_AGENDAMENTO");
+    // commit (ver back/notificacoes). No PIX, o pagamento ainda nao foi
+    // conferido: o aviso e de horario reservado, e o "Pagamento confirmado"
+    // sai quando o Admin confirma (confirmar-pagamento).
+    const notificacoes = await registrarNotificacao(
+      tx,
+      agendamento.id,
+      formaPagamento === "PIX" ? "RESERVA_PIX" : "CONFIRMACAO_AGENDAMENTO"
+    );
 
     return {
       id: agendamento.id,
