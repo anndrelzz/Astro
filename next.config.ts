@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   // (ver .github/workflows/deploy.yml), em vez do node_modules inteiro.
   output: "standalone",
 
+  // Sem o cabecalho "X-Powered-By: Next.js": ele so conta a um atacante qual
+  // tecnologia procurar (OWASP A05).
+  poweredByHeader: false,
+
   // Por padrao o Next.js so serve os recursos de desenvolvimento (HMR, mapas
   // de fonte) para a origem com que o servidor subiu - localhost. Isso protege
   // o codigo-fonte da maquina do dev de ser lido por um site malicioso aberto
