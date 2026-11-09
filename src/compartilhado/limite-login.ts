@@ -13,3 +13,10 @@ export const MINUTOS_BLOQUEIO_LOGIN = 15;
  * a mensagem do erro lancado no `authorize` para o `signIn` da tela.
  */
 export const LOGIN_BLOQUEADO = "LOGIN_BLOQUEADO";
+
+/**
+ * Codigo que o login devolve quando algo falha no servidor (banco fora do ar,
+ * por exemplo). No lugar da mensagem original, que traria a consulta e os
+ * nomes das tabelas para a tela e para o endereco do erro.
+ */
+export const LOGIN_INDISPONIVEL = "LOGIN_INDISPONIVEL";
