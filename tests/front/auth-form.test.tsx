@@ -59,6 +59,19 @@ describe("AuthForm — login bloqueado (issue #107)", () => {
   });
 });
 
+describe("AuthForm — falha do servidor no login", () => {
+  test("erro interno nao culpa a senha: pede para tentar de novo em instantes", async () => {
+    vi.mocked(signIn).mockResolvedValue({ error: "LOGIN_INDISPONIVEL", ok: false, status: 401, url: null });
+    render(<AuthForm modo="login" estetica={ESTETICA} />);
+
+    preencher({ "voce@email.com": "maria@teste.com", "••••••••": "Senha123" });
+    await enviar("Entrar");
+
+    expect(screen.getByText("Não foi possível entrar agora. Tente de novo em instantes.")).toBeInTheDocument();
+    expect(screen.queryByText("E-mail ou senha inválidos.")).not.toBeInTheDocument();
+  });
+});
+
 describe("AuthForm — login", () => {
   test("credenciais erradas mostram o aviso e nao entram", async () => {
     vi.mocked(signIn).mockResolvedValue({ error: "CredentialsSignin", ok: false, status: 401, url: null });
