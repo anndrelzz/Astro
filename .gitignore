@@ -54,3 +54,6 @@ next-env.d.ts
 
 # material de estudo pessoal, nao documentacao do projeto
 MAPA-DO-PROJETO.md
+
+# Teste de carga: ids das esteticas zzcarga geradas por tests/carga/esteticas-de-carga.ts
+tests/carga/esteticas.json
