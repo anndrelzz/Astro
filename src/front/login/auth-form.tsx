@@ -12,7 +12,7 @@ import { FundoOndas } from "@/front/componentes/fundo-ondas";
 import { ThemeColor } from "@/front/componentes/theme-color";
 import { SuccessScreen } from "@/front/componentes/success-screen";
 import { callbackUrlSeguro } from "@/compartilhado/callback-url";
-import { LOGIN_BLOQUEADO, MINUTOS_BLOQUEIO_LOGIN } from "@/compartilhado/limite-login";
+import { LOGIN_BLOQUEADO, LOGIN_INDISPONIVEL, MINUTOS_BLOQUEIO_LOGIN } from "@/compartilhado/limite-login";
 import { PainelMarca, type Estetica } from "@/front/login/painel-marca";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
 
@@ -108,10 +108,13 @@ export function AuthForm({
     if (resultado?.error) {
       // Issue #107: depois de 5 tentativas sem acertar, o login bloqueia por
       // um tempo. A mensagem diz quanto esperar e qual e a saida.
+      // Falha do servidor (LOGIN_INDISPONIVEL) nao e culpa da senha.
       setErro(
         resultado.error === LOGIN_BLOQUEADO
           ? `Muitas tentativas sem acertar a senha. Tente de novo em ${MINUTOS_BLOQUEIO_LOGIN} minutos ou use o Esqueci minha senha.`
-          : "E-mail ou senha inválidos."
+          : resultado.error === LOGIN_INDISPONIVEL
+            ? "Não foi possível entrar agora. Tente de novo em instantes."
+            : "E-mail ou senha inválidos."
       );
       return false;
     }
