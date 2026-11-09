@@ -1,6 +1,7 @@
 import "server-only";
 import type { CanalNotificacao, TipoNotificacao } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
+import { DOMINIO } from "@/compartilhado/dominio";
 import { FUSO } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
@@ -14,6 +15,8 @@ const ASSUNTOS: Record<TipoNotificacao, string> = {
   LEMBRETE_24H: "Lembrete: seu agendamento e amanha",
   LEMBRETE_2H: "Lembrete: seu agendamento e em 2 horas",
   CONFIRMACAO_CANCELAMENTO: "Agendamento cancelado",
+  RESERVA_PIX: "Horario reservado: aguardando a confirmacao do PIX",
+  PAGAMENTO_CONFIRMADO: "Pagamento confirmado",
 };
 
 // Quantas vezes um aviso que falhou e tentado, contando a primeira.
@@ -26,7 +29,8 @@ export const PENDENTE_ESQUECIDA_MS = 5 * 60 * 1000;
 function montarMensagem(
   tipo: TipoNotificacao,
   servicoNome: string,
-  dataHora: Date
+  dataHora: Date,
+  linkDoPix: string
 ) {
   // Sem timeZone, o texto sairia no fuso do servidor (UTC na nuvem): o cliente
   // agendado para 10:00 leria 13:00 no e-mail.
@@ -44,6 +48,12 @@ function montarMensagem(
       return `Lembrete: voce tem ${servicoNome} agendado em 2 horas, as ${dataFormatada}.`;
     case "CONFIRMACAO_CANCELAMENTO":
       return `Seu agendamento de ${servicoNome} em ${dataFormatada} foi cancelado.`;
+    // Sai ao gerar o PIX, antes de o cliente pagar e de a estetica conferir:
+    // o texto vale antes e depois do pagamento.
+    case "RESERVA_PIX":
+      return `Seu horario de ${servicoNome} em ${dataFormatada} esta reservado. Assim que a estetica confirmar o recebimento do PIX, voce recebe outra mensagem. Ainda nao pagou? O codigo PIX esta em ${linkDoPix}`;
+    case "PAGAMENTO_CONFIRMADO":
+      return `O pagamento do seu ${servicoNome} em ${dataFormatada} foi confirmado. Seu horario esta garantido.`;
   }
 }
 
@@ -119,12 +129,14 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
     );
     if (!notificacao) return;
 
-    const { usuario, servico, veiculo, tenant, dataHora } = notificacao.agendamento;
-    const texto = montarMensagem(notificacao.tipo, servico.nome, dataHora);
+    const { id: agendamentoId, usuario, servico, veiculo, tenant, dataHora } = notificacao.agendamento;
+    const linkDoPix = `https://${DOMINIO}/${tenant.slug}/pagamento/${agendamentoId}`;
+    const texto = montarMensagem(notificacao.tipo, servico.nome, dataHora, linkDoPix);
 
     // Os mesmos dados montam o e-mail e a mensagem do bot.
     const dados: DadosDoEmail = {
       tipo: notificacao.tipo,
+      agendamentoId,
       clienteNome: usuario.nome,
       estetica: tenant,
       servicoNome: servico.nome,
