@@ -16,6 +16,13 @@ export { criarEstetica, EnderecoEmUso, SEGMENTOS_INICIAIS } from "@/back/criar-e
 export const MAX_CADASTROS_POR_HORA = 5;
 
 /**
+ * Cadastro de CLIENTE (api/auth/cadastro): contas por hora da mesma conexao,
+ * em cada estetica. Mais folgado que o da estetica porque varios clientes
+ * podem se cadastrar pelo Wi-Fi da propria estetica no mesmo dia.
+ */
+export const MAX_CADASTROS_CLIENTE_POR_HORA = 10;
+
+/**
  * Primeiro IP do X-Forwarded-For (o App Service da Azure o preenche, as vezes
  * com a porta: "203.0.113.5:51234"). Sem o cabecalho — no computador do dev —
  * todos os pedidos contam como a mesma conexao.
