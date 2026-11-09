@@ -1,5 +1,10 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { LOGIN_BLOQUEADO, MAX_TENTATIVAS_LOGIN, MINUTOS_BLOQUEIO_LOGIN } from "@/compartilhado/limite-login";
+import {
+  LOGIN_BLOQUEADO,
+  LOGIN_INDISPONIVEL,
+  MAX_TENTATIVAS_LOGIN,
+  MINUTOS_BLOQUEIO_LOGIN,
+} from "@/compartilhado/limite-login";
 import { POST as cadastrar } from "@/app/api/auth/cadastro/route";
 import { POST as rodarLembretes } from "@/app/api/cron/lembretes/route";
 import { PATCH as editarPerfil } from "@/app/api/perfil/route";
@@ -137,6 +142,25 @@ describe("login (NextAuth)", () => {
   test("campo faltando nao entra", async () => {
     expect(await entrar({ email: e.cliente.email, password: SENHA })).toBeNull();
     expect(await entrar(undefined)).toBeNull();
+  });
+
+  // O NextAuth repassa a mensagem do erro lancado no authorize para a tela e
+  // para o endereco do erro. Uma falha do banco nao pode chegar la com a
+  // consulta e os nomes das tabelas: sai so um codigo, e o detalhe fica no log.
+  test("falha inesperada no banco devolve so o codigo LOGIN_INDISPONIVEL, sem a mensagem do Prisma", async () => {
+    const falha = new Error("Invalid `prisma.tenant.findUnique()` invocation: Can't reach database server at db:5432");
+    const busca = vi.spyOn(prisma.tenant, "findUnique").mockRejectedValueOnce(falha);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const erro = await entrar({ email: e.cliente.email, password: SENHA, tenantSlug: e.tenant.slug }).catch(
+      (err: Error) => err
+    );
+
+    expect(erro).toBeInstanceOf(Error);
+    expect((erro as Error).message).toBe(LOGIN_INDISPONIVEL);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("login"), falha);
+    busca.mockRestore();
+    log.mockRestore();
   });
 
   test("o token e a sessao carregam o id, a estetica e o papel (RFC 6.2)", async () => {
