@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { registrarFalha } from "@/back/log-de-erro";
 import { reenviarNotificacoes } from "@/back/notificacoes";
 import { verificarEEnviarLembretes } from "@/back/notificacoes/lembretes";
 
@@ -20,8 +21,9 @@ export async function POST(request: Request) {
     // 503 e nao 401: nao e o chamador que esta errado, e o servidor que esta
     // mal configurado. O log deixa o motivo visivel no deploy, em vez de
     // virar um cron que "funciona" sem protecao nenhuma.
-    console.error(
-      "[cron/lembretes] CRON_SECRET nao configurado - rota recusada por seguranca"
+    registrarFalha(
+      "[cron/lembretes]",
+      new Error("CRON_SECRET nao configurado - rota recusada por seguranca")
     );
     return NextResponse.json(
       { error: "Cron nao configurado neste ambiente" },

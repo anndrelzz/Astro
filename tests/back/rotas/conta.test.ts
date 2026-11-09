@@ -18,6 +18,7 @@ import { prisma } from "@/back/prisma";
 import { getTenantPorSlug } from "@/back/tenant";
 import { withTenant } from "@/back/tenant-db";
 import { criarEstetica, entrarComo, pedido, removerEstetica, SENHA, type Estetica } from "./ajudantes";
+import { capturarLogs } from "../capturar-logs";
 
 // UC01, UC15, RN02, RN03, RN12 — conta do cliente: cadastro, login, perfil e
 // vinculo com o Telegram. Tambem a rota chamada pelo agendador de lembretes.
@@ -324,9 +325,15 @@ describe("vinculo com o Telegram", () => {
     await vincularTelegram();
     const token = (await usuario(e.cliente.id))!.telegramLinkToken;
 
+    const capturados = capturarLogs();
     const resposta = await doTelegram({ message: { text: `/start ${token}`, chat: { id: 111 } } });
     expect(resposta.status).toBe(503);
     expect(await usuario(e.cliente.id)).toMatchObject({ telegramLinkToken: token });
+    // Servidor mal configurado: aparece no log do Grafana, nao so no terminal.
+    expect(capturados.corpos()).toEqual([
+      "[telegram/webhook]: TELEGRAM_WEBHOOK_SECRET nao configurado - rota recusada por seguranca",
+    ]);
+    capturados.parar();
     erro.mockRestore();
   });
 
@@ -387,9 +394,15 @@ describe("POST /api/cron/lembretes", () => {
   test("sem CRON_SECRET no servidor, recusa tudo com 503", async () => {
     vi.stubEnv("CRON_SECRET", "");
     const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const capturados = capturarLogs();
     expect((await chamar("qualquer")).status).toBe(503);
     expect(verificarEEnviarLembretes).not.toHaveBeenCalled();
     expect(reenviarNotificacoes).not.toHaveBeenCalled();
+    // Sem o segredo, nenhum lembrete sai: tem que aparecer no Grafana.
+    expect(capturados.corpos()).toEqual([
+      "[cron/lembretes]: CRON_SECRET nao configurado - rota recusada por seguranca",
+    ]);
+    capturados.parar();
     erro.mockRestore();
   });
 

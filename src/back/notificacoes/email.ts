@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { registrarFalha } from "@/back/log-de-erro";
 import { DOMINIO } from "@/compartilhado/dominio";
 
 // Dominio verificado no Resend (registros DKIM, SPF e DMARC no Registro.br).
@@ -34,7 +35,7 @@ export async function enviarEmail(destinatario: string, assunto: string, corpo: 
   });
 
   if (error) {
-    console.error("[email:ERRO]", error);
+    registrarFalha("[email:ERRO]", new Error(error.message));
     return { enviado: false, modo: "resend" as const, erro: error.message };
   }
   return { enviado: true, modo: "resend" as const };
