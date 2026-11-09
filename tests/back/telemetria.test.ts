@@ -1,4 +1,6 @@
 import { metrics, trace } from "@opentelemetry/api";
+import { logs } from "@opentelemetry/api-logs";
+import { LoggerProvider } from "@opentelemetry/sdk-logs";
 import type { ReadableSpan, SpanExporter } from "@opentelemetry/sdk-trace-node";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
@@ -48,6 +50,7 @@ describe("ligarTelemetria", () => {
     // Desfaz o registro global, para nenhum outro teste mandar rastros.
     trace.disable();
     metrics.disable();
+    logs.disable();
   });
 
   test("sem a chave do Grafana, nao liga nada (computador do dev, testes, CI)", () => {
@@ -68,6 +71,16 @@ describe("ligarTelemetria", () => {
     const rastro = trace.getTracer("astro").startSpan("teste");
     expect(rastro.isRecording()).toBe(true);
     rastro.end();
+  });
+
+  test("com a chave, tambem registra quem manda os logs de erro (Loki)", () => {
+    ligarTelemetria({
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://127.0.0.1:9",
+      OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic teste",
+      TELEMETRIA_AMBIENTE: "teste",
+    });
+
+    expect(logs.getLoggerProvider()).toBeInstanceOf(LoggerProvider);
   });
 });
 
