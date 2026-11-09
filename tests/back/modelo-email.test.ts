@@ -13,6 +13,7 @@ const AGORA = new Date("2026-11-10T13:00:00Z");
 function dados(extra: Partial<DadosDoEmail> = {}): DadosDoEmail {
   return {
     tipo: "CONFIRMACAO_AGENDAMENTO",
+    agendamentoId: "ag-1",
     clienteNome: "Maria Souza",
     estetica: {
       nome: "Estetica Demo",
@@ -69,6 +70,38 @@ describe("montarEmailHtml — conteudo", () => {
     ["CONFIRMACAO_CANCELAMENTO", "Agendamento cancelado"],
   ] as const)("%s tem titulo proprio", (tipo, titulo) => {
     expect(montarEmailHtml(dados({ tipo }))).toContain(titulo);
+  });
+});
+
+// PIX: ao gerar o PIX o pagamento ainda nao foi conferido. O primeiro e-mail
+// nao diz "confirmado" e fica certo antes e depois de o cliente pagar; o
+// "Pagamento confirmado" sai quando o Admin confirma o PIX.
+describe("montarEmailHtml — PIX", () => {
+  test("ao gerar o PIX: horario reservado, aguardando a estetica confirmar", () => {
+    const html = montarEmailHtml(dados({ tipo: "RESERVA_PIX" }));
+
+    expect(html).toContain("Horário reservado: aguardando a confirmação do PIX");
+    expect(html).toContain(
+      "Seu horário está reservado. Assim que a estética confirmar o recebimento do PIX, você recebe outra mensagem."
+    );
+    expect(html).not.toContain("Agendamento confirmado");
+  });
+
+  test("ao gerar o PIX: quem ainda nao pagou tem o botao do codigo PIX", () => {
+    const html = montarEmailHtml(dados({ tipo: "RESERVA_PIX" }));
+
+    expect(html).toContain("Ainda não pagou? O código PIX está no botão abaixo.");
+    expect(html).toContain('href="https://useastro.app.br/demo/pagamento/ag-1"');
+    expect(html).toContain("Ver código PIX");
+  });
+
+  test("Admin confirmou o PIX: pagamento confirmado e horario garantido", () => {
+    const html = montarEmailHtml(dados({ tipo: "PAGAMENTO_CONFIRMADO" }));
+
+    expect(html).toContain("Pagamento confirmado");
+    expect(html).toContain("Seu horário está garantido. Te esperamos!");
+    expect(html).toContain('href="https://useastro.app.br/demo/historico"');
+    expect(html).not.toContain("Ver código PIX");
   });
 });
 
