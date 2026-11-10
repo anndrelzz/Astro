@@ -173,6 +173,7 @@ describe("GET /api/financeiro/exportar", () => {
             formaPagamento: status === "PIX_PENDENTE" ? "PIX" : "LOCAL",
             status,
             valor: 80,
+            duracaoMin: 60,
             acrescimoAplicado: acrescimo,
           },
         })
@@ -225,6 +226,7 @@ describe("GET /api/financeiro/exportar", () => {
           formaPagamento: "LOCAL",
           status: "PENDENTE_PAGAMENTO",
           valor: 80,
+          duracaoMin: 60,
           contatoNome: "Joao do WhatsApp",
           contatoTelefone: "47988887777",
         },
@@ -255,6 +257,7 @@ describe("GET /api/financeiro/exportar", () => {
           formaPagamento: "PIX",
           status: "CONFIRMADO",
           valor: 350,
+          duracaoMin: 60,
           pagoEm,
         },
       })

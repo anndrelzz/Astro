@@ -6,7 +6,10 @@ import { calcularSlotsDisponiveis } from "@/back/slots";
 // grade do dia e os agendamentos ja marcados; aqui o banco e trocado por um
 // objeto que devolve dados fixos, para testar so a regra.
 
-type AgendamentoFalso = { dataHora: Date; servico: { duracaoMin: number } };
+// Cada agendamento guarda a propria duracao (a do servico quando foi feito).
+// O `servico` vem junto so para provar que a duracao do catalogo HOJE nao
+// entra na conta.
+type AgendamentoFalso = { dataHora: Date; duracaoMin: number; servico?: { duracaoMin: number } };
 
 function bancoFalso(
   grade: { horaInicioMin: number; horaFimMin: number } | null,
@@ -79,7 +82,7 @@ describe("calcularSlotsDisponiveis", () => {
 
   test("horario ocupado some quando a capacidade e 1", async () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 12 * 60 }, [
-      { dataHora: as("09:00"), servico: { duracaoMin: 60 } },
+      { dataHora: as("09:00"), duracaoMin: 60 },
     ]);
     expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual([
       "08:00",
@@ -90,7 +93,7 @@ describe("calcularSlotsDisponiveis", () => {
 
   test("agendamento longo bloqueia todos os horarios que ele cobre", async () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 12 * 60 }, [
-      { dataHora: as("08:30"), servico: { duracaoMin: 120 } },
+      { dataHora: as("08:30"), duracaoMin: 120 },
     ]);
     // 08:30 a 10:30 encosta em 08:00-09:00, 09:00-10:00 e 10:00-11:00.
     expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual(["11:00"]);
@@ -98,22 +101,22 @@ describe("calcularSlotsDisponiveis", () => {
 
   test("servico que termina quando o outro comeca nao conta como conflito", async () => {
     const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 10 * 60 }, [
-      { dataHora: as("09:00"), servico: { duracaoMin: 60 } },
+      { dataHora: as("09:00"), duracaoMin: 60 },
     ]);
     expect(await calcularSlotsDisponiveis(tx, tenant(), servico(60), DIA, VESPERA)).toEqual(["08:00"]);
   });
 
   test("com capacidade 2, o horario so fecha no segundo agendamento", async () => {
     const grade = { horaInicioMin: 8 * 60, horaFimMin: 10 * 60 };
-    const umCarro = bancoFalso(grade, [{ dataHora: as("08:00"), servico: { duracaoMin: 60 } }]);
+    const umCarro = bancoFalso(grade, [{ dataHora: as("08:00"), duracaoMin: 60 }]);
     expect(await calcularSlotsDisponiveis(umCarro.tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
       "08:00",
       "09:00",
     ]);
 
     const doisCarros = bancoFalso(grade, [
-      { dataHora: as("08:00"), servico: { duracaoMin: 60 } },
-      { dataHora: as("08:00"), servico: { duracaoMin: 60 } },
+      { dataHora: as("08:00"), duracaoMin: 60 },
+      { dataHora: as("08:00"), duracaoMin: 60 },
     ]);
     expect(await calcularSlotsDisponiveis(doisCarros.tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
       "09:00",
@@ -128,8 +131,8 @@ describe("calcularSlotsDisponiveis", () => {
 
     test("dois agendamentos em sequencia nao lotam o horario que encosta nos dois", async () => {
       const { tx } = bancoFalso(grade, [
-        { dataHora: as("08:00"), servico: { duracaoMin: 120 } },
-        { dataHora: as("10:00"), servico: { duracaoMin: 120 } },
+        { dataHora: as("08:00"), duracaoMin: 120 },
+        { dataHora: as("10:00"), duracaoMin: 120 },
       ]);
       // 09:00-11:00: das 09h as 10h ficam A e o novo; das 10h as 11h, B e o novo.
       // Nunca passam de 2. Todo horario de 2h continua livre.
@@ -142,8 +145,8 @@ describe("calcularSlotsDisponiveis", () => {
 
     test("dois agendamentos que se cruzam lotam so onde estao juntos", async () => {
       const { tx } = bancoFalso(grade, [
-        { dataHora: as("08:00"), servico: { duracaoMin: 120 } },
-        { dataHora: as("09:00"), servico: { duracaoMin: 120 } },
+        { dataHora: as("08:00"), duracaoMin: 120 },
+        { dataHora: as("09:00"), duracaoMin: 120 },
       ]);
       // A e B juntos das 09h as 10h: qualquer horario que passe por ali lota.
       expect(await calcularSlotsDisponiveis(tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
@@ -155,9 +158,9 @@ describe("calcularSlotsDisponiveis", () => {
 
     test("pico que comeca no meio do horario tambem lota", async () => {
       const { tx } = bancoFalso(grade, [
-        { dataHora: as("08:00"), servico: { duracaoMin: 60 } },
-        { dataHora: as("09:30"), servico: { duracaoMin: 60 } },
-        { dataHora: as("09:30"), servico: { duracaoMin: 60 } },
+        { dataHora: as("08:00"), duracaoMin: 60 },
+        { dataHora: as("09:30"), duracaoMin: 60 },
+        { dataHora: as("09:30"), duracaoMin: 60 },
       ]);
       // 09:00-10:00 comeca com 0 carros, mas as 09:30 ja ha 2.
       expect(await calcularSlotsDisponiveis(tx, tenant(2), servico(60), DIA, VESPERA)).toEqual([
@@ -165,6 +168,19 @@ describe("calcularSlotsDisponiveis", () => {
         "11:00",
       ]);
     });
+  });
+
+  // Mudar a duracao no Catalogo vale so para os proximos agendamentos (o
+  // mesmo que ja acontece com o preco). Maria agendou as 10:00 quando a
+  // lavagem levava 1 h; o dono passou para 2 h. Ela continua ocupando so das
+  // 10:00 as 11:00, e o horario das 11:00 continua livre.
+  test("agendamento antigo usa a duracao de quando foi feito, nao a do catalogo hoje", async () => {
+    const { tx } = bancoFalso({ horaInicioMin: 8 * 60, horaFimMin: 13 * 60 }, [
+      { dataHora: as("10:00"), duracaoMin: 60, servico: { duracaoMin: 120 } },
+    ]);
+    // O cliente novo ja agenda com 2 h: 08:00-10:00 encosta em Maria sem
+    // cruzar; 11:00-13:00 comeca quando ela termina.
+    expect(await calcularSlotsDisponiveis(tx, tenant(), servico(120), DIA, VESPERA)).toEqual(["08:00", "11:00"]);
   });
 
   test("consulta a grade do dia da semana de Brasilia e ignora cancelados", async () => {

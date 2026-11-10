@@ -155,6 +155,7 @@ describe("DELETE /api/veiculos/[id]", () => {
           formaPagamento: "LOCAL",
           status,
           valor: 80,
+          duracaoMin: 60,
         },
       })
     );

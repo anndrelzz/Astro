@@ -40,7 +40,7 @@ export default async function ConfirmadoPage({
       servico={agendamento.servico.nome}
       veiculo={`${agendamento.veiculo.modelo} · ${agendamento.veiculo.segmento.nome}`}
       dataISO={agendamento.dataHora.toISOString()}
-      duracaoMin={agendamento.servico.duracaoMin}
+      duracaoMin={agendamento.duracaoMin}
       formaPagamento={agendamento.formaPagamento}
       valor={Number(agendamento.valor)}
       acrescimoCondicaoPercent={tenant.acrescimoCondicaoPercent}

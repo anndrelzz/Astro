@@ -99,9 +99,9 @@ export default async function AdminAgendamentosPage({
       id: a.id,
       dia: chaveDia(a.dataHora),
       inicioMin,
-      fimMin: inicioMin + a.servico.duracaoMin,
-      fimISO: new Date(a.dataHora.getTime() + a.servico.duracaoMin * 60000).toISOString(),
-      duracaoMin: a.servico.duracaoMin,
+      fimMin: inicioMin + a.duracaoMin,
+      fimISO: new Date(a.dataHora.getTime() + a.duracaoMin * 60000).toISOString(),
+      duracaoMin: a.duracaoMin,
       // Pelo coringa, o contato e quem chamou no WhatsApp, e nao ha e-mail.
       clienteNome: nomeDoCliente(a),
       clienteTelefone: a.contatoTelefone ?? a.usuario.telefone ?? "",

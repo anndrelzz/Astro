@@ -314,6 +314,11 @@ model Agendamento {
   status         StatusAgendamento @default(PENDENTE_PAGAMENTO)
   formaPagamento FormaPagamento
   valor          Decimal           @db.Decimal(10, 2)
+  /// Duracao do servico QUANDO o agendamento foi feito, guardada como o
+  /// `valor`: mudar a duracao no Catalogo vale so para os proximos
+  /// agendamentos. Sem isso, aumentar a duracao "esticava" os agendamentos ja
+  /// marcados e os fazia cruzar com os vizinhos.
+  duracaoMin     Int
   /// Acrescimo cobrado na avaliacao presencial, lancado pelo Admin ao
   /// confirmar o pagamento. NULO = sem acrescimo.
   ///

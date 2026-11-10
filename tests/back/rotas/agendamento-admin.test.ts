@@ -90,6 +90,8 @@ describe("POST /api/admin/agendamentos", () => {
       contatoTelefone: "47988887777",
     });
     expect(Number(ag!.valor)).toBe(80);
+    // A duracao do servico fica guardada, como o preco.
+    expect(ag!.duracaoMin).toBe(60);
     expect(ag!.usuario.coringa).toBe(true);
     expect(ag!.usuario.role).toBe("CLIENTE");
     expect(ag!.veiculo).toMatchObject({ modelo: "Civic", segmentoId: e.segmento.id, usuarioId: ag!.usuarioId });
