@@ -29,6 +29,9 @@ const ICONE: Record<TipoNotificacao, string> = {
   CONFIRMACAO_CANCELAMENTO: "❌",
   RESERVA_PIX: "⏳",
   PAGAMENTO_CONFIRMADO: "✅",
+  // Avisos ao dono saem so por e-mail; o icone fica para o Record completo.
+  AVISO_NOVO_AGENDAMENTO: "🆕",
+  AVISO_CANCELAMENTO: "❌",
 };
 
 export function montarTelegram(d: DadosDoEmail): { texto: string; botoes: BotaoTelegram[] } {

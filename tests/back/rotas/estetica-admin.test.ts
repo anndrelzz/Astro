@@ -52,6 +52,14 @@ describe("PATCH /api/tenant", () => {
     expect(salvo.pixChaveCopiaCola).toBe(e.tenant.pixChaveCopiaCola);
   });
 
+  test("liga e desliga os avisos por e-mail ao dono", async () => {
+    entrarComo(e.admin);
+    expect((await configurarEstetica(pedido("PATCH", "/api/tenant", { avisosPorEmail: false }))).status).toBe(200);
+    expect((await tenantNoBanco()).avisosPorEmail).toBe(false);
+    expect((await configurarEstetica(pedido("PATCH", "/api/tenant", { avisosPorEmail: true }))).status).toBe(200);
+    expect((await tenantNoBanco()).avisosPorEmail).toBe(true);
+  });
+
   test("chave PIX vazia desliga o PIX (RN10)", async () => {
     entrarComo(e.admin);
     await configurarEstetica(pedido("PATCH", "/api/tenant", { pixChaveCopiaCola: "" }));

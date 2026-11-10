@@ -5,7 +5,7 @@ import { authOptions } from "@/back/auth";
 import { conferirDataAgendamento } from "@/compartilhado/agenda";
 import { lerJson, respostaDadosInvalidos } from "@/back/api-helpers";
 import { instanteNoFuso } from "@/compartilhado/fuso";
-import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
+import { enviarNotificacoes, registrarAvisoAoDono, registrarNotificacao } from "@/back/notificacoes";
 import { calcularPreco } from "@/compartilhado/precificacao";
 import { withTenant } from "@/back/tenant-db";
 import { calcularSlotsDisponiveis, FilaDeAgendamentoOcupada, travarDiaParaAgendamento } from "@/back/slots";
@@ -122,11 +122,15 @@ export async function POST(request: Request) {
     // commit (ver back/notificacoes). No PIX, o pagamento ainda nao foi
     // conferido: o aviso e de horario reservado, e o "Pagamento confirmado"
     // sai quando o Admin confirma (confirmar-pagamento).
-    const notificacoes = await registrarNotificacao(
-      tx,
-      agendamento.id,
-      formaPagamento === "PIX" ? "RESERVA_PIX" : "CONFIRMACAO_AGENDAMENTO"
-    );
+    const notificacoes = [
+      ...(await registrarNotificacao(
+        tx,
+        agendamento.id,
+        formaPagamento === "PIX" ? "RESERVA_PIX" : "CONFIRMACAO_AGENDAMENTO"
+      )),
+      // E o dono e avisado por e-mail: no local, ou PIX a conferir.
+      ...(await registrarAvisoAoDono(tx, agendamento.id, "AVISO_NOVO_AGENDAMENTO")),
+    ];
 
     return {
       id: agendamento.id,

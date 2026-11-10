@@ -6,7 +6,13 @@ import { FUSO } from "@/compartilhado/fuso";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { enviarEmail } from "@/back/notificacoes/email";
-import { montarEmailHtml, type DadosDoEmail } from "@/back/notificacoes/modelo-email";
+import {
+  linkDoPainel,
+  montarEmailAvisoDono,
+  montarEmailHtml,
+  reais,
+  type DadosDoEmail,
+} from "@/back/notificacoes/modelo-email";
 import { registrarFalha } from "@/back/log-de-erro";
 import { montarTelegram } from "@/back/notificacoes/modelo-telegram";
 import { enviarTelegram } from "@/back/notificacoes/telegram";
@@ -18,7 +24,21 @@ const ASSUNTOS: Record<TipoNotificacao, string> = {
   CONFIRMACAO_CANCELAMENTO: "Agendamento cancelado",
   RESERVA_PIX: "Horario reservado: aguardando a confirmacao do PIX",
   PAGAMENTO_CONFIRMADO: "Pagamento confirmado",
+  // Avisos ao dono. O do novo agendamento por PIX tem assunto proprio
+  // (assuntoDe), para o dono ver na caixa de entrada que ha PIX a conferir.
+  AVISO_NOVO_AGENDAMENTO: "Novo agendamento",
+  AVISO_CANCELAMENTO: "Agendamento cancelado",
 };
+
+function assuntoDe(tipo: TipoNotificacao, formaPagamento: string) {
+  if (tipo === "AVISO_NOVO_AGENDAMENTO" && formaPagamento === "PIX") {
+    return "Novo agendamento: PIX aguardando confirmacao";
+  }
+  return ASSUNTOS[tipo];
+}
+
+// Avisos que vao para o DONO da estetica, e nao para o cliente.
+const AVISOS_AO_DONO: TipoNotificacao[] = ["AVISO_NOVO_AGENDAMENTO", "AVISO_CANCELAMENTO"];
 
 // Quantas vezes um aviso que falhou e tentado, contando a primeira.
 export const MAX_TENTATIVAS = 3;
@@ -55,7 +75,26 @@ function montarMensagem(
       return `Seu horario de ${servicoNome} em ${dataFormatada} esta reservado. Assim que a estetica confirmar o recebimento do PIX, voce recebe outra mensagem. Ainda nao pagou? O codigo PIX esta em ${linkDoPix}`;
     case "PAGAMENTO_CONFIRMADO":
       return `O pagamento do seu ${servicoNome} em ${dataFormatada} foi confirmado. Seu horario esta garantido.`;
+    // Os avisos ao dono tem texto proprio (textoDoAvisoAoDono).
+    case "AVISO_NOVO_AGENDAMENTO":
+    case "AVISO_CANCELAMENTO":
+      return "";
   }
+}
+
+// Texto puro do aviso ao dono (o HTML sai de montarEmailAvisoDono).
+function textoDoAvisoAoDono(d: DadosDoEmail & { clienteTelefone: string }) {
+  const quando = d.dataHora.toLocaleString("pt-BR", { timeZone: FUSO, dateStyle: "short", timeStyle: "short" });
+  const carro = `${d.veiculo.marca} ${d.veiculo.modelo} (${d.veiculo.placa})`;
+  const contato = `Telefone: ${d.clienteTelefone}.`;
+  if (d.tipo === "AVISO_CANCELAMENTO") {
+    return `${d.clienteNome} cancelou ${d.servicoNome} de ${quando}. O horario foi liberado na agenda. ${contato} Carro: ${carro}.`;
+  }
+  const base = `${d.clienteNome} agendou ${d.servicoNome} para ${quando}. Carro: ${carro}. ${contato}`;
+  if (d.formaPagamento === "PIX") {
+    return `${base} Confira no app do banco se o PIX de ${reais(d.valor)} de ${d.clienteNome} entrou e confirme no painel: ${linkDoPainel(d)}`;
+  }
+  return `${base} Pagamento no local: ${reais(d.valor)}. Veja no painel: ${linkDoPainel(d)}`;
 }
 
 // Fluxo de Notificacoes (secao 3.4 do RFC) — fila com registro de tentativas e
@@ -114,6 +153,34 @@ export async function registrarNotificacao(
   return pendentes;
 }
 
+// Aviso ao DONO (novo agendamento ou cancelamento feito pelo cliente), em uma
+// linha EMAIL, enviada para os Admins da estetica com e-mail confirmado. Nao
+// registra nada quando a estetica desligou os avisos nas Configuracoes, quando
+// o agendamento e do coringa (foi o proprio Admin) ou quando nenhum dono
+// confirmou o e-mail: os dados dos clientes so vao para e-mail confirmado
+// (LGPD, a mesma regra do cliente).
+export async function registrarAvisoAoDono(
+  tx: Prisma.TransactionClient,
+  agendamentoId: string,
+  tipo: "AVISO_NOVO_AGENDAMENTO" | "AVISO_CANCELAMENTO"
+): Promise<NotificacaoPendente[]> {
+  const agendamento = await tx.agendamento.findUnique({
+    where: { id: agendamentoId },
+    select: { tenantId: true, tenant: { select: { avisosPorEmail: true } }, usuario: { select: { coringa: true } } },
+  });
+  if (!agendamento || agendamento.usuario.coringa || !agendamento.tenant.avisosPorEmail) return [];
+
+  const donos = await tx.usuario.count({
+    where: { tenantId: agendamento.tenantId, role: "ADMIN", emailConfirmadoEm: { not: null } },
+  });
+  if (donos === 0) return [];
+
+  const notificacao = await tx.notificacao.create({
+    data: { tenantId: agendamento.tenantId, agendamentoId, tipo, canal: "EMAIL", status: "PENDENTE" },
+  });
+  return [{ tenantId: agendamento.tenantId, notificacaoId: notificacao.id }];
+}
+
 export async function enviarNotificacoes(pendentes: NotificacaoPendente[]) {
   for (const pendente of pendentes) await enviarNotificacao(pendente);
 }
@@ -150,7 +217,22 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
 
     let enviado = false;
     try {
-      if (notificacao.canal === "EMAIL") {
+      if (AVISOS_AO_DONO.includes(notificacao.tipo)) {
+        // Para os donos com e-mail confirmado, conferidos de novo na hora do
+        // envio. Sem nenhum, fica FALHA, como o Telegram desvinculado.
+        const donos = await withTenant(tenantId, (tx) =>
+          tx.usuario.findMany({
+            where: { tenantId, role: "ADMIN", emailConfirmadoEm: { not: null } },
+            select: { email: true },
+          })
+        );
+        const aviso = { ...dados, clienteTelefone: usuario.telefone ?? "" };
+        const assunto = assuntoDe(notificacao.tipo, dados.formaPagamento);
+        const resultados = await Promise.all(
+          donos.map((dono) => enviarEmail(dono.email, assunto, textoDoAvisoAoDono(aviso), montarEmailAvisoDono(aviso)))
+        );
+        enviado = resultados.length > 0 && resultados.every((r) => r.enviado);
+      } else if (notificacao.canal === "EMAIL") {
         enviado = (await enviarEmail(usuario.email, ASSUNTOS[notificacao.tipo], texto, montarEmailHtml(dados))).enviado;
       } else if (usuario.telegramChatId) {
         // Se o cliente desvinculou o Telegram depois do registro, nao ha para
@@ -182,9 +264,10 @@ async function enviarNotificacao({ tenantId, notificacaoId }: NotificacaoPendent
 // Chamado pelo cron. Tenta de novo, estetica por estetica, o que nao saiu:
 //   - PENDENTE ha mais de PENDENTE_ESQUECIDA_MS (o servidor caiu antes do envio);
 //   - FALHA com menos de MAX_TENTATIVAS.
-// So reenvia o que ainda faz sentido: confirmacao de agendamento que nao foi
-// cancelado, e lembrete de horario que nao passou nem foi cancelado. O aviso
-// de cancelamento vale sempre.
+// So reenvia o que ainda faz sentido: a confirmacao, o horario reservado do PIX
+// e o aviso de novo agendamento ao dono, se o agendamento nao foi cancelado; o
+// lembrete de horario que nao passou nem foi cancelado. Os avisos de
+// cancelamento e o de pagamento confirmado valem sempre.
 export async function reenviarNotificacoes(agora = new Date()) {
   // Tenant nao tem RLS: enumerar aqui so expoe a lista de esteticas.
   const tenants = await prisma.tenant.findMany({ select: { id: true } });
@@ -210,9 +293,9 @@ export async function reenviarNotificacoesDoTenant(tenantId: string, agora = new
           },
           {
             OR: [
-              { tipo: "CONFIRMACAO_CANCELAMENTO" },
+              { tipo: { in: ["CONFIRMACAO_CANCELAMENTO", "AVISO_CANCELAMENTO", "PAGAMENTO_CONFIRMADO"] } },
               {
-                tipo: "CONFIRMACAO_AGENDAMENTO",
+                tipo: { in: ["CONFIRMACAO_AGENDAMENTO", "RESERVA_PIX", "AVISO_NOVO_AGENDAMENTO"] },
                 agendamento: { status: { not: "CANCELADO" } },
               },
               {

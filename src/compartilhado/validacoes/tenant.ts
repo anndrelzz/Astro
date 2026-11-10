@@ -88,6 +88,8 @@ export const tenantConfigSchema = z
     capacidadeSimultanea: z.coerce.number().int().min(1, "Mínimo de 1"),
     intervaloMinutos: z.coerce.number().int().min(5, "Mínimo de 5 minutos"),
     corPrimaria: z.string().regex(corHexRegex, "Cor inválida: use o formato #RRGGBB"),
+    // E-mail ao dono a cada novo agendamento e cancelamento.
+    avisosPorEmail: z.boolean(),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, {
