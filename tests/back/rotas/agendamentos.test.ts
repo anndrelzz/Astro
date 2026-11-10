@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { POST as agendar } from "@/app/api/agendamentos/route";
 import { POST as cancelar } from "@/app/api/agendamentos/[id]/cancelar/route";
 import { POST as confirmarPagamento } from "@/app/api/agendamentos/[id]/confirmar-pagamento/route";
+import { POST as informarPagamento } from "@/app/api/agendamentos/[id]/pagamento-informado/route";
 import { GET as consultarSlots } from "@/app/api/slots/route";
 import type { StatusAgendamento } from "@/generated/prisma/enums";
 import { instanteNoFuso } from "@/compartilhado/fuso";
@@ -357,6 +358,61 @@ describe("POST /api/agendamentos/[id]/cancelar", () => {
     entrarComo(e.admin);
     expect((await chamar(ag.id)).status).toBe(200);
     expect((await buscar(ag.id))!.status).toBe("CANCELADO");
+  });
+});
+
+// "Ja fiz o pagamento": o cliente avisa que pagou o PIX. Antes o botao so
+// trocava de tela e o Admin nao ficava sabendo; agora a hora fica registrada e
+// aparece no painel, para o dono saber quais PIX conferir primeiro.
+describe("POST /api/agendamentos/[id]/pagamento-informado", () => {
+  const chamar = (id: string) =>
+    informarPagamento(pedido("POST", `/api/agendamentos/${id}/pagamento-informado`), comId(id));
+
+  test("sem login responde 401", async () => {
+    const ag = await agendamentoNoBanco(daqui(50), "PIX_PENDENTE");
+    entrarComo(null);
+    expect((await chamar(ag.id)).status).toBe(401);
+  });
+
+  test("agendamento de outro cliente responde 404 e nao registra nada", async () => {
+    const ag = await agendamentoNoBanco(daqui(50), "PIX_PENDENTE");
+    entrarComo(e.outroCliente);
+    expect((await chamar(ag.id)).status).toBe(404);
+    expect((await buscar(ag.id))!.pagamentoInformadoEm).toBeNull();
+  });
+
+  test("agendamento que nao e PIX pendente responde 400", async () => {
+    const ag = await agendamentoNoBanco(daqui(50));
+    entrarComo(e.cliente);
+    const resposta = await chamar(ag.id);
+    expect(resposta.status).toBe(400);
+    expect(await resposta.json()).toEqual({ error: "Este agendamento nao esta aguardando PIX" });
+  });
+
+  test("o dono do agendamento avisa que pagou: a hora fica registrada", async () => {
+    const ag = await agendamentoNoBanco(daqui(50), "PIX_PENDENTE");
+    entrarComo(e.cliente);
+    const antes = Date.now();
+
+    const resposta = await chamar(ag.id);
+    expect(resposta.status).toBe(200);
+
+    const informadoEm = (await buscar(ag.id))!.pagamentoInformadoEm;
+    expect(informadoEm).not.toBeNull();
+    expect(informadoEm!.getTime()).toBeGreaterThanOrEqual(antes - 1000);
+    // O status nao muda: quem confirma o PIX continua sendo o Admin (RN05).
+    expect((await buscar(ag.id))!.status).toBe("PIX_PENDENTE");
+  });
+
+  test("apertar de novo mantem a hora do primeiro aviso", async () => {
+    const ag = await agendamentoNoBanco(daqui(50), "PIX_PENDENTE");
+    entrarComo(e.cliente);
+    await chamar(ag.id);
+    const primeiro = (await buscar(ag.id))!.pagamentoInformadoEm!.getTime();
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect((await chamar(ag.id)).status).toBe(200);
+    expect((await buscar(ag.id))!.pagamentoInformadoEm!.getTime()).toBe(primeiro);
   });
 });
 
