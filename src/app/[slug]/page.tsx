@@ -89,7 +89,7 @@ export default async function TenantPage({
   const paraCartao = (a: ComServico, status: Marcado["status"]): Marcado => ({
     id: a.id,
     dataHora: a.dataHora,
-    duracaoMin: a.servico.duracaoMin,
+    duracaoMin: a.duracaoMin,
     servicoId: a.servicoId,
     servicoNome: a.servico.nome,
     servicoAtivo: a.servico.ativo,
@@ -99,7 +99,7 @@ export default async function TenantPage({
   });
 
   const emAberto = marcados.find(
-    (a) => a.dataHora.getTime() + a.servico.duracaoMin * 60000 > agora.getTime()
+    (a) => a.dataHora.getTime() + a.duracaoMin * 60000 > agora.getTime()
   );
   const destaque = emAberto
     ? { modo: "proximo" as const, marcado: paraCartao(emAberto, emAberto.status as Marcado["status"]) }

@@ -57,7 +57,7 @@ export default async function AdminClientesPage({ params }: { params: Promise<{ 
     agendamentos: u.agendamentos.map((a) => ({
       id: a.id,
       dataISO: a.dataHora.toISOString(),
-      fimISO: new Date(a.dataHora.getTime() + a.servico.duracaoMin * 60000).toISOString(),
+      fimISO: new Date(a.dataHora.getTime() + a.duracaoMin * 60000).toISOString(),
       servico: a.servico.nome,
       placa: a.veiculo.placa,
       status: a.status,
