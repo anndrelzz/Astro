@@ -71,8 +71,8 @@ export default function PrivacidadePage() {
         <p>Só com os serviços necessários para o Astro funcionar:</p>
         <ul>
           <li>
-            <strong>Microsoft Azure</strong> (região Brasil, São Paulo): onde o site e o banco de dados ficam
-            hospedados;
+            <strong>Microsoft Azure</strong> (região Chile Central, a mais próxima do Brasil disponível para o
+            projeto): onde o site e o banco de dados ficam hospedados;
           </li>
           <li>
             <strong>Resend</strong>: envia os e-mails de confirmação, lembrete e recuperação de senha;
