@@ -52,6 +52,8 @@ export type ItemAgendamento = {
   // Feito pelo Admin pelo coringa: o nome e o telefone sao de quem chamou no
   // WhatsApp, e nao ha e-mail.
   peloAdmin: boolean;
+  /** "Cliente diz que pagou as 14:32": o cliente apertou "Ja fiz o pagamento". */
+  pagamentoInformado: string | null;
 };
 
 type Filtro = "todos" | StatusAgendamento;
@@ -708,6 +710,11 @@ function Cartao({
             <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-semibold whitespace-nowrap ${estilo.selo}`}>
               {emAndamento ? "Em andamento" : estilo.rotulo}
             </span>
+            {item.pagamentoInformado && (
+              <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.7rem] font-semibold whitespace-nowrap text-emerald-300">
+                {item.pagamentoInformado}
+              </span>
+            )}
             <span className="font-mono text-sm font-bold whitespace-nowrap text-white">
               {formatarReal(item.valor)}
               {item.acrescimoAplicado !== null && (
