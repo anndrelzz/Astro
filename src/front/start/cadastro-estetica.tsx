@@ -359,8 +359,16 @@ export function CadastroEstetica() {
                       className="mt-0.5 h-4 w-4 shrink-0 accent-astro-blue"
                     />
                     <span>
-                      Li e aceito os <strong className="font-semibold text-white">Termos de uso</strong> e a{" "}
-                      <strong className="font-semibold text-white">Política de privacidade</strong> da Astro.
+                      {/* Nova aba: quem le os termos nao perde o que ja preencheu. */}
+                      Li e aceito os{" "}
+                      <a href="/termos" target="_blank" rel="noopener noreferrer" className="font-semibold text-white underline decoration-white/40 underline-offset-2 hover:decoration-white">
+                        Termos de uso
+                      </a>{" "}
+                      e a{" "}
+                      <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-white underline decoration-white/40 underline-offset-2 hover:decoration-white">
+                        Política de privacidade
+                      </a>{" "}
+                      da Astro.
                     </span>
                   </label>
                   {erroDo("aceitouTermos") && (

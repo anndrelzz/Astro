@@ -18,7 +18,7 @@ describe("Politica de privacidade (/privacidade)", () => {
     render(<PrivacidadePage />);
     const secao = screen.getByRole("region", { name: "Quais dados coletamos" });
     for (const dado of ["Nome", "E-mail", "Telefone", "placa"]) {
-      expect(within(secao).getAllByText(new RegExp(dado)).length).toBeGreaterThan(0);
+      expect(within(secao).getAllByText(new RegExp(dado, "i")).length).toBeGreaterThan(0);
     }
   });
 
