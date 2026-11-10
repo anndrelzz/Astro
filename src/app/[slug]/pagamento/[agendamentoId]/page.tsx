@@ -7,6 +7,7 @@ import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { ClienteShell } from "@/front/cliente/cliente-shell";
 import { CopiarPix } from "@/front/cliente/copiar-pix";
+import { JaFizOPagamento } from "@/front/cliente/ja-fiz-o-pagamento";
 import { ThemeColor } from "@/front/componentes/theme-color";
 
 // Tela 11 — PIX Copia e Cola (RN10, UC04, UC13: apenas a chave copia-e-cola,
@@ -111,12 +112,8 @@ export default async function PixPage({
               garantido.
             </p>
 
-            <Link
-              href={`/${slug}/confirmado/${agendamento.id}`}
-              className="mt-4 flex w-full items-center justify-center rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white shadow-lg shadow-astro-blue/25"
-            >
-              Já fiz o pagamento
-            </Link>
+            {/* Avisa o Admin ("Cliente diz que pagou as 14:32") e segue. */}
+            <JaFizOPagamento slug={slug} agendamentoId={agendamento.id} />
           </div>
 
           {/* Recebedor + como pagar — so no desktop. */}

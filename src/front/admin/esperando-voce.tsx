@@ -17,6 +17,8 @@ export type ItemEsperando = {
   dia: string;
   cliente: string;
   detalhe: string;
+  /** "Cliente diz que pagou as 14:32", quando o cliente avisou. */
+  informado: string | null;
 };
 
 export function EsperandoVoce({ itens }: { itens: ItemEsperando[] }) {
@@ -64,6 +66,11 @@ export function EsperandoVoce({ itens }: { itens: ItemEsperando[] }) {
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-white">{item.cliente}</span>
                 <span className="block truncate text-xs text-astro-muted">{item.detalhe}</span>
+                {item.informado && (
+                  <span className="mt-1 inline-block rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-300">
+                    {item.informado}
+                  </span>
+                )}
               </span>
               <button
                 type="button"
