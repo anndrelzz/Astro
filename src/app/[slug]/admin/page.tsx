@@ -8,6 +8,7 @@ import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { nomeDoCliente } from "@/compartilhado/contato";
 import { AgendaHoje } from "@/front/admin/agenda-hoje";
+import { AvisoEmailDoDono } from "@/front/admin/aviso-email-do-dono";
 import { AvisoGradeVazia } from "@/front/admin/aviso-grade-vazia";
 import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "@/front/admin/cartao-faturamento";
 import { EsperandoVoce } from "@/front/admin/esperando-voce";
@@ -24,10 +25,16 @@ import { textoPagamentoInformado } from "@/compartilhado/pagamento-informado";
 
 export default async function AdminDashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ email?: string }>;
 }) {
   const { slug } = await params;
+  // ?email=confirmado | link-invalido, vindo do link de confirmacao.
+  const { email: statusBruto } = await searchParams;
+  const statusEmail =
+    statusBruto === "confirmado" || statusBruto === "link-invalido" ? statusBruto : undefined;
 
   const tenant = await prisma.tenant.findUnique({ where: { slug } });
   if (!tenant) notFound();
@@ -130,9 +137,15 @@ export default async function AdminDashboardPage({
     // Estetica recem-criada pelo autocadastro nasce sem grade (decisao de
     // 06/11): o Dashboard avisa ate o dono configurar.
     const diasNaGrade = await tx.horarioFuncionamento.count({ where: { tenantId: tenant.id } });
+    // O e-mail do dono: sem confirmar, os avisos de agendamento nao saem (LGPD).
+    const dono = await tx.usuario.findUnique({
+      where: { id: session.user.id },
+      select: { email: true, emailConfirmadoEm: true },
+    });
 
     return {
       diasNaGrade,
+      dono,
       hoje,
       mes,
       mesPassado,
@@ -239,6 +252,14 @@ export default async function AdminDashboardPage({
           {dataHoje}
         </span>
       </div>
+
+      {dados.dono && (
+        <AvisoEmailDoDono
+          email={dados.dono.email}
+          confirmado={dados.dono.emailConfirmadoEm !== null}
+          status={statusEmail}
+        />
+      )}
 
       {dados.diasNaGrade === 0 && (
         <div className="mb-6">

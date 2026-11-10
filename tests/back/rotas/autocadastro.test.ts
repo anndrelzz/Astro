@@ -1,11 +1,17 @@
 import bcrypt from "bcryptjs";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { GET as consultarEndereco } from "@/app/api/esteticas/endereco/route";
 import { POST as cadastrarEstetica } from "@/app/api/esteticas/route";
 import { MAX_CADASTROS_POR_HORA, SEGMENTOS_INICIAIS } from "@/back/autocadastro";
+import { enviarEmail } from "@/back/notificacoes/email";
 import { prisma } from "@/back/prisma";
 import { withTenant } from "@/back/tenant-db";
 import { criarEstetica, removerEstetica, type Estetica } from "./ajudantes";
+
+// Nenhum e-mail sai de verdade: o envio e trocado por uma funcao falsa.
+vi.mock("@/back/notificacoes/email", () => ({
+  enviarEmail: vi.fn(async () => ({ enviado: true, modo: "log" })),
+}));
 
 // Autocadastro da estetica (decisao do orientador, 30/10; detalhes do Andre,
 // 06/11). O dono preenche a tela /start e a estetica nasce com o Admin dele e
@@ -84,6 +90,26 @@ describe("POST /api/esteticas", () => {
     expect(segmentos.map((s) => s.nome)).toEqual([...SEGMENTOS_INICIAIS]);
     expect(SEGMENTOS_INICIAIS).toEqual(["Hatch", "Sedan", "SUV", "Utilitário"]);
     expect(horarios).toBe(0);
+  });
+
+  // LGPD: os avisos de agendamento ao dono levam nome, telefone e placa dos
+  // clientes, entao so saem para um e-mail confirmado, como o do cliente.
+  test("o dono nasce sem o e-mail confirmado e recebe o link de confirmacao", async () => {
+    vi.mocked(enviarEmail).mockClear();
+    const pedido = cadastro();
+    const { endereco } = await pedido.clone().json();
+    expect((await cadastrarEstetica(pedido)).status).toBe(201);
+
+    const tenant = await buscar(endereco);
+    const admin = await withTenant(tenant!.id, (tx) => tx.usuario.findFirst({ where: { tenantId: tenant!.id } }));
+    expect(admin!.emailConfirmadoEm).toBeNull();
+
+    expect(enviarEmail).toHaveBeenCalledTimes(1);
+    const [para, assunto, texto] = vi.mocked(enviarEmail).mock.calls[0];
+    expect(para).toBe("joao@exemplo.com");
+    expect(assunto).toBe("Confirme seu e-mail");
+    expect(texto).toContain("avisos de novos agendamentos");
+    expect(texto).toContain(`https://useastro.app.br/api/auth/confirmar-email?slug=${endereco}&token=`);
   });
 
   test("o endereco digitado e normalizado antes de salvar", async () => {

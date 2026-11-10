@@ -9,7 +9,9 @@ import {
   MAX_CADASTROS_POR_HORA,
   resumoDaConexao,
 } from "@/back/autocadastro";
+import { criarLinkDeConfirmacao, enviarLinkDeConfirmacao } from "@/back/confirmacao-email";
 import { prisma } from "@/back/prisma";
+import { withTenant } from "@/back/tenant-db";
 import { MENSAGEM_DO_PROBLEMA, normalizarEndereco, problemaNoEndereco } from "@/compartilhado/endereco-estetica";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
 import { senhaSchema } from "@/compartilhado/validacoes/senha";
@@ -82,7 +84,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { tenant } = await criarEstetica(prisma, {
+    const { tenant, admin } = await criarEstetica(prisma, {
       nomeEstetica: dados.nomeEstetica,
       slug: dados.endereco,
       nomeAdmin: dados.nome,
@@ -91,6 +93,11 @@ export async function POST(request: Request) {
       whatsapp: dados.whatsapp,
       cadastroIpHash,
     });
+    // LGPD: os avisos de agendamento ao dono levam dados dos clientes, entao
+    // so saem para um e-mail confirmado, como o do cliente. O link sai depois
+    // do commit; se falhar, o dono reenvia pelo aviso do Dashboard.
+    const link = await withTenant(tenant.id, (tx) => criarLinkDeConfirmacao(tx, admin, tenant.slug));
+    if (link) await enviarLinkDeConfirmacao(admin, tenant, link);
     return NextResponse.json({ ok: true, slug: tenant.slug }, { status: 201 });
   } catch (erro) {
     if (erro instanceof EnderecoEmUso) {
