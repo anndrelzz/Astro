@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { after, NextResponse } from "next/server";
 import { authOptions } from "@/back/auth";
-import { enviarNotificacoes, registrarNotificacao } from "@/back/notificacoes";
+import { enviarNotificacoes, registrarAvisoAoDono, registrarNotificacao } from "@/back/notificacoes";
 import { withTenant } from "@/back/tenant-db";
 
 // UC06, RN11 — cliente so cancela fora da janela configurada pelo Admin;
@@ -53,7 +53,11 @@ export async function POST(
     });
 
     // Gatilho 4 (secao 3.4) — registrada aqui, enviada so depois do commit.
-    const notificacoes = await registrarNotificacao(tx, id, "CONFIRMACAO_CANCELAMENTO");
+    const notificacoes = [
+      ...(await registrarNotificacao(tx, id, "CONFIRMACAO_CANCELAMENTO")),
+      // Quando foi o cliente que cancelou, o dono e avisado de que a vaga abriu.
+      ...(session.user.role === "CLIENTE" ? await registrarAvisoAoDono(tx, id, "AVISO_CANCELAMENTO") : []),
+    ];
 
     return { ok: true, notificacoes } as const;
   });

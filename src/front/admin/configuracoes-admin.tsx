@@ -35,6 +35,7 @@ type Config = {
   pixChaveCopiaCola: string;
   acrescimoCondicaoPercent: number | null;
   cancelamentoHorasLimite: number;
+  avisosPorEmail: boolean;
 };
 
 type Erros = Partial<Record<keyof Config, string>>;
@@ -44,6 +45,7 @@ const SECOES = [
   { id: "endereco", rotulo: "Endereço" },
   { id: "publica", rotulo: "Contato e página" },
   { id: "pagamento", rotulo: "Pagamento e cancelamento" },
+  { id: "avisos", rotulo: "Avisos" },
 ];
 
 // RF18 — a antecedencia e escolhida entre opcoes prontas, nao campo livre.
@@ -587,6 +589,34 @@ export function ConfiguracoesAdmin({ slug, configInicial }: { slug: string; conf
                   )}
                 </div>
               )}
+            </div>
+          </Secao>
+
+          {/* E-mail ao dono a cada novo agendamento (no local ou PIX a
+              conferir) e cancelamento feito pelo cliente. */}
+          <Secao id="avisos" titulo="Avisos" descricao="O que chega no seu e-mail.">
+            <div className="sm:col-span-2">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={config.avisosPorEmail}
+                onClick={() => campo("avisosPorEmail", !config.avisosPorEmail)}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-admin-border bg-black/40 px-4 py-3 text-left"
+              >
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    Receber um e-mail a cada novo agendamento e cancelamento
+                  </span>
+                  <span className="block text-xs text-astro-muted">
+                    Com o nome e o telefone do cliente. No PIX, o aviso diz o valor para você conferir no banco.
+                  </span>
+                </span>
+                <span className={`relative h-6 w-11 shrink-0 rounded-full transition ${config.avisosPorEmail ? "bg-emerald-500" : "bg-zinc-600"}`}>
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${config.avisosPorEmail ? "translate-x-5" : ""}`}
+                  />
+                </span>
+              </button>
             </div>
           </Secao>
         </div>

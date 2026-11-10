@@ -47,6 +47,8 @@ enum TipoNotificacao {
   CONFIRMACAO_CANCELAMENTO
   RESERVA_PIX
   PAGAMENTO_CONFIRMADO
+  AVISO_NOVO_AGENDAMENTO
+  AVISO_CANCELAMENTO
 }
 
 enum StatusNotificacao {
@@ -96,6 +98,9 @@ model Tenant {
   acrescimoCondicaoPercent Int?
   cancelamentoHorasLimite Int      @default(2) // RF18 — antecedencia minima para cancelamento pelo cliente
   capacidadeSimultanea    Int      @default(1) // RN06 — configurada pelo Admin, numero de atendimentos ao mesmo tempo
+  /// E-mail ao dono a cada novo agendamento e cancelamento feito pelo cliente
+  /// (AVISO_NOVO_AGENDAMENTO e AVISO_CANCELAMENTO). Liga e desliga nas Configuracoes.
+  avisosPorEmail          Boolean  @default(true)
   intervaloMinutos        Int      @default(60) // RF02 — granularidade dos horarios oferecidos
   /// Autocadastro (06/11): resumo (SHA-256 com segredo) da conexao que criou a
   /// estetica pela tela /start, para o limite de cadastros por hora. Nunca o
