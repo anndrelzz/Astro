@@ -127,6 +127,17 @@ describe("endereco do site", () => {
   });
 });
 
+// LGPD: o aceite aponta para os textos de verdade, em outra aba, para o dono
+// nao perder o que ja preencheu.
+describe("termos e privacidade", () => {
+  test("os nomes no aceite abrem os textos numa nova aba", () => {
+    render(<CadastroEstetica />);
+    expect(screen.getByRole("link", { name: "Termos de uso" })).toHaveAttribute("href", "/termos");
+    expect(screen.getByRole("link", { name: "Política de privacidade" })).toHaveAttribute("href", "/privacidade");
+    expect(screen.getByRole("link", { name: "Termos de uso" })).toHaveAttribute("target", "_blank");
+  });
+});
+
 describe("criar a estetica", () => {
   test("cria, entra com o e-mail e a senha e vai para o painel da estetica nova", async () => {
     vi.mocked(signIn).mockResolvedValue({ error: null, ok: true, status: 200, url: null });
