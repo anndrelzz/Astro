@@ -14,16 +14,23 @@ export async function GET(request: Request) {
   // o pedido como http://0.0.0.0:8080, e voltar para la deixava o cliente numa
   // pagina de erro. O NEXTAUTH_URL e o mesmo endereco que o login ja usa.
   const site = process.env.NEXTAUTH_URL ?? url.origin;
-  const voltar = (resultado: "confirmado" | "link-invalido") =>
-    NextResponse.redirect(new URL(`/${encodeURIComponent(slug)}/perfil?email=${resultado}`, site));
+  // O dono (ADMIN) volta para o Dashboard; o cliente, para o Perfil.
+  const voltar = (resultado: "confirmado" | "link-invalido", dono = false) =>
+    NextResponse.redirect(
+      new URL(`/${encodeURIComponent(slug)}/${dono ? "admin" : "perfil"}?email=${resultado}`, site)
+    );
 
   const tenant = slug ? await prisma.tenant.findUnique({ where: { slug }, select: { id: true } }) : null;
   if (!tenant || !token) return voltar("link-invalido");
 
   const agora = new Date();
-  const confirmou = await withTenant(tenant.id, async (tx) => {
+  const { confirmou, dono } = await withTenant(tenant.id, async (tx) => {
     // O RLS ja esconde o link de outra estetica; o tenantId repete a regra.
-    const pedido = await tx.tokenEmail.findUnique({ where: { tokenHash: hashDoToken(token) } });
+    const pedido = await tx.tokenEmail.findUnique({
+      where: { tokenHash: hashDoToken(token) },
+      include: { usuario: { select: { role: true } } },
+    });
+    const dono = pedido?.usuario.role === "ADMIN";
     if (
       !pedido ||
       pedido.tenantId !== tenant.id ||
@@ -31,15 +38,15 @@ export async function GET(request: Request) {
       pedido.usadoEm !== null ||
       pedido.expiraEm <= agora
     ) {
-      return false;
+      return { confirmou: false, dono };
     }
     await tx.usuario.update({ where: { id: pedido.usuarioId }, data: { emailConfirmadoEm: agora } });
     await tx.tokenEmail.updateMany({
       where: { usuarioId: pedido.usuarioId, tipo: "CONFIRMAR_EMAIL", usadoEm: null },
       data: { usadoEm: agora },
     });
-    return true;
+    return { confirmou: true, dono };
   });
 
-  return voltar(confirmou ? "confirmado" : "link-invalido");
+  return voltar(confirmou ? "confirmado" : "link-invalido", dono);
 }
