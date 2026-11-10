@@ -56,6 +56,9 @@ export const TITULOS: Record<TipoNotificacao, { titulo: string; selo: string; co
   CONFIRMACAO_CANCELAMENTO: { titulo: "Agendamento cancelado", selo: "&#10005;", corDoSelo: "#ef4444" },
   RESERVA_PIX: { titulo: "Horário reservado: aguardando a confirmação do PIX", selo: "PIX", corDoSelo: COR.azul },
   PAGAMENTO_CONFIRMADO: { titulo: "Pagamento confirmado", selo: "&#10003;", corDoSelo: "#10b981" },
+  // Avisos ao dono (montarEmailAvisoDono): o titulo do novo agendamento muda no PIX.
+  AVISO_NOVO_AGENDAMENTO: { titulo: "Novo agendamento", selo: "+", corDoSelo: COR.azul },
+  AVISO_CANCELAMENTO: { titulo: "Agendamento cancelado", selo: "&#10005;", corDoSelo: "#ef4444" },
 };
 
 const CHAMADAS: Record<TipoNotificacao, string> = {
@@ -66,6 +69,8 @@ const CHAMADAS: Record<TipoNotificacao, string> = {
   // Sai ao gerar o PIX: vale para quem ainda vai pagar e para quem ja pagou.
   RESERVA_PIX: `Seu horário está reservado. ${AVISO_DO_PIX}`,
   PAGAMENTO_CONFIRMADO: "Seu horário está garantido. Te esperamos!",
+  AVISO_NOVO_AGENDAMENTO: "Um cliente agendou pelo seu site.",
+  AVISO_CANCELAMENTO: "Um cliente cancelou pelo seu site. O horário foi liberado na agenda.",
 };
 
 /** A tela com o codigo PIX copia e cola do agendamento. */
@@ -307,6 +312,83 @@ export function montarEmailConfirmacao({
 <div style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${COR.suave};">Olá, ${escapar(primeiroNome)}. Sua conta na ${escapar(estetica.nome)} está pronta. Confirme que este e-mail é seu para receber aqui a confirmação e os lembretes dos seus agendamentos.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${botao(link, "Confirmar e-mail", true)}</table>
 <div style="margin-top:16px;font-size:12px;line-height:1.6;color:${COR.rotulo};">O link vale por 7 dias. Se não foi você que criou a conta, ignore este e-mail.</div>
+</td></tr>`,
+  });
+}
+
+// Avisos ao DONO da estetica: novo agendamento (no local, ou PIX aguardando a
+// confirmacao dele) e cancelamento feito pelo cliente. Levam o nome e o
+// telefone do cliente: o PIX pode ter sido pago por outra pessoa, e o dono
+// confere pelo valor ou liga para a cliente. Vai so para o e-mail confirmado
+// do dono (LGPD); a estetica e a controladora desses dados.
+export type DadosDoAvisoAoDono = DadosDoEmail & { clienteTelefone: string };
+
+export function linkDoPainel(d: DadosDoEmail): string {
+  const dia = d.dataHora.toLocaleDateString("en-CA", { timeZone: FUSO });
+  return `${SITE}/${d.estetica.slug}/admin/agendamentos?dia=${dia}`;
+}
+
+export function tituloDoAvisoAoDono(d: DadosDoEmail): string {
+  if (d.tipo === "AVISO_CANCELAMENTO") return "Agendamento cancelado";
+  return d.formaPagamento === "PIX" ? "Novo agendamento: PIX aguardando confirmação" : "Novo agendamento";
+}
+
+function telefoneFormatado(t: string): string {
+  const n = t.replace(/\D/g, "");
+  if (n.length === 11) return `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}`;
+  if (n.length === 10) return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`;
+  return t;
+}
+
+export function montarEmailAvisoDono(d: DadosDoAvisoAoDono): string {
+  const titulo = tituloDoAvisoAoDono(d);
+  const cancelado = d.tipo === "AVISO_CANCELAMENTO";
+  const pix = !cancelado && d.formaPagamento === "PIX";
+  const quando = dataDoEmail(d.dataHora);
+  const { selo, corDoSelo } = TITULOS[d.tipo];
+
+  const chamada = cancelado
+    ? `<b>${escapar(d.clienteNome)}</b> cancelou o agendamento. O horário foi liberado na agenda.`
+    : pix
+      ? `<b>${escapar(d.clienteNome)}</b> agendou e escolheu pagar por PIX.`
+      : `<b>${escapar(d.clienteNome)}</b> agendou e vai pagar no local.`;
+
+  const detalhes = [
+    linhaDoDetalhe("Cliente", escapar(d.clienteNome), true),
+    linhaDoDetalhe("Telefone", escapar(telefoneFormatado(d.clienteTelefone)), false),
+    linhaDoDetalhe("Serviço", escapar(d.servicoNome), false),
+    linhaDoDetalhe("Quando", escapar(quando), false),
+    linhaDoDetalhe("Carro", escapar(`${d.veiculo.marca} ${d.veiculo.modelo} · ${d.veiculo.placa}`), false),
+    linhaDoDetalhe(
+      "Valor",
+      `<strong>${escapar(`${reais(d.valor)} · ${d.formaPagamento === "PIX" ? "PIX" : "no local"}`)}</strong>`,
+      false
+    ),
+  ].join("");
+
+  const instrucao = pix
+    ? `<div style="margin-top:16px;font-size:14px;line-height:1.6;color:${COR.texto};">Confira no app do banco se o PIX de <b>${escapar(reais(d.valor))}</b> de <b>${escapar(d.clienteNome)}</b> entrou e confirme no painel.</div>`
+    : "";
+
+  return casca({
+    estetica: d.estetica,
+    titulo,
+    previa: escapar(`${titulo}: ${d.clienteNome}, ${quando}.`),
+    corpo: `<tr><td style="padding:24px;">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td width="44" height="44" align="center" style="width:44px;height:44px;border-radius:22px;background:${corDoSelo};color:#ffffff;font-size:20px;font-weight:bold;">${selo}</td>
+</tr></table>
+<div style="margin:16px 0 4px;font-size:20px;font-weight:bold;color:${COR.texto};">${escapar(titulo)}</div>
+<div style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${COR.suave};">${chamada}</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${COR.linha};border-radius:10px;">
+<tr><td style="padding:4px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detalhes}</table>
+</td></tr>
+</table>
+${instrucao}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">${botao(linkDoPainel(d), "Abrir no painel", true)}</table>
+<div style="margin-top:16px;font-size:12px;line-height:1.6;color:${COR.rotulo};">Para parar de receber estes avisos, desligue em Configurações no painel.</div>
 </td></tr>`,
   });
 }
