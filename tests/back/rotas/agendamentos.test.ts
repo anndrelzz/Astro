@@ -114,6 +114,8 @@ describe("POST /api/agendamentos", () => {
     // RN01: o valor vem da tabela de precos, nao do cliente.
     const gravado = await buscar(id);
     expect(Number(gravado!.valor)).toBe(80);
+    // E a duracao vem do servico, e fica guardada como o preco.
+    expect(gravado!.duracaoMin).toBe(60);
     expect(gravado!.usuarioId).toBe(e.cliente.id);
     // RF08: a confirmacao fica registrada junto com o agendamento e sai por
     // e-mail logo depois da resposta, ja fora da transacao.
@@ -455,6 +457,46 @@ describe("POST /api/agendamentos/[id]/confirmar-pagamento", () => {
     const resposta = await chamar(ag.id);
     expect(resposta.status).toBe(400);
     expect(await resposta.json()).toEqual({ error: "Este agendamento nao esta aguardando pagamento" });
+  });
+});
+
+// Mudar a duracao no Catalogo vale so para os proximos agendamentos, como o
+// preco: o agendamento antigo nao "cresce" e nao cruza com o vizinho.
+describe("duracao guardada no agendamento", () => {
+  test("aumentar a duracao do servico nao estica o agendamento ja feito", async () => {
+    entrarComo(e.cliente);
+    const data = diaDaqui(13);
+    const maria = await agendar(
+      pedido("POST", "/api/agendamentos", {
+        servicoId: e.servico.id,
+        veiculoId: e.veiculo.id,
+        data,
+        hora: "10:00",
+        formaPagamento: "LOCAL",
+      })
+    );
+    expect(maria.status).toBe(201);
+
+    // O dono passa a lavagem de 1 h para 2 h.
+    await withTenant(e.tenant.id, (tx) => tx.servico.update({ where: { id: e.servico.id }, data: { duracaoMin: 120 } }));
+    try {
+      const slots = (
+        await (
+          await consultarSlots(
+            pedido("GET", `/api/slots?${new URLSearchParams({ tenantId: e.tenant.id, servicoId: e.servico.id, data })}`)
+          )
+        ).json()
+      ).slots;
+      // Maria segue das 10:00 as 11:00: um cliente novo (ja com 2 h) entra as
+      // 08:00 ou a partir das 11:00, e nunca as 09:00 ou as 10:00.
+      expect(slots).toContain("08:00");
+      expect(slots).toContain("11:00");
+      expect(slots).not.toContain("09:00");
+      expect(slots).not.toContain("10:00");
+      expect((await buscar((await maria.json()).id))!.duracaoMin).toBe(60);
+    } finally {
+      await withTenant(e.tenant.id, (tx) => tx.servico.update({ where: { id: e.servico.id }, data: { duracaoMin: 60 } }));
+    }
   });
 });
 
