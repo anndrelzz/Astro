@@ -131,6 +131,24 @@ describe("GET /api/auth/confirmar-email", () => {
   });
 });
 
+// O dono da estetica confirma pelo mesmo link, e volta para o painel dele, e
+// nao para o Perfil do cliente.
+describe("confirmacao do e-mail do dono (Admin)", () => {
+  test("o link do dono confirma e leva ao Dashboard com o aviso de sucesso", async () => {
+    await withTenant(e.tenant.id, (tx) => tx.usuario.update({ where: { id: e.admin.id }, data: { emailConfirmadoEm: null } }));
+    entrarComo(e.admin);
+    vi.mocked(enviarEmail).mockClear();
+
+    expect((await reenviar()).status).toBe(200);
+    // O texto fala dos avisos de agendamento que o dono recebe.
+    expect(vi.mocked(enviarEmail).mock.calls[0][2]).toContain("avisos de novos agendamentos");
+
+    const resposta = await abrir(linkDoUltimoEmail());
+    expect(resposta.headers.get("location")).toMatch(new RegExp(`/${e.tenant.slug}/admin\\?email=confirmado$`));
+    expect(await confirmado(e.admin.id)).not.toBeNull();
+  });
+});
+
 describe("POST /api/perfil/reenviar-confirmacao", () => {
   const pedirDeNovo = () => reenviar();
 
