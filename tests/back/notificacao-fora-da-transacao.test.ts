@@ -241,7 +241,12 @@ describe("reenvio pelo cron", () => {
   // Agendamento com uma notificacao ja gravada no estado que o teste quer.
   async function notificacaoNoBanco(
     dados: {
-      tipo?: "CONFIRMACAO_AGENDAMENTO" | "CONFIRMACAO_CANCELAMENTO" | "LEMBRETE_24H";
+      tipo?:
+        | "CONFIRMACAO_AGENDAMENTO"
+        | "CONFIRMACAO_CANCELAMENTO"
+        | "LEMBRETE_24H"
+        | "RESERVA_PIX"
+        | "PAGAMENTO_CONFIRMADO";
       canal?: "EMAIL" | "TELEGRAM";
       status: "PENDENTE" | "FALHA";
       tentativas?: number;
@@ -316,5 +321,17 @@ describe("reenvio pelo cron", () => {
 
     expect(await notificacoes.reenviarNotificacoesDoTenant(f.tenantId)).toEqual({ reenviadas: 1 });
     expect((await buscar(cancelamento.id)).status).toBe("ENVIADA");
+  });
+
+  // Os avisos do PIX (horario reservado e pagamento confirmado) tambem voltam
+  // para a fila quando falham, como a confirmacao do agendamento.
+  test("reenvia os avisos do PIX que falharam", async () => {
+    const reserva = await notificacaoNoBanco({ tipo: "RESERVA_PIX", status: "FALHA", tentativas: 1 });
+    const pago = await notificacaoNoBanco({ tipo: "PAGAMENTO_CONFIRMADO", status: "FALHA", tentativas: 1 });
+    redeNoAr = true;
+
+    expect(await notificacoes.reenviarNotificacoesDoTenant(f.tenantId)).toEqual({ reenviadas: 2 });
+    expect((await buscar(reserva.id)).status).toBe("ENVIADA");
+    expect((await buscar(pago.id)).status).toBe("ENVIADA");
   });
 });

@@ -121,7 +121,11 @@ describe("POST /api/agendamentos", () => {
     expect(gravado!.usuarioId).toBe(e.cliente.id);
     // RF08: a confirmacao fica registrada junto com o agendamento e sai por
     // e-mail logo depois da resposta, ja fora da transacao.
-    expect(gravado!.notificacoes.map((n) => [n.tipo, n.canal])).toEqual([["CONFIRMACAO_AGENDAMENTO", "EMAIL"]]);
+    // O dono tambem e avisado por e-mail (o e-mail dele esta confirmado).
+    expect(gravado!.notificacoes.map((n) => [n.tipo, n.canal])).toEqual([
+      ["CONFIRMACAO_AGENDAMENTO", "EMAIL"],
+      ["AVISO_NOVO_AGENDAMENTO", "EMAIL"],
+    ]);
     expect(enviarEmail).not.toHaveBeenCalled();
     await depoisDaResposta();
     expect(enviarEmail).toHaveBeenCalledWith(
@@ -130,6 +134,11 @@ describe("POST /api/agendamentos", () => {
       expect.any(String),
       expect.stringContaining("<!doctype html>")
     );
+    // Para o dono: o nome e o telefone do cliente, para ele saber quem e.
+    const paraODono = vi.mocked(enviarEmail).mock.calls.find((c) => c[0] === e.admin.email);
+    expect(paraODono?.[1]).toBe("Novo agendamento");
+    expect(paraODono?.[2]).toContain(e.cliente.nome);
+    expect(paraODono?.[2]).toContain("Pagamento no local");
   });
 
   test("agendamento por PIX fica com PIX pendente e devolve o codigo", async () => {
@@ -144,7 +153,46 @@ describe("POST /api/agendamentos", () => {
     // O PIX ainda nao foi conferido: o aviso e de horario reservado, nao de
     // agendamento confirmado.
     const gravado = await buscar(json.id);
-    expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["RESERVA_PIX"]);
+    expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["RESERVA_PIX", "AVISO_NOVO_AGENDAMENTO"]);
+  });
+
+  test("no PIX, o dono recebe o aviso de PIX aguardando confirmacao, com o nome e o valor", async () => {
+    entrarComo(e.cliente);
+    vi.mocked(enviarEmail).mockClear();
+    const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(6, { formaPagamento: "PIX", hora: "15:00" })));
+    expect(resposta.status).toBe(201);
+    await depoisDaResposta();
+
+    const paraODono = vi.mocked(enviarEmail).mock.calls.find((c) => c[0] === e.admin.email);
+    expect(paraODono?.[1]).toBe("Novo agendamento: PIX aguardando confirmacao");
+    expect(paraODono?.[2]).toContain(`Confira no app do banco se o PIX de R$ 80,00 de ${e.cliente.nome} entrou`);
+  });
+
+  test("com os avisos por e-mail desligados nas Configuracoes, o dono nao recebe", async () => {
+    await prisma.tenant.update({ where: { id: e.tenant.id }, data: { avisosPorEmail: false } });
+    try {
+      entrarComo(e.cliente);
+      const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(6, { hora: "16:00" })));
+      const gravado = await buscar((await resposta.json()).id);
+      expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["CONFIRMACAO_AGENDAMENTO"]);
+    } finally {
+      await prisma.tenant.update({ where: { id: e.tenant.id }, data: { avisosPorEmail: true } });
+    }
+  });
+
+  test("dono com o e-mail ainda nao confirmado nao recebe o aviso (LGPD)", async () => {
+    const confirmadoEm = new Date();
+    await withTenant(e.tenant.id, (tx) => tx.usuario.update({ where: { id: e.admin.id }, data: { emailConfirmadoEm: null } }));
+    try {
+      entrarComo(e.cliente);
+      const resposta = await agendar(pedido("POST", "/api/agendamentos", corpo(6, { hora: "17:00" })));
+      const gravado = await buscar((await resposta.json()).id);
+      expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["CONFIRMACAO_AGENDAMENTO"]);
+    } finally {
+      await withTenant(e.tenant.id, (tx) =>
+        tx.usuario.update({ where: { id: e.admin.id }, data: { emailConfirmadoEm: confirmadoEm } })
+      );
+    }
   });
 
   test("horario ja ocupado responde 409 (capacidade de 1 carro)", async () => {
@@ -323,7 +371,8 @@ describe("POST /api/agendamentos/[id]/cancelar", () => {
     expect(resposta.status).toBe(200);
     const gravado = await buscar(ag.id);
     expect(gravado!.status).toBe("CANCELADO");
-    expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["CONFIRMACAO_CANCELAMENTO"]);
+    // O cliente recebe a confirmacao do cancelamento, e o dono, o aviso.
+    expect(gravado!.notificacoes.map((n) => n.tipo)).toEqual(["CONFIRMACAO_CANCELAMENTO", "AVISO_CANCELAMENTO"]);
   });
 
   test("agendamento ja cancelado ou concluido nao cancela de novo", async () => {
@@ -358,6 +407,8 @@ describe("POST /api/agendamentos/[id]/cancelar", () => {
     entrarComo(e.admin);
     expect((await chamar(ag.id)).status).toBe(200);
     expect((await buscar(ag.id))!.status).toBe("CANCELADO");
+    // Foi o proprio dono que cancelou: ele nao recebe aviso.
+    expect((await buscar(ag.id))!.notificacoes.map((n) => n.tipo)).not.toContain("AVISO_CANCELAMENTO");
   });
 });
 
