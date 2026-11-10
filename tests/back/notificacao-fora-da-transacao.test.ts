@@ -116,6 +116,7 @@ function dadosDoAgendamento(dataHora: Date, criadoEm = new Date()) {
     criadoEm,
     formaPagamento: "LOCAL" as const,
     valor: 60,
+    duracaoMin: 60,
   };
 }
 

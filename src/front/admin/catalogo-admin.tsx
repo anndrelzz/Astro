@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Clock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
+import { AvisoMudancaServico } from "@/front/admin/aviso-mudanca-servico";
 import { Modal } from "@/front/admin/modal";
 
 type Segmento = { id: string; nome: string; ordem: number };
@@ -52,6 +53,8 @@ export function CatalogoAdmin({
   const [servicoEdit, setServicoEdit] = useState<Servico | null>(null);
   // Duracao fora da lista de DURACOES: mostra o campo livre no modal.
   const [duracaoLivre, setDuracaoLivre] = useState(false);
+  // O que mudou de duracao e preco, a confirmar no aviso antes de salvar.
+  const [mudancas, setMudancas] = useState<string[]>([]);
 
   async function chamar(url: string, metodo: string, corpo?: unknown) {
     setErro(null);
@@ -91,6 +94,29 @@ export function CatalogoAdmin({
     }
   }
 
+  // Clique em "Salvar" no servico. Duracao e preco valem so para os proximos
+  // agendamentos (cada agendamento guarda os seus), entao, se um dos dois
+  // mudou num servico que ja existe, o aviso pede uma segunda confirmacao.
+  function pedirParaSalvar() {
+    if (!servicoEdit) return;
+    const original = servicos.find((s) => s.id === servicoEdit.id);
+    if (!original) {
+      void salvarServico();
+      return;
+    }
+    const linhas: string[] = [];
+    if (original.duracaoMin !== servicoEdit.duracaoMin) {
+      linhas.push(`Duração: ${formatarDuracao(original.duracaoMin)} → ${formatarDuracao(servicoEdit.duracaoMin)}`);
+    }
+    for (const seg of segmentos) {
+      const antes = original.precos[seg.id] ?? 0;
+      const depois = servicoEdit.precos[seg.id] ?? 0;
+      if (antes !== depois) linhas.push(`Preço (${seg.nome}): ${emReais(antes)} → ${emReais(depois)}`);
+    }
+    if (linhas.length > 0) setMudancas(linhas);
+    else void salvarServico();
+  }
+
   async function salvarServico() {
     if (!servicoEdit) return;
     const corpo = {
@@ -110,6 +136,7 @@ export function CatalogoAdmin({
       corpo
     );
     if (ok) setServicoEdit(null);
+    setMudancas([]);
   }
 
   const servicoVazio: Servico = {
@@ -358,7 +385,7 @@ export function CatalogoAdmin({
             </button>
             <button
               type="button"
-              onClick={salvarServico}
+              onClick={pedirParaSalvar}
               disabled={salvando || !servicoEdit?.nome.trim()}
               className="rounded-full bg-astro-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
             >
@@ -507,8 +534,20 @@ export function CatalogoAdmin({
           </div>
         )}
       </Modal>
+
+      <AvisoMudancaServico
+        mudancas={mudancas}
+        salvando={salvando}
+        onVoltar={() => setMudancas([])}
+        onConfirmar={() => void salvarServico()}
+      />
     </div>
   );
+}
+
+// "R$ 80,00", para o aviso de mudanca de preco.
+function emReais(valor: number) {
+  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
 }
 
 function reais(valor: number) {

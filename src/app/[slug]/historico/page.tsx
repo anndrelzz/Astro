@@ -48,7 +48,7 @@ export default async function HistoricoPage({
   const itens = agendamentos.map((a) => ({
     id: a.id,
     dataHoraISO: a.dataHora.toISOString(),
-    duracaoMin: a.servico.duracaoMin,
+    duracaoMin: a.duracaoMin,
     servicoNome: a.servico.nome,
     veiculoMarcaModelo: `${a.veiculo.marca} ${a.veiculo.modelo}`,
     placa: a.veiculo.placa,
