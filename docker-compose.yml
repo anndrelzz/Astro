@@ -1,0 +1,73 @@
+# Astro completo no computador, com um comando:
+#
+#   docker compose up --build
+#
+# e abrir http://localhost:3000/estetica-teste (a estetica de exemplo da
+# seed). Para parar: Ctrl+C. Para apagar tudo, inclusive o banco:
+#
+#   docker compose down -v
+#
+# Sobe tres servicos, nesta ordem:
+#   1. banco   — PostgreSQL 18, a mesma versao da producao;
+#   2. migrar  — aplica as migrations e a seed, e termina;
+#   3. site    — o Astro, so depois que o "migrar" terminou bem.
+#
+# Nao precisa instalar Node nem PostgreSQL: so o Docker. Sem as chaves da
+# Resend e do Telegram, os e-mails e as mensagens so aparecem no log, como no
+# `npm run dev`.
+
+services:
+  banco:
+    image: postgres:18
+    environment:
+      # Senha do superusuario "postgres", usado so para criar o usuario do
+      # Astro (scripts/docker/criar-banco.sql). Ambiente local: nao e segredo.
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      # Os dados ficam num volume: sobrevivem a um "docker compose down".
+      - dados-do-banco:/var/lib/postgresql
+      # Roda so na primeira vez, com o volume vazio.
+      - ./scripts/docker/criar-banco.sql:/docker-entrypoint-initdb.d/criar-banco.sql:ro
+    ports:
+      # Porta 5433 no computador, para nao brigar com um PostgreSQL local na
+      # 5432. Dentro do Docker, os servicos usam banco:5432.
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astro -d astro"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrar:
+    build:
+      context: .
+      # A etapa "build" do Dockerfile, que tem o Prisma CLI e o tsx.
+      target: build
+    environment:
+      # O usuario "astro": dono das tabelas, mas sem superusuario nem
+      # BYPASSRLS. Assim o isolamento entre esteticas (RLS) vale aqui
+      # tambem, como no CI e na producao.
+      DATABASE_URL: postgresql://astro:astro@banco:5432/astro
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed"
+    depends_on:
+      banco:
+        condition: service_healthy
+
+  site:
+    build:
+      context: .
+      target: final
+    environment:
+      DATABASE_URL: postgresql://astro:astro@banco:5432/astro
+      # Segredo de uso local, so para assinar a sessao do login. Em producao
+      # ele fica nas variaveis do App Service.
+      NEXTAUTH_SECRET: segredo-local-do-docker-troque-em-producao
+      NEXTAUTH_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrar:
+        condition: service_completed_successfully
+
+volumes:
+  dados-do-banco:

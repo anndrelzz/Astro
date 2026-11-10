@@ -1,0 +1,21 @@
+# O que NAO entra na imagem do Docker (o "COPY . ." do Dockerfile ignora):
+# o que e gerado no build, os segredos e o que nao e codigo do site.
+
+# Gerados: o build da imagem refaz.
+node_modules
+.next
+coverage
+src/generated
+
+# Segredos e configuracao local: nunca dentro de uma imagem.
+.env
+.env.*
+!.env.example
+
+# Git, editores e arquivos que nao sao do site.
+.git
+.github
+.claude
+.vscode
+*.pdf
+tests/carga/esteticas.json

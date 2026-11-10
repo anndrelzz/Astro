@@ -76,6 +76,7 @@ Excluído conscientemente para viabilizar a entrega no prazo do TCC — não com
 | Hospedagem | Microsoft Azure | App Service + Azure DB for PostgreSQL |
 | Validação | Zod | Type-safe, integra com Next.js e Prisma |
 | Senha | bcrypt | Hash seguro, padrão de mercado |
+| Ambiente local | Docker + Docker Compose | `docker compose up --build` sobe o banco, as migrations e o site, sem instalar Node nem PostgreSQL |
 
 ---
 
