@@ -48,12 +48,14 @@ export async function calcularSlotsDisponiveis(
       dataHora: { gte: inicioDia, lte: fimDia },
       status: { not: "CANCELADO" },
     },
-    include: { servico: true },
   });
 
+  // Cada agendamento ocupa a duracao com que foi feito (agendamento.duracaoMin),
+  // e nao a do servico hoje: mudar a duracao no Catalogo vale so para os
+  // proximos agendamentos.
   const intervalos = agendamentosDoDia.map((agendamento) => {
     const inicio = minutosNoFuso(agendamento.dataHora);
-    return { inicio, fim: inicio + agendamento.servico.duracaoMin };
+    return { inicio, fim: inicio + agendamento.duracaoMin };
   });
 
   const slots: string[] = [];

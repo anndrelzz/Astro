@@ -62,6 +62,7 @@ function agendamentoNoBanco(dataHora: Date, status: StatusAgendamento = "PENDENT
         formaPagamento: status === "PIX_PENDENTE" ? "PIX" : "LOCAL",
         status,
         valor: 80,
+        duracaoMin: 60,
       },
     })
   );

@@ -161,6 +161,8 @@ export async function POST(request: Request) {
         formaPagamento: "LOCAL",
         status: "PENDENTE_PAGAMENTO",
         valor,
+        // Guardada como o valor: mudar a duracao depois nao mexe neste agendamento.
+        duracaoMin: servico.duracaoMin,
         contatoNome: d.contatoNome,
         contatoTelefone: d.contatoTelefone,
       },

@@ -120,6 +120,7 @@ async function criarTenantCompleto(sufixo: string, linkToken: string | null) {
         dataHora: new Date(2026, 11, 1, 10, 0),
         formaPagamento: "LOCAL",
         valor: 60,
+        duracaoMin: 60,
       },
     });
 

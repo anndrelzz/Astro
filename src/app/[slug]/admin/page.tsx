@@ -179,7 +179,7 @@ export default async function AdminDashboardPage({
     return {
       id: a.id,
       inicioMin,
-      fimMin: inicioMin + a.servico.duracaoMin,
+      fimMin: inicioMin + a.duracaoMin,
       cliente: nomeDoCliente(a),
       detalhe: `${a.servico.nome} · ${a.veiculo.modelo}`,
       status: a.status,

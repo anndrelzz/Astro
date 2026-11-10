@@ -130,6 +130,7 @@ async function confirmar(
         dataHora: DATA_HORA,
         formaPagamento: "LOCAL",
         valor: 60,
+        duracaoMin: 60,
       },
     });
     await esperar(PAUSA_ANTES_DO_COMMIT_MS);

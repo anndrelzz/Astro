@@ -113,6 +113,8 @@ export async function POST(request: Request) {
         formaPagamento,
         status: formaPagamento === "PIX" ? "PIX_PENDENTE" : "PENDENTE_PAGAMENTO",
         valor,
+        // Guardada como o valor: mudar a duracao depois nao mexe neste agendamento.
+        duracaoMin: servico.duracaoMin,
       },
     });
 

@@ -129,6 +129,7 @@ describe("PATCH e DELETE /api/servicos/[id]", () => {
           formaPagamento: "LOCAL",
           status: "CONCLUIDO",
           valor: 80,
+          duracaoMin: 60,
         },
       })
     );
@@ -268,6 +269,7 @@ describe("PATCH e DELETE /api/segmentos/[id]", () => {
           dataHora: daqui(72),
           formaPagamento: "LOCAL",
           valor: 80,
+          duracaoMin: 60,
         },
       })
     );

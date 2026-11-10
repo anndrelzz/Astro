@@ -51,9 +51,8 @@ jobs:
             # Segredo errado: so se resolve trocando o secret, entao falha e
             # o GitHub avisa por e-mail.
             401) echo "::error::CRON_SECRET diferente do configurado na Azure"; exit 1 ;;
-            # Site fora do ar ou banco desligado (ele e parado a noite para
-            # economizar credito): so um aviso, sem falhar. Falhar mandaria um
-            # e-mail a cada 15 minutos. Os lembretes perdidos saem na primeira
+            # Site fora do ar (deploy em andamento, por exemplo): so um aviso,
+            # sem falhar. Falhar mandaria um e-mail a cada 15 minutos. Os lembretes perdidos saem na primeira
             # rodada com o site de volta, enquanto a janela deles nao fechar.
             *) echo "::warning::Rota respondeu HTTP $status; tenta de novo na proxima rodada" ;;
           esac
