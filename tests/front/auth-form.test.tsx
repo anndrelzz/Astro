@@ -207,6 +207,18 @@ describe("AuthForm — cadastro", () => {
     expect(isca!.closest("[aria-hidden]")).not.toBeNull();
   });
 
+  test("os nomes no aceite abrem os Termos e a Politica de privacidade numa nova aba", () => {
+    render(<AuthForm modo="cadastro" estetica={ESTETICA} />);
+    const termos = screen.getByRole("link", { name: "Termos de uso" });
+    const privacidade = screen.getByRole("link", { name: "Política de privacidade" });
+
+    expect(termos).toHaveAttribute("href", "/termos");
+    expect(privacidade).toHaveAttribute("href", "/privacidade");
+    // Nova aba: quem le os termos nao perde o que ja preencheu.
+    expect(termos).toHaveAttribute("target", "_blank");
+    expect(privacidade).toHaveAttribute("target", "_blank");
+  });
+
   test("o login nao tem o campo isca", () => {
     const { container } = render(<AuthForm modo="login" estetica={ESTETICA} />);
     expect(container.querySelector('input[name="site"]')).toBeNull();
