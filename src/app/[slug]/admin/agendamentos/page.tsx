@@ -1,3 +1,4 @@
+import { textoPagamentoInformado } from "@/compartilhado/pagamento-informado";
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/back/auth";
@@ -114,6 +115,10 @@ export default async function AdminAgendamentosPage({
       valor: Number(a.valor),
       acrescimoAplicado: a.acrescimoAplicado === null ? null : Number(a.acrescimoAplicado),
       status: a.status,
+      pagamentoInformado:
+        a.status === "PIX_PENDENTE" && a.pagamentoInformadoEm
+          ? textoPagamentoInformado(a.pagamentoInformadoEm, agora)
+          : null,
     };
   });
 

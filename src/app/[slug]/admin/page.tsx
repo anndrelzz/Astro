@@ -11,6 +11,7 @@ import { AgendaHoje } from "@/front/admin/agenda-hoje";
 import { AvisoGradeVazia } from "@/front/admin/aviso-grade-vazia";
 import { CartaoFaturamento, type Periodo, type ResumoPeriodo } from "@/front/admin/cartao-faturamento";
 import { EsperandoVoce } from "@/front/admin/esperando-voce";
+import { textoPagamentoInformado } from "@/compartilhado/pagamento-informado";
 
 // RF11, UC10 — Dashboard do painel (tela inicial do mockup do admin).
 //
@@ -114,7 +115,8 @@ export default async function AdminDashboardPage({
     const esperando = await tx.agendamento.findMany({
       where: { tenantId: tenant.id, status: "PIX_PENDENTE", dataHora: { gte: inicioDoDia(agora) } },
       include: { usuario: true, veiculo: true, servico: true },
-      orderBy: { dataHora: "asc" },
+      // Quem ja disse que pagou vem primeiro: e o PIX a conferir agora.
+      orderBy: [{ pagamentoInformadoEm: { sort: "desc", nulls: "last" } }, { dataHora: "asc" }],
       take: 5,
     });
 
@@ -204,6 +206,7 @@ export default async function AdminDashboardPage({
             : a.dataHora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: FUSO }),
       cliente: nomeDoCliente(a),
       detalhe: `${a.servico.nome} · ${a.veiculo.modelo} · ${a.veiculo.placa} · ${formatarReal(Number(a.valor))}`,
+      informado: a.pagamentoInformadoEm ? textoPagamentoInformado(a.pagamentoInformadoEm, agora) : null,
     };
   });
 

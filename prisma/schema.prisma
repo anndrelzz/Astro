@@ -333,6 +333,10 @@ model Agendamento {
   /// NULO = ainda nao pago. Os pagos antes desta coluna existir receberam o
   /// dia do servico (migration 20261103_agendamento_pago_em).
   pagoEm         DateTime?
+  /// Quando o cliente apertou "Ja fiz o pagamento" na tela do PIX. NULO = nao
+  /// avisou. Nao confirma nada (quem confirma e o Admin, RN05): so mostra no
+  /// painel quais PIX conferir primeiro. Guarda o primeiro aviso.
+  pagamentoInformadoEm DateTime?
   /// Quem chamou no WhatsApp, quando o Admin agenda pelo coringa. NULO nos
   /// agendamentos feitos pelo proprio cliente, que ja tem nome e telefone.
   contatoNome     String?
