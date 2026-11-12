@@ -4,7 +4,7 @@ import { chaveDia, fimDoDia, inicioDoDia, minutosNoFuso, partesNoFuso } from "@/
 
 // Quanto tempo antes do inicio um horario ainda pode ser reservado: da tempo
 // de o cliente chegar e de a estetica se preparar.
-export const ANTECEDENCIA_MINIMA_MIN = 30;
+export const ANTECEDENCIA_MINIMA_MIN = 10;
 
 // RF02, RN06, RNF02 — calcula os slots de horario disponiveis para um dia,
 // respeitando a grade de funcionamento, o intervalo configurado e a
