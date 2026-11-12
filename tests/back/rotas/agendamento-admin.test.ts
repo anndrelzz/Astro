@@ -186,9 +186,9 @@ describe("POST /api/admin/agendamentos", () => {
 
 describe("horarios livres para o Admin", () => {
   test("o Admin pode pegar um horario dentro da antecedencia minima", async () => {
-    // Amanha as 09:50: para o cliente, as 10:00 ja nao da (faltam 20 min).
+    // Amanha as 09:55: para o cliente, as 10:00 ja nao da (faltam 5 min).
     const [ano, mes, dia] = diaDaqui(1).split("-").map(Number);
-    const agora = instanteNoFuso(ano, mes, dia, 9, 50);
+    const agora = instanteNoFuso(ano, mes, dia, 9, 55);
     const doDia = instanteNoFuso(ano, mes, dia);
 
     const [doCliente, doAdmin] = await withTenant(e.tenant.id, (tx) =>

@@ -4,7 +4,7 @@ import { prisma } from "@/back/prisma";
 import { calcularSlotsDisponiveis } from "@/back/slots";
 import { withTenant } from "@/back/tenant-db";
 
-// Horarios que ja passaram, ou que comecam em menos de 30 minutos, nao sao
+// Horarios que ja passaram, ou que comecam em menos de 10 minutos, nao sao
 // oferecidos (ANTECEDENCIA_MINIMA_MIN em back/slots.ts). A confirmacao reconfere
 // a vaga pela mesma funcao, entao o que nao aparece aqui tambem e recusado no
 // POST /api/agendamentos.
@@ -92,12 +92,12 @@ describe("horarios que ja passaram", () => {
     expect(await slotsVistosAs(13, 0)).toEqual(["14:00", "15:00", "16:00", "17:00"]);
   });
 
-  test("hoje as 12:55: 13:00 fica de fora, falta menos de 30 minutos", async () => {
-    expect(await slotsVistosAs(12, 55)).toEqual(["14:00", "15:00", "16:00", "17:00"]);
+  test("hoje as 12:51: 13:00 fica de fora, falta menos de 10 minutos", async () => {
+    expect(await slotsVistosAs(12, 51)).toEqual(["14:00", "15:00", "16:00", "17:00"]);
   });
 
-  test("hoje as 12:30: 13:00 ainda entra, faltam exatos 30 minutos", async () => {
-    expect(await slotsVistosAs(12, 30)).toEqual(["13:00", "14:00", "15:00", "16:00", "17:00"]);
+  test("hoje as 12:50: 13:00 ainda entra, faltam exatos 10 minutos", async () => {
+    expect(await slotsVistosAs(12, 50)).toEqual(["13:00", "14:00", "15:00", "16:00", "17:00"]);
   });
 
   test("hoje antes de abrir: o dia inteiro", async () => {
