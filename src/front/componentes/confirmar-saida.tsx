@@ -56,7 +56,7 @@ export function ConfirmarSaida({
     setSaindo(true);
     // callbackUrl para o login DESTA estetica: a raiz do dominio nao pertence
     // a nenhuma (RN09).
-    signOut({ callbackUrl: `/${slug}/login` });
+    void signOut({ callbackUrl: `/${slug}/login` });
   }
 
   const primeiroNome = usuarioNome?.split(" ")[0];

@@ -103,7 +103,7 @@ export function PagamentoForm({
       setMostrarAviso(true);
       return;
     }
-    confirmar();
+    void confirmar();
   }
 
   const precoTeto = acrescimoCondicaoPercent
@@ -341,7 +341,7 @@ export function PagamentoForm({
               type="button"
               onClick={() => {
                 setMostrarAviso(false);
-                confirmar();
+                void confirmar();
               }}
               disabled={enviando}
               className="mt-5 w-full rounded-xl bg-astro-blue py-3.5 text-sm font-semibold text-white disabled:opacity-50"
