@@ -13,12 +13,15 @@ export function InputPlaca({
   aoMudar,
   invalido = false,
   descritoPor,
+  id,
 }: {
   valor: string;
   aoMudar: (valor: string) => void;
   // Placa recusada pela API: anel vermelho e a mensagem ligada ao campo.
   invalido?: boolean;
   descritoPor?: string;
+  // Liga o campo ao <label htmlFor> de quem usa o componente.
+  id?: string;
 }) {
   return (
     <div
@@ -36,6 +39,7 @@ export function InputPlaca({
       </div>
 
       <input
+        id={id}
         value={valor}
         onChange={(e) => aoMudar(e.target.value.toUpperCase())}
         // Cabe o padrao antigo (ABC-1234) e o Mercosul (ABC1D23); o limite

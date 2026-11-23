@@ -179,12 +179,13 @@ export function NovoVeiculoForm({
               em primeiro, como estava — a ordem muda so no desktop, via
               `order`, sem mexer na ordem do DOM. */}
           <div className="space-y-1.5 lg:order-7 lg:col-span-2">
-            <label className="astro-label">Segmento</label>
+            <label htmlFor="veiculo-segmento" className="astro-label">Segmento</label>
             {/* Lista suspensa no celular (um toque, sem ocupar altura) e
                 pastilhas no desktop, que mostram de uma vez o que existe. Os
                 dois escrevem no mesmo estado. Quantas opcoes aparecem depende
                 da estetica, entao as pastilhas quebram em linhas. */}
             <select
+              id="veiculo-segmento"
               value={form.segmentoId}
               onChange={(e) => set("segmentoId", e.target.value)}
               className={`${inputCls} lg:hidden`}
@@ -230,8 +231,9 @@ export function NovoVeiculoForm({
           </div>
 
           <div className="space-y-1.5 lg:order-2">
-            <label className="astro-label">Marca</label>
+            <label htmlFor="veiculo-marca" className="astro-label">Marca</label>
             <input
+              id="veiculo-marca"
               className={inputCls}
               placeholder="Ex: Jeep"
               value={form.marca}
@@ -244,8 +246,9 @@ export function NovoVeiculoForm({
           </div>
 
           <div className="space-y-1.5 lg:order-3">
-            <label className="astro-label">Modelo</label>
+            <label htmlFor="veiculo-modelo" className="astro-label">Modelo</label>
             <input
+              id="veiculo-modelo"
               className={inputCls}
               placeholder="Ex: Compass Limited"
               value={form.modelo}
@@ -258,8 +261,9 @@ export function NovoVeiculoForm({
           </div>
 
           <div className="space-y-1.5 lg:order-5">
-            <label className="astro-label">Placa</label>
+            <label htmlFor="veiculo-placa" className="astro-label">Placa</label>
             <InputPlaca
+              id="veiculo-placa"
               valor={form.placa}
               aoMudar={(v) => set("placa", v)}
               invalido={erroCampo?.campo === "placa"}
@@ -269,8 +273,9 @@ export function NovoVeiculoForm({
           </div>
 
           <div className="space-y-1.5 lg:order-4">
-            <label className="astro-label">Ano</label>
+            <label htmlFor="veiculo-ano" className="astro-label">Ano</label>
             <input
+              id="veiculo-ano"
               type="number"
               className={inputCls}
               placeholder="2023"
@@ -283,8 +288,9 @@ export function NovoVeiculoForm({
           </div>
 
           <div className="space-y-1.5 lg:order-6">
-            <label className="astro-label">Cor</label>
+            <label htmlFor="veiculo-cor" className="astro-label">Cor</label>
             <input
+              id="veiculo-cor"
               className={inputCls}
               placeholder="Ex: Preto Carbon"
               value={form.cor}
