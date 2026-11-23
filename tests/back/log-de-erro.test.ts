@@ -33,6 +33,21 @@ describe("limparTexto", () => {
     );
   });
 
+  // Sonar S8786: uma expressao regular sem limite de tamanho testa o texto a
+  // partir de cada posicao ate o fim. Num erro com um texto enorme (um corpo
+  // de pedido, uma pilha gigante), isso cresce ao quadrado e trava o servidor.
+  test("texto enorme sem e-mail e limpo rapido", () => {
+    const inicio = performance.now();
+    limparTexto("a".repeat(50_000));
+    expect(performance.now() - inicio).toBeLessThan(500);
+  });
+
+  test("texto enorme com barras e sem ? e limpo rapido", () => {
+    const inicio = performance.now();
+    limparTexto("/a".repeat(25_000));
+    expect(performance.now() - inicio).toBeLessThan(500);
+  });
+
   test("texto sem nada sensivel passa igual", () => {
     expect(limparTexto("Cannot read properties of null (reading 'id')")).toBe(
       "Cannot read properties of null (reading 'id')"
