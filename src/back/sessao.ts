@@ -13,6 +13,6 @@ export const DIAS_DE_SESSAO_PADRAO = 7;
 const DIA_EM_SEGUNDOS = 24 * 60 * 60;
 
 export function segundosDeSessao(valor: string | undefined): number {
-  const dias = valor && /^\d+$/.test(valor.trim()) ? Number(valor.trim()) : NaN;
+  const dias = valor && /^\d+$/.test(valor.trim()) ? Number(valor.trim()) : Number.NaN;
   return (dias > 0 ? dias : DIAS_DE_SESSAO_PADRAO) * DIA_EM_SEGUNDOS;
 }

@@ -15,7 +15,7 @@ import { Check, Copy, Upload } from "lucide-react";
 // e o texto que o app sobrepoe na cor primaria (botoes, nav ativa, etc.),
 // nunca preto. Abaixo de 4.5:1 (AA para texto normal) o contraste fica ruim.
 function contrasteComBranco(hex: string): number {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255);
   const linear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
   const luminancia = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
   return 1.05 / (luminancia + 0.05);
