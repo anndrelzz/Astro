@@ -391,7 +391,7 @@ function Recursos() {
     >
       <div className="grid items-center gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-6">
         <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-1 lg:grid-cols-1">
-          {RECURSOS.slice(0, 4).map(cartao)}
+          {RECURSOS.slice(0, 4).map((r, i) => cartao(r, i))}
         </div>
         <Revelar atraso={0.1} className="relative hidden lg:block">
           <div
