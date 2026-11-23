@@ -47,7 +47,7 @@ export function ModalRota({
     if (fechando.current) return;
     fechando.current = true;
     const altura = gaveta.current?.offsetHeight ?? 600;
-    animate(y, altura, {
+    void animate(y, altura, {
       duration: movimentoReduzido ? 0 : 0.22,
       ease: "easeIn",
     }).then(() => router.back());

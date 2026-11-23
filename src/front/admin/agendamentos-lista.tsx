@@ -452,7 +452,7 @@ export function AgendamentosLista({
               <button
                 type="button"
                 onClick={() => {
-                  agir(acrescimoAlvo.id, "confirmar-pagamento", valorAcrescimo);
+                  void agir(acrescimoAlvo.id, "confirmar-pagamento", valorAcrescimo);
                   limparAcrescimo();
                 }}
                 disabled={valorAcrescimo <= 0 || processando === acrescimoAlvo.id}
