@@ -20,10 +20,14 @@ export type PedidoDaFalha = {
   tipo: string;
 };
 
-const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
+// Os limites de tamanho ({1,254}, {1,63}, {0,512}) sao os maximos de um
+// e-mail, de um pedaco do dominio e de um caminho. Sem eles, a busca testa o
+// texto a partir de cada posicao ate o fim, e um texto enorme trava o servidor
+// (Sonar S8786).
+const EMAIL = /[\w.+-]{1,254}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,10}/g;
 const ENDERECO_DO_BANCO = /postgres(ql)?:\/\/\S+/gi;
 const TOKEN = /\b[A-Za-z0-9_-]{32,}\b/g;
-const CONSULTA_DO_ENDERECO = /(\/[^\s?#]*)[?#]\S*/g;
+const CONSULTA_DO_ENDERECO = /(\/[^\s?#]{0,512})[?#]\S*/g;
 
 /** Tira do texto o que nao pode sair do servidor (LGPD e segredos). */
 export function limparTexto(texto: string): string {

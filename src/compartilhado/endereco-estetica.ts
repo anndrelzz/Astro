@@ -61,7 +61,7 @@ export function normalizarEndereco(texto: string): string {
   return semAcento(texto)
     .replace(/[^a-z0-9-]/g, "")
     .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-|-$/g, ""); // a linha de cima ja deixou no maximo um hifen seguido
 }
 
 /**
