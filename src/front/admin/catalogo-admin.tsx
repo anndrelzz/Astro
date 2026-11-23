@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Clock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { LIMITES } from "@/compartilhado/validacoes/limites";
 import { AvisoMudancaServico } from "@/front/admin/aviso-mudanca-servico";
@@ -55,6 +55,20 @@ export function CatalogoAdmin({
   const [duracaoLivre, setDuracaoLivre] = useState(false);
   // O que mudou de duracao e preco, a confirmar no aviso antes de salvar.
   const [mudancas, setMudancas] = useState<string[]>([]);
+
+  // O cursor vai para o campo quando o Admin clica para renomear ou criar um
+  // tipo de veiculo. E foco pedido pelo clique dele, e nao o autoFocus, que o
+  // leitor de tela anuncia fora de hora (Sonar S9379).
+  const campoRenomear = useRef<HTMLInputElement>(null);
+  const campoNovoSegmento = useRef<HTMLInputElement>(null);
+  const idRenomeando = renomeando?.id;
+  const criandoSegmento = novoSegmento !== null;
+  useEffect(() => {
+    if (idRenomeando) campoRenomear.current?.focus();
+  }, [idRenomeando]);
+  useEffect(() => {
+    if (criandoSegmento) campoNovoSegmento.current?.focus();
+  }, [criandoSegmento]);
 
   async function chamar(url: string, metodo: string, corpo?: unknown) {
     setErro(null);
@@ -215,7 +229,7 @@ export function CatalogoAdmin({
               renomeando?.id === s.id ? (
                 <span key={s.id} className="flex items-center gap-1.5">
                   <input
-                    autoFocus
+                    ref={campoRenomear}
                     value={renomeando.nome}
                     onChange={(e) => setRenomeando({ id: s.id, nome: e.target.value })}
                     className={`${inputCls} w-40`}
@@ -286,7 +300,7 @@ export function CatalogoAdmin({
                   <label htmlFor="segmento-novo-nome" className="text-sm text-astro-muted">Nome</label>
                   <input
                     id="segmento-novo-nome"
-                    autoFocus
+                    ref={campoNovoSegmento}
                     value={novoSegmento}
                     onChange={(e) => setNovoSegmento(e.target.value)}
                     placeholder="Picape grande"
