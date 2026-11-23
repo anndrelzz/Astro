@@ -81,7 +81,9 @@ function validar(chave: keyof Config, c: Config): string | undefined {
       return n === 0 || n === 10 || n === 11 ? undefined : "Informe o DDD e o número completo.";
     }
     case "emailContato":
-      return !c.emailContato.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.emailContato.trim())
+      // Cada pedaco do dominio sem ponto ([^\s@.]): sem isso, o ponto pode cair
+      // em mais de um lugar e a busca fica lenta com texto longo (Sonar S8786).
+      return !c.emailContato.trim() || /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(c.emailContato.trim())
         ? undefined
         : "Confira o e-mail: falta o @ ou o domínio (ex.: contato@suaestetica.com.br).";
     case "cep": {
