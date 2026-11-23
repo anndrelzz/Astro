@@ -602,10 +602,11 @@ function ModalEditar({
           )}
 
           <div className="space-y-1.5">
-            <label className="astro-label">Nome completo</label>
+            <label htmlFor="perfil-nome" className="astro-label">Nome completo</label>
             <div className={campoCls}>
               <User className="h-4 w-4 text-zinc-400" />
               <input
+                id="perfil-nome"
                 className={inputCls}
                 value={form.nome}
                 maxLength={LIMITES.nomePessoa}
@@ -619,10 +620,11 @@ function ModalEditar({
           </div>
 
           <div className="space-y-1.5">
-            <label className="astro-label">E-mail</label>
+            <label htmlFor="perfil-email" className="astro-label">E-mail</label>
             <div className={`${campoCls} bg-zinc-50`}>
               <Mail className="h-4 w-4 text-zinc-400" />
               <input
+                id="perfil-email"
                 className={`${inputCls} text-zinc-400`}
                 value={email}
                 readOnly
@@ -632,10 +634,11 @@ function ModalEditar({
           </div>
 
           <div className="space-y-1.5">
-            <label className="astro-label">Telefone</label>
+            <label htmlFor="perfil-telefone" className="astro-label">Telefone</label>
             <div className={campoCls}>
               <Phone className="h-4 w-4 text-zinc-400" />
               <input
+                id="perfil-telefone"
                 className={inputCls}
                 inputMode="tel"
                 placeholder="(00) 00000-0000"

@@ -283,8 +283,9 @@ export function CatalogoAdmin({
             ) : (
               <div className="flex w-full flex-wrap items-end gap-2 rounded-xl border border-admin-border bg-admin-bg p-3">
                 <div className="min-w-[12rem] flex-1">
-                  <label className="text-sm text-astro-muted">Nome</label>
+                  <label htmlFor="segmento-novo-nome" className="text-sm text-astro-muted">Nome</label>
                   <input
+                    id="segmento-novo-nome"
                     autoFocus
                     value={novoSegmento}
                     onChange={(e) => setNovoSegmento(e.target.value)}
@@ -296,8 +297,9 @@ export function CatalogoAdmin({
                     parecido evita digitar um preco por servico, e o Admin ajusta
                     so o que difere. */}
                 <div className="min-w-[12rem] flex-1">
-                  <label className="text-sm text-astro-muted">Copiar preços de</label>
+                  <label htmlFor="segmento-copiar-de" className="text-sm text-astro-muted">Copiar preços de</label>
                   <select
+                    id="segmento-copiar-de"
                     value={copiarDe}
                     onChange={(e) => setCopiarDe(e.target.value)}
                     className={`${inputCls} mt-1`}
