@@ -76,7 +76,10 @@ function PopUp({ aoFechar }: { aoFechar: () => void }) {
   }, [termo, curto]);
 
   return (
+    // O fundo escuro so fecha no clique fora; quem usa teclado fecha pelo Esc
+    // ou pelo botao Fechar do dialogo. Por isso ele e so apresentacao.
     <div
+      role="presentation"
       className="fixed inset-0 z-[60] grid place-items-start justify-center overflow-y-auto bg-black/70 px-4 pt-[12vh] backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) aoFechar();
